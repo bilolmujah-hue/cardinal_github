@@ -13,6 +13,7 @@ import asyncpg
 import logging
 import json
 import base64
+import os  # ← SHU QATORNI QO'SHISH KERAK
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
@@ -39,17 +40,17 @@ class SOZLAMA:
     CHANNEL_USERNAME = "@tajriva2"
     CHANNEL_ID = -1001234567890  # ← O'Z KANAL ID'INGIZNI YOZING
 
-    # ===== ADMIN =====
+     # ===== ADMIN =====
     ADMIN_CHAT_ID = 7038296036
     ADMIN_NAME = "CARDINAL ADMIN"
     ADMIN_CARD = "8600 1234 5678 9012"
 
-    # ===== POSTGRESQL =====
-    DB_HOST = "localhost"
-    DB_PORT = 5432
-    DB_NAME = "cardinal_db"
-    DB_USER = "postgres"
-    DB_PASSWORD = "root"   # ← O'Z PAROLINGIZNI YOZING
+    # ===== POSTGRESQL (Railway muhitidan o'qiydi) =====
+    DB_HOST = os.getenv("PGHOST", "localhost")
+    DB_PORT = int(os.getenv("PGPORT", 5432))
+    DB_NAME = os.getenv("PGDATABASE", "cardinal_db")
+    DB_USER = os.getenv("PGUSER", "postgres")
+    DB_PASSWORD = os.getenv("PGPASSWORD", "root")  # ← O'Z PAROLINGIZNI YOZING
 
     # ===== API =====
     API_HOST = "0.0.0.0"
