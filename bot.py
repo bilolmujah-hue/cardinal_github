@@ -13,6 +13,7 @@ import asyncpg
 import logging
 import json
 import base64
+import os  # ← SHU QATORNI QO'SHISH KERAK
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
@@ -44,16 +45,16 @@ class SOZLAMA:
     ADMIN_NAME = "CARDINAL ADMIN"
     ADMIN_CARD = "8600 1234 5678 9012"
 
-    # ===== POSTGRESQL =====
-    DB_HOST = "localhost"
-    DB_PORT = 5432
-    DB_NAME = "cardinal_db"
-    DB_USER = "postgres"
-    DB_PASSWORD = "root"   # ← O'Z PAROLINGIZNI YOZING
+    # ===== POSTGRESQL (Railway muhitidan o'qiydi) =====
+    DB_HOST = os.getenv("PGHOST", "localhost")
+    DB_PORT = int(os.getenv("PGPORT", 5432))
+    DB_NAME = os.getenv("PGDATABASE", "cardinal_db")
+    DB_USER = os.getenv("PGUSER", "postgres")
+    DB_PASSWORD = os.getenv("PGPASSWORD", "root")
 
-    # ===== API =====
+    # ===== API (Railway beradigan PORT'ni oladi) =====
     API_HOST = "0.0.0.0"
-    API_PORT = 8080
+    API_PORT = int(os.getenv("PORT", 8080))
 
     # ===== TARIFLAR =====
     TARIFFS = {
