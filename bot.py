@@ -1,5 +1,4 @@
 """
-CARDINAL REKLAMA BOT - MUKAMMAL VERSIYA
 =========================================
 2 ta class:
     1. Database    - PostgreSQL (pgAdmin) bilan ishlash
