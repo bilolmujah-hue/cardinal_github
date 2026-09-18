@@ -1,16 +1,14 @@
 """
-CARDINAL REKLAMA BOT - MUKAMMAL VERSIYA (YANGILANGAN)
-=========================================
-2 ta class:
-    1. Database    - PostgreSQL (pgAdmin) bilan ishlash
-    2. CardinalBot - Telegram bot + API + Kanal boshqaruvi + Admin panel
-
+CARDINAL REKLAMA BOT - MUKAMMAL VERSIYA v3.0
+=============================================
 YANGILIKLAR:
-    - Majburiy obuna (2 ta kanal)
-    - /start faqat 1 marta ro'yxatdan o'tish
-    - Asosiy menyu (Web App, Kanalimiz, Admin)
-    - Profilim, Tranzaksiya, Bot haqida
-    - Chat xabarlari botga kelmaydi
+    1. Ko'p rasm (10 tagacha) yoki 1 video (10 daqiqagacha)
+    2. Valyuta tanlash (so'm, dollar, rubl)
+    3. Kengaytirilgan akkaunt ma'lumotlari
+    4. Kanalga avtomatik joylash (19000, 25000, 29000 tariflar)
+    5. Kanalga chiroyli shablon + 2 tugma (Chat, Reklama berish)
+    6. Admin panel API tuzatildi
+    7. Chat orqali savdo
 """
 
 import asyncio
@@ -43,19 +41,19 @@ class SOZLAMA:
 
     # ===== MAJBURIY KANALLAR =====
     REQUIRED_CHANNELS = [
-        {"username": "@tajriva2", "id": -1001234567890, "name": "Tajriva 2"},
+        {"username": "@tajriva2", "id": -1004390708511, "name": "Tajriva 2"},
         {"username": "@tajriva",  "id": -1001234567891, "name": "Tajriva"},
     ]
 
     # ===== ASOSIY KANAL (reklama joylash uchun) =====
     CHANNEL_USERNAME = "@tajriva2"
-    CHANNEL_ID = -1001234567890
+    CHANNEL_ID = -1001234567890  # O'ZINGIZNING KANAL ID RAQAMINI YOZING!
 
     # ===== ADMIN =====
     ADMIN_CHAT_ID = 7038296036
     ADMIN_NAME = "CARDINAL ADMIN"
     ADMIN_CARD = "8600 1234 5678 9012"
-    ADMIN_USERNAME = "cardinal_admin"  # ← Admin bilan bog'lanish uchun username
+    ADMIN_USERNAME = "cardinal_admin"
 
     # ===== POSTGRESQL =====
     DB_HOST = os.getenv("PGHOST", "localhost")
@@ -69,11 +67,19 @@ class SOZLAMA:
     API_PORT = 8080
 
     # ===== TARIFLAR =====
+    # channel=True bo'lganlar kanalga joylashadi
     TARIFFS = {
-        1: {"price": 19000, "days": 1, "type": "STANDARD", "channel": True,  "webapp": False, "name": "Kanal"},
-        2: {"price": 9000,  "days": 3, "type": "STANDARD", "channel": False, "webapp": True,  "name": "Web App"},
+        1: {"price": 19000, "days": 7, "type": "STANDARD", "channel": True,  "webapp": True,  "name": "Kanalda reklama"},
+        2: {"price": 9000,  "days": 7, "type": "STANDARD", "channel": False, "webapp": True,  "name": "Web App"},
         3: {"price": 25000, "days": 7, "type": "RARE",     "channel": True,  "webapp": True,  "name": "Web App + Kanal"},
         4: {"price": 29000, "days": 7, "type": "PREMIUM",  "channel": True,  "webapp": True,  "name": "VIP"},
+    }
+
+    # ===== VALYUTALAR =====
+    CURRENCIES = {
+        "UZS": {"symbol": "so'm", "flag": "🇺🇿", "name": "So'm"},
+        "USD": {"symbol": "$",    "flag": "🇺🇸", "name": "Dollar"},
+        "RUB": {"symbol": "₽",    "flag": "🇷🇺", "name": "Rubl"},
     }
 
     # ===== LOGO =====
@@ -116,7 +122,7 @@ class Database:
 
     async def create_tables(self):
         async with self.pool.acquire() as conn:
-            # USERS
+            # ===== USERS =====
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id              SERIAL PRIMARY KEY,
@@ -137,19 +143,20 @@ class Database:
                 );
             """)
 
-            # ADS
+            # ===== ADS (YANGILANGAN) =====
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS ads (
                     id              SERIAL PRIMARY KEY,
                     user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
                     title           VARCHAR(255) NOT NULL,
                     description     TEXT,
-                    image_url       TEXT,
+                    images          JSONB DEFAULT '[]'::jsonb,
                     video_url       TEXT,
                     ad_type         VARCHAR(50) DEFAULT 'STANDARD',
                     price           BIGINT NOT NULL,
+                    currency        VARCHAR(10) DEFAULT 'UZS',
                     location        VARCHAR(100),
-                    account_data    JSONB,
+                    account_data    JSONB DEFAULT '{}'::jsonb,
                     tariff          INTEGER,
                     status          VARCHAR(20) DEFAULT 'PENDING',
                     views           INTEGER DEFAULT 0,
@@ -163,7 +170,14 @@ class Database:
                 );
             """)
 
-            # AD_REACTIONS
+            # Eski jadval uchun migratsiya
+            try:
+                await conn.execute("ALTER TABLE ads ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb")
+                await conn.execute("ALTER TABLE ads ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'UZS'")
+            except Exception as e:
+                logger.warning(f"Migratsiya: {e}")
+
+            # ===== AD_REACTIONS =====
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS ad_reactions (
                     id              SERIAL PRIMARY KEY,
@@ -175,7 +189,7 @@ class Database:
                 );
             """)
 
-            # CHATS
+            # ===== CHATS =====
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS chats (
                     id              SERIAL PRIMARY KEY,
@@ -187,7 +201,7 @@ class Database:
                 );
             """)
 
-            # MESSAGES
+            # ===== MESSAGES =====
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS messages (
                     id              SERIAL PRIMARY KEY,
@@ -197,11 +211,17 @@ class Database:
                     is_admin        BOOLEAN DEFAULT FALSE,
                     is_edited       BOOLEAN DEFAULT FALSE,
                     is_deleted      BOOLEAN DEFAULT FALSE,
+                    is_read         BOOLEAN DEFAULT FALSE,
                     created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
 
-            # TRANSACTIONS
+            try:
+                await conn.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE")
+            except Exception:
+                pass
+
+            # ===== TRANSACTIONS =====
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS transactions (
                     id              SERIAL PRIMARY KEY,
@@ -216,7 +236,7 @@ class Database:
                 );
             """)
 
-            # BLOCKED_USERS
+            # ===== BLOCKED_USERS =====
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS blocked_users (
                     id              SERIAL PRIMARY KEY,
@@ -228,7 +248,7 @@ class Database:
                 );
             """)
 
-            # BROADCASTS
+            # ===== BROADCASTS =====
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS broadcasts (
                     id              SERIAL PRIMARY KEY,
@@ -462,30 +482,39 @@ class Database:
             return [dict(r) for r in rows]
 
     # ============================================================
-    # ADS
+    # ADS (YANGILANGAN)
     # ============================================================
     async def create_ad(self, user_id: int, data: Dict) -> int:
         async with self.pool.acquire() as conn:
+            # images: list → JSONB
+            images_json = json.dumps(data.get("images", []) or [])
+            account_json = json.dumps(data.get("account_data", {}) or {})
+
             ad_id = await conn.fetchval("""
                 INSERT INTO ads (
-                    user_id, title, description, image_url, video_url,
-                    ad_type, price, location, account_data, tariff,
+                    user_id, title, description, images, video_url,
+                    ad_type, price, currency, location, account_data, tariff,
                     status, expires_at
-                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+                ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)
                 RETURNING id
             """,
                 user_id, data.get("title"), data.get("description"),
-                data.get("image_url"), data.get("video_url"),
-                data.get("ad_type", "STANDARD"), data.get("price", 0),
-                data.get("location"), json.dumps(data.get("account_data", {})),
-                data.get("tariff"), "PENDING", data.get("expires_at"),
+                images_json, data.get("video_url"),
+                data.get("ad_type", "STANDARD"),
+                data.get("price", 0),
+                data.get("currency", "UZS"),
+                data.get("location"),
+                account_json,
+                data.get("tariff"),
+                "PENDING", data.get("expires_at"),
             )
             return ad_id
 
     async def get_active_ads(self, category: str = None) -> List[Dict]:
         async with self.pool.acquire() as conn:
             query = """
-                SELECT ads.*, users.first_name, users.last_name
+                SELECT ads.*, users.first_name, users.last_name,
+                       users.telegram_id as seller_tg, users.username as seller_username
                 FROM ads JOIN users ON users.id = ads.user_id
                 WHERE ads.status='ACTIVE'
                   AND (ads.expires_at IS NULL OR ads.expires_at > NOW())
@@ -498,30 +527,32 @@ class Database:
                     ads.created_at DESC
             """
             rows = await conn.fetch(query)
-            return [dict(r) for r in rows]
+            return [self._parse_ad_row(r) for r in rows]
 
     async def get_all_ads(self, status: str = None) -> List[Dict]:
         async with self.pool.acquire() as conn:
             query = """
-                SELECT ads.*, users.first_name, users.last_name, users.telegram_id as seller_tg
+                SELECT ads.*, users.first_name, users.last_name,
+                       users.telegram_id as seller_tg
                 FROM ads JOIN users ON users.id = ads.user_id
             """
             if status:
                 query += f" WHERE ads.status='{status}'"
             query += " ORDER BY ads.created_at DESC LIMIT 200"
             rows = await conn.fetch(query)
-            return [dict(r) for r in rows]
+            return [self._parse_ad_row(r) for r in rows]
 
     async def get_ad_by_id(self, ad_id: int) -> Optional[Dict]:
         async with self.pool.acquire() as conn:
             ad = await conn.fetchrow("""
                 SELECT ads.*, users.first_name as seller_first_name,
                        users.last_name as seller_last_name,
-                       users.telegram_id as seller_telegram_id
+                       users.telegram_id as seller_telegram_id,
+                       users.username as seller_username
                 FROM ads JOIN users ON users.id = ads.user_id
                 WHERE ads.id = $1
             """, ad_id)
-            return dict(ad) if ad else None
+            return self._parse_ad_row(ad) if ad else None
 
     async def get_user_ads(self, telegram_id: int) -> List[Dict]:
         async with self.pool.acquire() as conn:
@@ -529,7 +560,7 @@ class Database:
                 SELECT ads.* FROM ads JOIN users ON users.id = ads.user_id
                 WHERE users.telegram_id = $1 ORDER BY ads.created_at DESC
             """, telegram_id)
-            return [dict(r) for r in rows]
+            return [self._parse_ad_row(r) for r in rows]
 
     async def get_pending_ads(self) -> List[Dict]:
         async with self.pool.acquire() as conn:
@@ -538,7 +569,7 @@ class Database:
                 FROM ads JOIN users ON users.id = ads.user_id
                 WHERE ads.status='PENDING' ORDER BY ads.created_at DESC
             """)
-            return [dict(r) for r in rows]
+            return [self._parse_ad_row(r) for r in rows]
 
     async def update_ad_status(self, ad_id: int, status: str, reason: str = None,
                                 channel_msg_id: int = None):
@@ -599,10 +630,33 @@ class Database:
             ad = await self.get_ad_by_id(ad_id)
             return {"ok": True, "likes": ad["likes"], "dislikes": ad["dislikes"]}
 
+    def _parse_ad_row(self, row) -> Dict:
+        """JSONB maydonlarni parse qilish"""
+        d = dict(row)
+        # images
+        if isinstance(d.get("images"), str):
+            try:
+                d["images"] = json.loads(d["images"])
+            except Exception:
+                d["images"] = []
+        elif d.get("images") is None:
+            d["images"] = []
+
+        # account_data
+        if isinstance(d.get("account_data"), str):
+            try:
+                d["account_data"] = json.loads(d["account_data"])
+            except Exception:
+                d["account_data"] = {}
+        elif d.get("account_data") is None:
+            d["account_data"] = {}
+
+        return d
+
     # ============================================================
     # CHATS
     # ============================================================
-    async def get_or_create_chat(self, ad_id: int, buyer_telegram_id: int) -> int:
+    async def get_or_create_chat(self, ad_id: int, buyer_telegram_id: int) -> Optional[int]:
         async with self.pool.acquire() as conn:
             ad = await self.get_ad_by_id(ad_id)
             if not ad:
@@ -638,13 +692,22 @@ class Database:
                 return []
 
             rows = await conn.fetch("""
-                SELECT c.*, a.title as ad_title, a.image_url as ad_image, a.price as ad_price,
+                SELECT c.*,
+                       a.title as ad_title, a.images as ad_images, a.price as ad_price,
+                       a.currency as ad_currency,
                        s.first_name as seller_name, s.telegram_id as seller_tg,
                        b.first_name as buyer_name, b.telegram_id as buyer_tg,
                        (SELECT text FROM messages WHERE chat_id=c.id AND is_deleted=FALSE
                         ORDER BY created_at DESC LIMIT 1) as last_message,
                        (SELECT created_at FROM messages WHERE chat_id=c.id AND is_deleted=FALSE
-                        ORDER BY created_at DESC LIMIT 1) as last_time
+                        ORDER BY created_at DESC LIMIT 1) as last_time,
+                       (SELECT u.telegram_id FROM messages m
+                        JOIN users u ON u.id = m.user_id
+                        WHERE m.chat_id=c.id AND m.is_deleted=FALSE
+                        ORDER BY m.created_at DESC LIMIT 1) as last_sender_tg,
+                       (SELECT COUNT(*) FROM messages WHERE chat_id=c.id
+                        AND is_deleted=FALSE AND is_read=FALSE
+                        AND user_id != $1) as unread_count
                 FROM chats c
                 JOIN ads a ON a.id = c.ad_id
                 JOIN users s ON s.id = c.seller_id
@@ -652,13 +715,29 @@ class Database:
                 WHERE c.seller_id=$1 OR c.buyer_id=$1
                 ORDER BY c.created_at DESC
             """, user["id"])
-            return [dict(r) for r in rows]
+
+            result = []
+            for r in rows:
+                d = dict(r)
+                # ad_images parse
+                if isinstance(d.get("ad_images"), str):
+                    try:
+                        imgs = json.loads(d["ad_images"])
+                        d["ad_image"] = imgs[0] if imgs else None
+                    except Exception:
+                        d["ad_image"] = None
+                elif isinstance(d.get("ad_images"), list):
+                    d["ad_image"] = d["ad_images"][0] if d["ad_images"] else None
+                else:
+                    d["ad_image"] = None
+                result.append(d)
+            return result
 
     async def get_all_chats_admin(self) -> List[Dict]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch("""
                 SELECT c.id, c.ad_id, c.created_at,
-                       a.title as ad_title, a.image_url as ad_image, a.price as ad_price,
+                       a.title as ad_title, a.images as ad_images, a.price as ad_price,
                        s.first_name as seller_name, s.telegram_id as seller_tg,
                        s.id as seller_id,
                        b.first_name as buyer_name, b.telegram_id as buyer_tg,
@@ -674,13 +753,28 @@ class Database:
                 JOIN users b ON b.id = c.buyer_id
                 ORDER BY c.created_at DESC
             """)
-            return [dict(r) for r in rows]
+            result = []
+            for r in rows:
+                d = dict(r)
+                if isinstance(d.get("ad_images"), str):
+                    try:
+                        imgs = json.loads(d["ad_images"])
+                        d["ad_image"] = imgs[0] if imgs else None
+                    except Exception:
+                        d["ad_image"] = None
+                elif isinstance(d.get("ad_images"), list):
+                    d["ad_image"] = d["ad_images"][0] if d["ad_images"] else None
+                else:
+                    d["ad_image"] = None
+                result.append(d)
+            return result
 
     async def get_chat_messages(self, chat_id: int) -> List[Dict]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch("""
-                SELECT m.*, u.first_name, u.last_name, u.telegram_id, u.is_admin as user_is_admin,
-                       u.is_blocked as user_is_blocked
+                SELECT m.*, u.first_name, u.last_name, u.telegram_id,
+                       u.is_admin as user_is_admin, u.is_blocked as user_is_blocked,
+                       u.avatar
                 FROM messages m
                 JOIN users u ON u.id = m.user_id
                 WHERE m.chat_id=$1 AND m.is_deleted=FALSE
@@ -688,7 +782,7 @@ class Database:
             """, chat_id)
             return [dict(r) for r in rows]
 
-    async def send_message(self, chat_id: int, telegram_id: int, text: str) -> int:
+    async def send_message(self, chat_id: int, telegram_id: int, text: str) -> Optional[int]:
         async with self.pool.acquire() as conn:
             user = await self.get_user(telegram_id)
             if not user:
@@ -729,10 +823,22 @@ class Database:
             )
             return True
 
+    async def mark_chat_read(self, chat_id: int, telegram_id: int) -> bool:
+        async with self.pool.acquire() as conn:
+            user = await self.get_user(telegram_id)
+            if not user:
+                return False
+            await conn.execute("""
+                UPDATE messages SET is_read=TRUE
+                WHERE chat_id=$1 AND user_id != $2 AND is_read=FALSE
+            """, chat_id, user["id"])
+            return True
+
     async def get_chat_by_id(self, chat_id: int) -> Optional[Dict]:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
-                SELECT c.*, a.title as ad_title, a.image_url as ad_image, a.price as ad_price,
+                SELECT c.*, a.title as ad_title, a.images as ad_images, a.price as ad_price,
+                       a.currency as ad_currency,
                        s.telegram_id as seller_tg, s.first_name as seller_name,
                        b.telegram_id as buyer_tg, b.first_name as buyer_name
                 FROM chats c
@@ -741,7 +847,20 @@ class Database:
                 JOIN users b ON b.id = c.buyer_id
                 WHERE c.id=$1
             """, chat_id)
-            return dict(row) if row else None
+            if not row:
+                return None
+            d = dict(row)
+            if isinstance(d.get("ad_images"), str):
+                try:
+                    imgs = json.loads(d["ad_images"])
+                    d["ad_image"] = imgs[0] if imgs else None
+                except Exception:
+                    d["ad_image"] = None
+            elif isinstance(d.get("ad_images"), list):
+                d["ad_image"] = d["ad_images"][0] if d["ad_images"] else None
+            else:
+                d["ad_image"] = None
+            return d
 
     # ============================================================
     # BROADCAST
@@ -765,7 +884,7 @@ class Database:
         async with self.pool.acquire() as conn:
             try:
                 pending_topups = await conn.fetchval(
-                    "SELECT COUNT(*) FROM transactions WHERE status='PENDING'"
+                    "SELECT COUNT(*) FROM transactions WHERE status='PENDING' AND type='topup'"
                 )
             except Exception:
                 pending_topups = 0
@@ -803,6 +922,7 @@ class CardinalBot:
         self.dp.message.register(self.cmd_admin, Command("admin"))
         self.dp.message.register(self.cmd_channelid, Command("channelid"))
         self.dp.message.register(self.cmd_stats, Command("stats"))
+        self.dp.message.register(self.cmd_test_channel, Command("testchannel"))
         self.dp.message.register(self.handle_contact, F.contact)
         self.dp.message.register(self.handle_webapp_data, F.web_app_data)
         self.dp.message.register(self.handle_profile, F.text == "👤 Profilim")
@@ -812,7 +932,6 @@ class CardinalBot:
 
     # ---------- OBUNA TEKSHIRISH ----------
     async def check_subscription(self, user_id: int) -> List[str]:
-        """Foydalanuvchi obuna bo'lmagan kanallar ro'yxatini qaytaradi"""
         not_subscribed = []
         for channel in SOZLAMA.REQUIRED_CHANNELS:
             try:
@@ -853,12 +972,10 @@ class CardinalBot:
             language_code=user.language_code,
         )
 
-        # Agar allaqachon ro'yxatdan o'tgan bo'lsa — asosiy menyu
         if await self.db.is_registered(user.id):
             await self.show_main_menu(message)
             return
 
-        # Obuna tekshirish
         not_sub = await self.check_subscription(user.id)
         if not_sub:
             await message.answer(
@@ -871,7 +988,6 @@ class CardinalBot:
             )
             return
 
-        # Obuna bo'lgan, lekin ro'yxatdan o'tmagan — raqam so'rash
         keyboard = ReplyKeyboardMarkup(
             keyboard=[[KeyboardButton(text="📞 Raqamni yuborish", request_contact=True)]],
             resize_keyboard=True, one_time_keyboard=True,
@@ -879,14 +995,13 @@ class CardinalBot:
         await message.answer(
             "👋 Assalomu alaykum!\n\n"
             "🎮 <b>CARDINAL REKLAMA</b> botiga xush kelibsiz!\n\n"
-            "PUBG Mobile akkauntlaringizni sotish yokiy sotib olish uchun botdan ruyhatdan uting.\n\n"
+            "PUBG Mobile akkauntlaringizni sotish yoki sotib olish uchun botdan ro'yxatdan o'ting.\n\n"
             "Botdan foydalanish uchun telefon raqamingizni yuboring.",
             parse_mode="HTML", reply_markup=keyboard,
         )
 
     # ---------- ASOSIY MENYU ----------
     async def show_main_menu(self, message: Message, edit: bool = False):
-        # Inline tugmalar (yozuv ostida)
         inline_keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(
@@ -904,7 +1019,6 @@ class CardinalBot:
             ]
         )
 
-        # Reply tugmalar (pastda, 3 ta)
         reply_keyboard = ReplyKeyboardMarkup(
             keyboard=[
                 [
@@ -926,7 +1040,6 @@ class CardinalBot:
 
         if edit:
             await message.edit_text(text, parse_mode="HTML", reply_markup=inline_keyboard)
-            # Reply keyboardni alohida yangilash qiyin, shuning uchun yangi xabar
             await message.answer("⬇️ Quyidagi tugmalardan foydalaning:", reply_markup=reply_keyboard)
         else:
             await message.answer(text, parse_mode="HTML", reply_markup=inline_keyboard)
@@ -968,6 +1081,24 @@ class CardinalBot:
         stats = await self.db.get_stats()
         await message.answer(f"📊 {json.dumps(stats, indent=2, default=str)}")
 
+    # ---------- /testchannel ----------
+    async def cmd_test_channel(self, message: Message):
+        if message.from_user.id != SOZLAMA.ADMIN_CHAT_ID:
+            return
+        try:
+            chat = await self.bot.get_chat(SOZLAMA.CHANNEL_ID)
+            me = await self.bot.get_chat_member(SOZLAMA.CHANNEL_ID, (await self.bot.me()).id)
+            await message.answer(
+                f"✅ Kanal topildi:\n"
+                f"📢 Nomi: <b>{chat.title}</b>\n"
+                f"🆔 ID: <code>{chat.id}</code>\n"
+                f"👤 Username: @{chat.username or 'N/A'}\n"
+                f"🤖 Bot holati: <b>{me.status}</b>",
+                parse_mode="HTML"
+            )
+        except Exception as e:
+            await message.answer(f"❌ Kanal xatosi: {e}")
+
     # ---------- KONTAKT ----------
     async def handle_contact(self, message: Message):
         contact = message.contact
@@ -977,7 +1108,6 @@ class CardinalBot:
 
         user = message.from_user
 
-        # Obuna tekshirish
         not_sub = await self.check_subscription(user.id)
         if not_sub:
             await message.answer(
@@ -996,7 +1126,6 @@ class CardinalBot:
         await self.db.update_phone(user.id, phone)
         await self.db.mark_registered(user.id)
 
-        # Asosiy menyuni ko'rsatish
         await message.answer("✅ <b>Ro'yxatdan muvaffaqiyatli o'tdingiz!</b>", parse_mode="HTML")
         await self.show_main_menu(message)
 
@@ -1012,7 +1141,6 @@ class CardinalBot:
             await message.answer("❌ /start bosing")
             return
 
-        # Statistika
         async with self.db.pool.acquire() as conn:
             ads_count = await conn.fetchval(
                 "SELECT COUNT(*) FROM ads WHERE user_id=$1", user["id"]
@@ -1090,18 +1218,12 @@ class CardinalBot:
             created = tx["created_at"].strftime("%d.%m.%Y %H:%M")
 
             if tx_type == "topup":
-                emoji = "➕"
-                sign = "+"
-                label = "To'ldirish"
+                emoji = "➕"; sign = "+"; label = "To'ldirish"
             else:
-                emoji = "➖"
-                sign = "-"
-                label = "Sarflash"
+                emoji = "➖"; sign = "-"; label = "Sarflash"
 
             status_emoji = {
-                "APPROVED": "✅",
-                "PENDING": "⏳",
-                "REJECTED": "❌",
+                "APPROVED": "✅", "PENDING": "⏳", "REJECTED": "❌",
             }.get(status, "❓")
 
             desc = (tx.get("description") or "")[:40]
@@ -1117,7 +1239,6 @@ class CardinalBot:
 
         text = "\n".join(lines)
 
-        # Uzun bo'lsa bo'lib yuborish
         if len(text) > 4000:
             for i in range(0, len(text), 4000):
                 await message.answer(text[i:i+4000], parse_mode="HTML")
@@ -1139,18 +1260,18 @@ class CardinalBot:
             "• 👤 Profil boshqaruvi\n"
             "• 📊 Tranzaksiyalar tarixi\n\n"
             "📋 <b>Tariflar:</b>\n"
-            "1️⃣ STANDARD (Butunlay Kanalga) — 19,000 so'm\n"
-            "2️⃣ STANDARD (7 kun web app) — 9,000 so'm\n"
-            "3️⃣ RARE (7 kun webga va butunlay Kanalga) — 25,000 so'm\n"
-            "4️⃣ PREMIUM VIP (10 kun webga va butunlay kanalga) — 29,000 so'm\n\n"
+            "1️⃣ STANDARD (Kanalda reklama) — 19,000 so'm\n"
+            "2️⃣ STANDARD (Web App'da) — 9,000 so'm\n"
+            "3️⃣ RARE (Web App + Kanal) — 25,000 so'm\n"
+            "4️⃣ PREMIUM VIP (Web App + Kanal, tepada) — 29,000 so'm\n\n"
             "💳 <b>To'lov:</b>\n"
             f"Karta: <code>{SOZLAMA.ADMIN_CARD}</code>\n"
             f"Egasi: {SOZLAMA.ADMIN_NAME}\n\n"
             "📞 <b>Qo'llab-quvvatlash:</b>\n"
             f"Admin: @{SOZLAMA.ADMIN_USERNAME}\n\n"
             "⚠️ <b>Diqqat!</b>\n"
-            "Faqat Turayev Adizbek nomida bulgan karta raqamga to'lov qiling. "
-            "Boshqa nomdagi kartalarga tulov qilmang!"
+            "Faqat Turayev Adizbek nomida bo'lgan karta raqamga to'lov qiling. "
+            "Boshqa nomdagi kartalarga to'lov qilmang!"
         )
 
         inline = InlineKeyboardMarkup(
@@ -1208,10 +1329,11 @@ class CardinalBot:
         ad_id = await self.db.create_ad(user["id"], {
             "title": ad_data.get("title"),
             "description": ad_data.get("description"),
-            "image_url": ad_data.get("image_url"),
+            "images": ad_data.get("images", []),
             "video_url": ad_data.get("video_url"),
             "ad_type": tariff["type"],
             "price": ad_data.get("price"),
+            "currency": ad_data.get("currency", "UZS"),
             "location": ad_data.get("location"),
             "account_data": ad_data.get("account_data"),
             "tariff": tariff_id,
@@ -1231,13 +1353,17 @@ class CardinalBot:
 
     async def _send_ad_to_admin(self, ad: dict):
         try:
+            currency_symbol = SOZLAMA.CURRENCIES.get(ad.get("currency", "UZS"), {}).get("symbol", "so'm")
+
             text = (
                 f"🆕 <b>YANGI REKLAMA</b>\n\n"
                 f"📝 <b>{ad['title']}</b>\n"
-                f"💰 {ad['price']:,} so'm\n"
+                f"💰 {ad['price']:,} {currency_symbol}\n"
                 f"📍 {ad.get('location', '-')}\n"
                 f"🎯 Tarif: {ad.get('tariff')}\n"
-                f"🆔 ID: <code>{ad['id']}</code>\n\n"
+                f"🆔 ID: <code>{ad['id']}</code>\n"
+                f"📸 Rasmlar: {len(ad.get('images', []) or [])} ta\n"
+                f"🎬 Video: {'Bor' if ad.get('video_url') else 'Yo\'q'}\n\n"
                 f"Tasdiqlaysizmi?"
             )
 
@@ -1248,14 +1374,26 @@ class CardinalBot:
                 ]]
             )
 
+            # Video bo'lsa
             if ad.get("video_url"):
-                await self.bot.send_video(
-                    SOZLAMA.ADMIN_CHAT_ID, ad["video_url"],
-                    caption=text, parse_mode="HTML", reply_markup=keyboard
-                )
-            elif ad.get("image_url"):
-                if ad["image_url"].startswith("data:image"):
-                    header, encoded = ad["image_url"].split(",", 1)
+                if ad["video_url"].startswith("data:video"):
+                    header, encoded = ad["video_url"].split(",", 1)
+                    vid_bytes = base64.b64decode(encoded)
+                    video = BufferedInputFile(vid_bytes, filename="ad.mp4")
+                    await self.bot.send_video(
+                        SOZLAMA.ADMIN_CHAT_ID, video,
+                        caption=text, parse_mode="HTML", reply_markup=keyboard
+                    )
+                else:
+                    await self.bot.send_video(
+                        SOZLAMA.ADMIN_CHAT_ID, ad["video_url"],
+                        caption=text, parse_mode="HTML", reply_markup=keyboard
+                    )
+            # Rasmlar bo'lsa
+            elif ad.get("images"):
+                first_img = ad["images"][0]
+                if isinstance(first_img, str) and first_img.startswith("data:image"):
+                    header, encoded = first_img.split(",", 1)
                     img_bytes = base64.b64decode(encoded)
                     photo = BufferedInputFile(img_bytes, filename="ad.jpg")
                     await self.bot.send_photo(
@@ -1264,7 +1402,7 @@ class CardinalBot:
                     )
                 else:
                     await self.bot.send_photo(
-                        SOZLAMA.ADMIN_CHAT_ID, ad["image_url"],
+                        SOZLAMA.ADMIN_CHAT_ID, first_img,
                         caption=text, parse_mode="HTML", reply_markup=keyboard
                     )
             else:
@@ -1318,9 +1456,11 @@ class CardinalBot:
 
             await self.db.update_ad_status(ad_id, "ACTIVE")
 
+            # KANALGA JOYLASH - tarifga qarab
             tariff = SOZLAMA.TARIFFS.get(ad.get("tariff", 1))
             if tariff and tariff["channel"]:
                 await self._post_to_channel(ad)
+                logger.info(f"📢 Kanalga joylandi: #{ad_id}")
 
             try:
                 await self.bot.send_message(
@@ -1403,46 +1543,125 @@ class CardinalBot:
             await cb.message.edit_reply_markup(reply_markup=None)
             await cb.answer("❌ Rad etildi" if ok else "Xatolik")
 
+        # ===== KANALDAGI TUGMALAR UCHUN CALLBACK =====
+        @self.dp.callback_query(F.data.startswith("channel_buy_"))
+        async def channel_buy_cb(cb: CallbackQuery):
+            """Kanalda 'Chat orqali savdo' tugmasi"""
+            ad_id = int(cb.data.replace("channel_buy_", ""))
+            await cb.answer("🌐 Web App'da chat oching!", show_alert=True)
+            # Web App havolasini yuborish
+            url = f"{SOZLAMA.WEB_APP_URL}?open=ad&ad_id={ad_id}&chat=1"
+            await cb.message.answer(
+                f"🤝 Savdo qilish uchun quyidagi havolani bosing:\n{url}"
+            )
+
+        @self.dp.callback_query(F.data == "channel_create_ad")
+        async def channel_create_cb(cb: CallbackQuery):
+            """Kanalda 'Reklama bermoqchiman' tugmasi"""
+            await cb.answer("📢 Reklama berish sahifasi ochilmoqda...", show_alert=True)
+            await cb.message.answer(
+                f"📢 Reklama berish uchun:\n{SOZLAMA.WEB_APP_URL}?open=create"
+            )
+
     async def _post_to_channel(self, ad: dict):
+        """Kanalga chiroyli shablon bilan joylash + 2 tugma"""
         try:
-            base_url = SOZLAMA.WEB_APP_URL
-            buy_url = f"{base_url}?open=ad&ad_id={ad['id']}"
-            sell_url = f"{base_url}?open=create"
+            acc = ad.get("account_data", {}) or {}
+            currency = ad.get("currency", "UZS")
+            currency_info = SOZLAMA.CURRENCIES.get(currency, SOZLAMA.CURRENCIES["UZS"])
+            currency_symbol = currency_info["symbol"]
+            currency_flag = currency_info["flag"]
+
+            # Akkaunt ulangan turlari (list bo'lsa)
+            linked = acc.get("linked")
+            if isinstance(linked, list):
+                linked_str = ", ".join(linked) if linked else "-"
+            else:
+                linked_str = str(linked) if linked else "-"
+
+            # Kuchaytirilgan qurollar (list yoki str)
+            guns = acc.get("guns", [])
+            if isinstance(guns, list):
+                guns_str = "\n".join(f"  • {g}" for g in guns) if guns else "  • -"
+            else:
+                guns_str = f"  • {guns}" if guns else "  • -"
 
             text = (
-                f"🔥 <b>{ad['title']}</b>\n\n"
-                f"{ad.get('description', '')}\n\n"
-                f"💰 <b>{ad['price']:,} so'm</b>\n"
-                f"📍 {ad.get('location', '-')}\n\n"
-                f"📲 Batafsil ma'lumot uchun Web App'ga kiring"
+                f"🎮 <b>PUBG MOBILE AKKOUNT</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"📈 <b>LVL:</b> {acc.get('level', '-')}\n"
+                f"🎯 <b>Kolleksiya darajasi:</b> {acc.get('collection', '-')}\n"
+                f"🏆 <b>RP:</b> {acc.get('rp', '-')}\n"
+                f"👕 <b>Mifik kiyimlar:</b> {acc.get('mythic_clothes', '-')}\n\n"
+                f"💎 <b>Redkiy skinlar:</b>\n{acc.get('rare_skins', '-')}\n\n"
+                f"🔫 <b>Kuchaytirilgan qurollar:</b>\n{guns_str}\n"
+                f"🔢 <b>Jami:</b> {acc.get('guns_count', '-')} ta\n\n"
+                f"🔗 <b>Ulangan:</b> {linked_str}\n"
+                f"🏠 <b>Manzil:</b> {ad.get('location', '-')}\n\n"
+                f"💰 <b>NARXI: {ad['price']:,} {currency_symbol}</b> {currency_flag}\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n"
+                f"🆔 E'lon: #{ad['id']}"
             )
+
+            # 2 TA TUGMA
+            buy_url = f"{SOZLAMA.WEB_APP_URL}?open=ad&ad_id={ad['id']}&chat=1"
+            create_url = f"{SOZLAMA.WEB_APP_URL}?open=create"
 
             keyboard = InlineKeyboardMarkup(
                 inline_keyboard=[
-                    [InlineKeyboardButton(text="🛒 Akkount sotib olish", url=buy_url)],
-                    [InlineKeyboardButton(text="📢 Reklama bermoqchiman", url=sell_url)],
+                    [InlineKeyboardButton(text="🤝 Chat orqali savdo", url=buy_url)],
+                    [InlineKeyboardButton(text="📢 Reklama bermoqchiman", url=create_url)],
                 ]
             )
 
+            # Video bo'lsa
             if ad.get("video_url"):
-                msg = await self.bot.send_video(
-                    SOZLAMA.CHANNEL_ID, ad["video_url"],
-                    caption=text, parse_mode="HTML", reply_markup=keyboard
-                )
-            elif ad.get("image_url"):
-                if ad["image_url"].startswith("data:image"):
-                    header, encoded = ad["image_url"].split(",", 1)
-                    img_bytes = base64.b64decode(encoded)
-                    photo = BufferedInputFile(img_bytes, filename="ad.jpg")
-                    msg = await self.bot.send_photo(
-                        SOZLAMA.CHANNEL_ID, photo,
+                vid = ad["video_url"]
+                if isinstance(vid, str) and vid.startswith("data:video"):
+                    header, encoded = vid.split(",", 1)
+                    vid_bytes = base64.b64decode(encoded)
+                    video = BufferedInputFile(vid_bytes, filename="ad.mp4")
+                    msg = await self.bot.send_video(
+                        SOZLAMA.CHANNEL_ID, video,
                         caption=text, parse_mode="HTML", reply_markup=keyboard
                     )
                 else:
-                    msg = await self.bot.send_photo(
-                        SOZLAMA.CHANNEL_ID, ad["image_url"],
+                    msg = await self.bot.send_video(
+                        SOZLAMA.CHANNEL_ID, vid,
                         caption=text, parse_mode="HTML", reply_markup=keyboard
                     )
+
+            # Rasmlar bo'lsa (media group)
+            elif ad.get("images") and len(ad["images"]) > 0:
+                from aiogram.types import InputMediaPhoto
+
+                images = ad["images"]
+                # Base64 bo'lsa, faylga o'girish
+                media_list = []
+                for idx, img in enumerate(images[:10]):
+                    if isinstance(img, str) and img.startswith("data:image"):
+                        header, encoded = img.split(",", 1)
+                        img_bytes = base64.b64decode(encoded)
+                        photo = BufferedInputFile(img_bytes, filename=f"ad_{idx}.jpg")
+                    else:
+                        photo = img
+
+                    if idx == 0:
+                        media_list.append(InputMediaPhoto(
+                            media=photo, caption=text, parse_mode="HTML"
+                        ))
+                    else:
+                        media_list.append(InputMediaPhoto(media=photo))
+
+                # Media group yuborish
+                msgs = await self.bot.send_media_group(SOZLAMA.CHANNEL_ID, media=media_list)
+                # Tugmalarni alohida xabar sifatida
+                msg = await self.bot.send_message(
+                    SOZLAMA.CHANNEL_ID,
+                    f"📢 <b>{ad['title']}</b>\n\nYuqoridagi akkaunt uchun amallar:",
+                    parse_mode="HTML", reply_markup=keyboard,
+                    reply_to_message_id=msgs[0].message_id
+                )
             else:
                 msg = await self.bot.send_message(
                     SOZLAMA.CHANNEL_ID, text,
@@ -1451,8 +1670,23 @@ class CardinalBot:
 
             await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.message_id)
             logger.info(f"📢 Kanalga joylandi: #{ad['id']}")
+            return msg.message_id
+
         except Exception as e:
-            logger.error(f"Kanalga joylashda xato: {e}")
+            logger.error(f"❌ Kanalga joylashda xato: {e}")
+            # Fallback: oddiy xabar
+            try:
+                msg = await self.bot.send_message(
+                    SOZLAMA.CHANNEL_ID,
+                    f"📢 <b>{ad.get('title', 'Reklama')}</b>\n\n"
+                    f"💰 {ad.get('price', 0):,}\n"
+                    f"🆔 #{ad['id']}",
+                    parse_mode="HTML"
+                )
+                await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.message_id)
+            except Exception as e2:
+                logger.error(f"❌ Fallback ham ishlamadi: {e2}")
+            return None
 
     async def handle_other(self, message: Message):
         if message.from_user.id == SOZLAMA.ADMIN_CHAT_ID:
@@ -1460,7 +1694,8 @@ class CardinalBot:
                 "🛡️ Admin buyruqlar:\n"
                 "/admin - statistika\n"
                 "/stats - batafsil\n"
-                "/channelid - kanal ID\n\n"
+                "/channelid - kanal ID\n"
+                "/testchannel - kanalni test qilish\n\n"
                 f"🌐 Web App: {SOZLAMA.WEB_APP_URL}"
             )
         else:
@@ -1496,6 +1731,7 @@ class CardinalBot:
             self.api_app.router.add_post("/api/chat/send", self.api_send_message),
             self.api_app.router.add_post("/api/chat/edit", self.api_edit_message),
             self.api_app.router.add_post("/api/chat/delete", self.api_delete_message),
+            self.api_app.router.add_post("/api/chat/mark-read", self.api_mark_chat_read),
             self.api_app.router.add_post("/api/chat/block", self.api_block_user),
             self.api_app.router.add_get("/api/admin/pending-ads", self.api_pending_ads),
             self.api_app.router.add_get("/api/admin/pending-topups", self.api_pending_topups),
@@ -1521,7 +1757,7 @@ class CardinalBot:
     async def api_index(self, request):
         return web.json_response({
             "app": "Cardinal API",
-            "version": "2.1",
+            "version": "3.0",
             "status": "running"
         })
 
@@ -1564,11 +1800,6 @@ class CardinalBot:
         for ad in ads:
             for k, v in ad.items():
                 if isinstance(v, datetime): ad[k] = v.isoformat()
-            if isinstance(ad.get("account_data"), str):
-                try:
-                    ad["account_data"] = json.loads(ad["account_data"])
-                except:
-                    ad["account_data"] = {}
         return web.json_response(ads)
 
     async def api_get_ad(self, request):
@@ -1578,11 +1809,6 @@ class CardinalBot:
             return web.json_response({"error": "Topilmadi"}, status=404)
         for k, v in ad.items():
             if isinstance(v, datetime): ad[k] = v.isoformat()
-        if isinstance(ad.get("account_data"), str):
-            try:
-                ad["account_data"] = json.loads(ad["account_data"])
-            except:
-                ad["account_data"] = {}
         await self.db.increment_ad_views(ad_id)
         return web.json_response(ad)
 
@@ -1592,11 +1818,6 @@ class CardinalBot:
         for ad in ads:
             for k, v in ad.items():
                 if isinstance(v, datetime): ad[k] = v.isoformat()
-            if isinstance(ad.get("account_data"), str):
-                try:
-                    ad["account_data"] = json.loads(ad["account_data"])
-                except:
-                    ad["account_data"] = {}
         return web.json_response(ads)
 
     async def api_create_ad(self, request):
@@ -1622,10 +1843,11 @@ class CardinalBot:
             ad_id = await self.db.create_ad(user["id"], {
                 "title": ad_data.get("title"),
                 "description": ad_data.get("description"),
-                "image_url": ad_data.get("image_url"),
+                "images": ad_data.get("images", []),
                 "video_url": ad_data.get("video_url"),
                 "ad_type": tariff["type"],
                 "price": ad_data.get("price"),
+                "currency": ad_data.get("currency", "UZS"),
                 "location": ad_data.get("location"),
                 "account_data": ad_data.get("account_data"),
                 "tariff": tariff_id,
@@ -1639,6 +1861,7 @@ class CardinalBot:
 
             return web.json_response({"ok": True, "ad_id": ad_id, "paid": tariff["price"]})
         except Exception as e:
+            logger.error(f"❌ create_ad xato: {e}")
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
     async def api_react_ad(self, request):
@@ -1739,8 +1962,6 @@ class CardinalBot:
             )
             if not chat_id:
                 return web.json_response({"error": "Chat yaratilmadi"}, status=400)
-
-            # Botga xabar YUBORMAYMIZ — faqat web app'da ko'rinadi
             return web.json_response({"ok": True, "chat_id": chat_id})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
@@ -1753,8 +1974,6 @@ class CardinalBot:
             )
             if not msg_id:
                 return web.json_response({"error": "Xabar yuborilmadi"}, status=400)
-
-            # Botga xabar YUBORMAYMIZ — faqat web app'da ko'rinadi
             return web.json_response({"ok": True, "msg_id": msg_id})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
@@ -1774,6 +1993,16 @@ class CardinalBot:
             data = await request.json()
             ok = await self.db.delete_message(
                 int(data["msg_id"]), int(data["telegram_id"])
+            )
+            return web.json_response({"ok": ok})
+        except Exception as e:
+            return web.json_response({"ok": False, "error": str(e)}, status=400)
+
+    async def api_mark_chat_read(self, request):
+        try:
+            data = await request.json()
+            ok = await self.db.mark_chat_read(
+                int(data["chat_id"]), int(data["telegram_id"])
             )
             return web.json_response({"ok": ok})
         except Exception as e:
@@ -1808,11 +2037,6 @@ class CardinalBot:
         for ad in ads:
             for k, v in ad.items():
                 if isinstance(v, datetime): ad[k] = v.isoformat()
-            if isinstance(ad.get("account_data"), str):
-                try:
-                    ad["account_data"] = json.loads(ad["account_data"])
-                except:
-                    ad["account_data"] = {}
         return web.json_response(ads)
 
     async def api_pending_topups(self, request):
@@ -1849,11 +2073,6 @@ class CardinalBot:
         for ad in ads:
             for k, v in ad.items():
                 if isinstance(v, datetime): ad[k] = v.isoformat()
-            if isinstance(ad.get("account_data"), str):
-                try:
-                    ad["account_data"] = json.loads(ad["account_data"])
-                except:
-                    ad["account_data"] = {}
         return web.json_response(ads)
 
     async def api_approve_ad(self, request):
@@ -1867,6 +2086,7 @@ class CardinalBot:
 
             await self.db.update_ad_status(ad_id, "ACTIVE")
 
+            # KANALGA JOYLASH
             tariff = SOZLAMA.TARIFFS.get(ad.get("tariff", 1))
             if tariff and tariff["channel"]:
                 await self._post_to_channel(ad)
@@ -1881,6 +2101,7 @@ class CardinalBot:
 
             return web.json_response({"ok": True})
         except Exception as e:
+            logger.error(f"❌ approve_ad xato: {e}")
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
     async def api_reject_ad(self, request):
@@ -2035,4 +2256,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())
+    asyncio.run(main())    # CHANNEL_ID
