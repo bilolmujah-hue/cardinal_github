@@ -1,16 +1,11 @@
 """
-CARDINAL REKLAMA BOT - MUKAMMAL VERSIYA (YANGILANGAN)
+CARDINAL REKLAMA BOT - MUKAMMAL VERSIYA
 =========================================
 2 ta class:
     1. Database    - PostgreSQL (pgAdmin) bilan ishlash
     2. CardinalBot - Telegram bot + API + Kanal boshqaruvi + Admin panel
 
-YANGILIKLAR:
-    - Majburiy obuna (2 ta kanal)
-    - /start faqat 1 marta ro'yxatdan o'tish
-    - Asosiy menyu (Web App, Kanalimiz, Admin)
-    - Profilim, Tranzaksiya, Bot haqida
-    - Chat xabarlari botga kelmaydi
+Barcha sozlamalar shu faylning tepasida (SOZLAMA class'ida).
 """
 
 import asyncio
@@ -18,7 +13,7 @@ import asyncpg
 import logging
 import json
 import base64
-import os
+import os  # ← SHU QATORNI QO'SHISH KERAK
 from datetime import datetime, timedelta
 from typing import Optional, List, Dict, Any
 
@@ -41,30 +36,24 @@ class SOZLAMA:
     BOT_TOKEN = "8894813624:AAFCo3nDE19T8A2Ql_-W2j4-XemU4G1QcxI"
     WEB_APP_URL = "https://ishbilol1230-dev.github.io/budilnik-app/uzbekcats.html"
 
-    # ===== MAJBURIY KANALLAR =====
-    REQUIRED_CHANNELS = [
-        {"username": "@tajriva2", "id": -1001234567890, "name": "Tajriva 2"},
-        {"username": "@tajriva",  "id": -1001234567891, "name": "Tajriva"},
-    ]
-
-    # ===== ASOSIY KANAL (reklama joylash uchun) =====
+    # ===== KANAL =====
     CHANNEL_USERNAME = "@tajriva2"
-    CHANNEL_ID = -1001234567890
+    CHANNEL_ID = -1001234567890  # ← O'Z KANAL ID'INGIZNI YOZING
 
     # ===== ADMIN =====
     ADMIN_CHAT_ID = 7038296036
     ADMIN_NAME = "CARDINAL ADMIN"
     ADMIN_CARD = "8600 1234 5678 9012"
-    ADMIN_USERNAME = "cardinal_admin"  # ← Admin bilan bog'lanish uchun username
 
-    # ===== POSTGRESQL =====
+    # ===== POSTGRESQL (Railway muhitidan o'qiydi) =====
     DB_HOST = os.getenv("PGHOST", "localhost")
     DB_PORT = int(os.getenv("PGPORT", 5432))
     DB_NAME = os.getenv("PGDATABASE", "cardinal_db")
     DB_USER = os.getenv("PGUSER", "postgres")
     DB_PASSWORD = os.getenv("PGPASSWORD", "root")
 
-   API_HOST = "0.0.0.0"
+    # ===== API (Railway beradigan PORT'ni oladi) =====
+    API_HOST = "0.0.0.0"
     API_PORT = int(os.getenv("PORT", 8080))
 
     # ===== TARIFLAR =====
@@ -76,7 +65,7 @@ class SOZLAMA:
     }
 
     # ===== LOGO =====
-    LOGO_URL = "https://i.ibb.co/cardinal-logo.png"
+    LOGO_URL = "https://i.ibb.co/cardinal-logo.png"  # ← LOGO RASM URL (ixtiyoriy)
 
 
 logging.basicConfig(
@@ -95,6 +84,7 @@ class Database:
     def __init__(self):
         self.pool: Optional[asyncpg.Pool] = None
 
+    # ---------- ULANISH ----------
     async def connect(self):
         try:
             self.pool = await asyncpg.create_pool(
@@ -113,6 +103,7 @@ class Database:
             await self.pool.close()
             logger.info("🔌 Database uzildi")
 
+    # ---------- JADVALLAR YARATISH ----------
     async def create_tables(self):
         async with self.pool.acquire() as conn:
             # USERS
@@ -128,7 +119,6 @@ class Database:
                     balance         BIGINT DEFAULT 0,
                     spent           BIGINT DEFAULT 0,
                     avatar          TEXT,
-                    is_registered   BOOLEAN DEFAULT FALSE,
                     is_admin        BOOLEAN DEFAULT FALSE,
                     is_blocked      BOOLEAN DEFAULT FALSE,
                     created_at      TIMESTAMP DEFAULT NOW(),
@@ -260,6 +250,7 @@ class Database:
                 """, telegram_id, username, first_name, last_name, language_code, is_admin)
                 logger.info(f"🆕 Yangi user: {telegram_id}")
             else:
+                # Is_admin tekshirish
                 if telegram_id == SOZLAMA.ADMIN_CHAT_ID and not user["is_admin"]:
                     await conn.execute(
                         "UPDATE users SET is_admin=TRUE WHERE telegram_id=$1",
@@ -270,20 +261,6 @@ class Database:
                     WHERE telegram_id=$4
                 """, username, first_name, last_name, telegram_id)
             return dict(user)
-
-    async def mark_registered(self, telegram_id: int):
-        async with self.pool.acquire() as conn:
-            await conn.execute(
-                "UPDATE users SET is_registered=TRUE, updated_at=NOW() WHERE telegram_id=$1",
-                telegram_id
-            )
-
-    async def is_registered(self, telegram_id: int) -> bool:
-        async with self.pool.acquire() as conn:
-            row = await conn.fetchrow(
-                "SELECT is_registered FROM users WHERE telegram_id=$1", telegram_id
-            )
-            return bool(row and row["is_registered"])
 
     async def update_phone(self, telegram_id: int, phone: str) -> bool:
         async with self.pool.acquire() as conn:
@@ -500,6 +477,7 @@ class Database:
             return [dict(r) for r in rows]
 
     async def get_all_ads(self, status: str = None) -> List[Dict]:
+        """Admin uchun barcha reklamalar"""
         async with self.pool.acquire() as conn:
             query = """
                 SELECT ads.*, users.first_name, users.last_name, users.telegram_id as seller_tg
@@ -615,6 +593,7 @@ class Database:
             if not seller:
                 return None
 
+            # O'ziga chat ochmasin
             if seller["telegram_id"] == buyer_telegram_id:
                 return None
 
@@ -654,6 +633,7 @@ class Database:
             return [dict(r) for r in rows]
 
     async def get_all_chats_admin(self) -> List[Dict]:
+        """Admin uchun barcha chatlar"""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch("""
                 SELECT c.id, c.ad_id, c.created_at,
@@ -746,6 +726,7 @@ class Database:
     # BROADCAST
     # ============================================================
     async def get_all_user_ids(self) -> List[int]:
+        """Barcha foydalanuvchi telegram_id lari"""
         async with self.pool.acquire() as conn:
             rows = await conn.fetch("SELECT telegram_id FROM users WHERE is_blocked=FALSE")
             return [r["telegram_id"] for r in rows]
@@ -804,39 +785,7 @@ class CardinalBot:
         self.dp.message.register(self.cmd_stats, Command("stats"))
         self.dp.message.register(self.handle_contact, F.contact)
         self.dp.message.register(self.handle_webapp_data, F.web_app_data)
-        self.dp.message.register(self.handle_profile, F.text == "👤 Profilim")
-        self.dp.message.register(self.handle_transactions, F.text == "💳 Tranzaksiya")
-        self.dp.message.register(self.handle_about, F.text == "ℹ️ Bot haqida")
         self.dp.message.register(self.handle_other, F.text)
-
-    # ---------- OBUNA TEKSHIRISH ----------
-    async def check_subscription(self, user_id: int) -> List[str]:
-        """Foydalanuvchi obuna bo'lmagan kanallar ro'yxatini qaytaradi"""
-        not_subscribed = []
-        for channel in SOZLAMA.REQUIRED_CHANNELS:
-            try:
-                member = await self.bot.get_chat_member(channel["username"], user_id)
-                if member.status in ["left", "kicked", "banned"]:
-                    not_subscribed.append(channel["username"])
-            except Exception as e:
-                logger.warning(f"Kanal tekshirishda xato ({channel['username']}): {e}")
-                not_subscribed.append(channel["username"])
-        return not_subscribed
-
-    def _subscription_keyboard(self, not_subscribed: List[str]) -> InlineKeyboardMarkup:
-        buttons = []
-        for channel in SOZLAMA.REQUIRED_CHANNELS:
-            if channel["username"] in not_subscribed:
-                buttons.append([
-                    InlineKeyboardButton(
-                        text=f"📢 {channel['name']}",
-                        url=f"https://t.me/{channel['username'].replace('@', '')}"
-                    )
-                ])
-        buttons.append([
-            InlineKeyboardButton(text="✅ Tekshirish", callback_data="check_subscription")
-        ])
-        return InlineKeyboardMarkup(inline_keyboard=buttons)
 
     # ---------- /start ----------
     async def cmd_start(self, message: Message):
@@ -852,29 +801,11 @@ class CardinalBot:
             language_code=user.language_code,
         )
 
-        # Agar allaqachon ro'yxatdan o'tgan bo'lsa — asosiy menyu
-        if await self.db.is_registered(user.id):
-            await self.show_main_menu(message)
-            return
-
-        # Obuna tekshirish
-        not_sub = await self.check_subscription(user.id)
-        if not_sub:
-            await message.answer(
-                "📢 <b>Botdan foydalanish uchun quyidagi kanallarga obuna bo'ling:</b>\n\n"
-                "1️⃣ @tajriva2\n"
-                "2️⃣ @tajriva\n\n"
-                "✅ Obuna bo'lgach, <b>Tekshirish</b> tugmasini bosing.",
-                parse_mode="HTML",
-                reply_markup=self._subscription_keyboard(not_sub)
-            )
-            return
-
-        # Obuna bo'lgan, lekin ro'yxatdan o'tmagan — raqam so'rash
         keyboard = ReplyKeyboardMarkup(
             keyboard=[[KeyboardButton(text="📞 Raqamni yuborish", request_contact=True)]],
             resize_keyboard=True, one_time_keyboard=True,
         )
+
         await message.answer(
             "👋 Assalomu alaykum!\n\n"
             "🎮 <b>CARDINAL REKLAMA</b> botiga xush kelibsiz!\n\n"
@@ -882,54 +813,6 @@ class CardinalBot:
             "Botdan foydalanish uchun telefon raqamingizni yuboring.",
             parse_mode="HTML", reply_markup=keyboard,
         )
-
-    # ---------- ASOSIY MENYU ----------
-    async def show_main_menu(self, message: Message, edit: bool = False):
-        # Inline tugmalar (yozuv ostida)
-        inline_keyboard = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(
-                    text="🌐 Web App ni ochish",
-                    web_app=WebAppInfo(url=SOZLAMA.WEB_APP_URL)
-                )],
-                [InlineKeyboardButton(
-                    text="📢 Kanalimiz",
-                    url=f"https://t.me/{SOZLAMA.CHANNEL_USERNAME.replace('@', '')}"
-                )],
-                [InlineKeyboardButton(
-                    text="👨‍💻 Admin bilan bog'lanish",
-                    url=f"https://t.me/{SOZLAMA.ADMIN_USERNAME}"
-                )],
-            ]
-        )
-
-        # Reply tugmalar (pastda, 3 ta)
-        reply_keyboard = ReplyKeyboardMarkup(
-            keyboard=[
-                [
-                    KeyboardButton(text="👤 Profilim"),
-                    KeyboardButton(text="💳 Tranzaksiya"),
-                    KeyboardButton(text="ℹ️ Bot haqida"),
-                ]
-            ],
-            resize_keyboard=True,
-        )
-
-        text = (
-            "🎮 <b>CARDINAL REKLAMA</b>\n\n"
-            "Quyidagi bo'limlardan birini tanlang:\n\n"
-            "🌐 Web App — reklama joylash va akkaunt sotib olish\n"
-            "📢 Kanalimiz — yangi reklamalar\n"
-            "👨‍💻 Admin bilan bog'lanish — savollar uchun"
-        )
-
-        if edit:
-            await message.edit_text(text, parse_mode="HTML", reply_markup=inline_keyboard)
-            # Reply keyboardni alohida yangilash qiyin, shuning uchun yangi xabar
-            await message.answer("⬇️ Quyidagi tugmalardan foydalaning:", reply_markup=reply_keyboard)
-        else:
-            await message.answer(text, parse_mode="HTML", reply_markup=inline_keyboard)
-            await message.answer("⬇️ Quyidagi tugmalardan foydalaning:", reply_markup=reply_keyboard)
 
     # ---------- /admin ----------
     async def cmd_admin(self, message: Message):
@@ -975,197 +858,33 @@ class CardinalBot:
             phone = phone[3:]
 
         user = message.from_user
-
-        # Obuna tekshirish
-        not_sub = await self.check_subscription(user.id)
-        if not_sub:
-            await message.answer(
-                "📢 <b>Avval kanallarga obuna bo'ling:</b>\n\n"
-                "1️⃣ @tajriva2\n2️⃣ @tajriva\n\n"
-                "✅ Obuna bo'lgach, <b>Tekshirish</b> tugmasini bosing.",
-                parse_mode="HTML",
-                reply_markup=self._subscription_keyboard(not_sub)
-            )
-            return
-
         await self.db.get_or_create_user(
             telegram_id=user.id, username=user.username,
             first_name=user.first_name, last_name=user.last_name,
         )
         await self.db.update_phone(user.id, phone)
-        await self.db.mark_registered(user.id)
 
-        # Asosiy menyuni ko'rsatish
-        await message.answer("✅ <b>Ro'yxatdan muvaffaqiyatli o'tdingiz!</b>", parse_mode="HTML")
-        await self.show_main_menu(message)
-
-    # ---------- PROFILIM ----------
-    async def handle_profile(self, message: Message):
-        user_id = message.from_user.id
-        if await self.db.is_user_blocked(user_id):
-            await message.answer("🚫 Siz bloklangansiz!")
-            return
-
-        user = await self.db.get_user(user_id)
-        if not user:
-            await message.answer("❌ /start bosing")
-            return
-
-        # Statistika
-        async with self.db.pool.acquire() as conn:
-            ads_count = await conn.fetchval(
-                "SELECT COUNT(*) FROM ads WHERE user_id=$1", user["id"]
-            )
-            active_ads = await conn.fetchval(
-                "SELECT COUNT(*) FROM ads WHERE user_id=$1 AND status='ACTIVE'", user["id"]
-            )
-            pending_ads = await conn.fetchval(
-                "SELECT COUNT(*) FROM ads WHERE user_id=$1 AND status='PENDING'", user["id"]
-            )
-
-        status_emoji = "🟢" if not user["is_blocked"] else "🔴"
-        admin_label = " 🛡️ <b>ADMIN</b>" if user["is_admin"] else ""
-
-        text = (
-            f"👤 <b>PROFILINGIZ</b>{admin_label}\n\n"
-            f"🆔 ID: <code>{user['telegram_id']}</code>\n"
-            f"📛 Ism: <b>{user.get('first_name') or '-'}</b>\n"
-            f"📛 Familiya: <b>{user.get('last_name') or '-'}</b>\n"
-            f"🔗 Username: @{user.get('username') or '-'}\n"
-            f"📱 Telefon: <b>+998{user.get('phone') or '-'}</b>\n"
-            f"🌐 Til: {user.get('language_code') or '-'}\n\n"
-            f"💰 <b>Balans:</b> {user['balance']:,} so'm\n"
-            f"💸 <b>Sarflangan:</b> {user['spent']:,} so'm\n\n"
-            f"📢 <b>Reklamalar:</b>\n"
-            f"   • Jami: {ads_count}\n"
-            f"   • Faol: {active_ads}\n"
-            f"   • Kutilmoqda: {pending_ads}\n\n"
-            f"📅 Ro'yxatdan o'tgan: {user['created_at'].strftime('%d.%m.%Y %H:%M')}\n"
-            f"🔄 Oxirgi yangilanish: {user['updated_at'].strftime('%d.%m.%Y %H:%M')}\n"
-            f"📊 Holat: {status_emoji} {'Faol' if not user['is_blocked'] else 'Bloklangan'}"
-        )
-
-        inline = InlineKeyboardMarkup(
-            inline_keyboard=[
-                [InlineKeyboardButton(
-                    text="🌐 Web App ni ochish",
-                    web_app=WebAppInfo(url=SOZLAMA.WEB_APP_URL)
-                )],
-            ]
-        )
-
-        await message.answer(text, parse_mode="HTML", reply_markup=inline)
-
-    # ---------- TRANZAKSIYA ----------
-    async def handle_transactions(self, message: Message):
-        user_id = message.from_user.id
-        if await self.db.is_user_blocked(user_id):
-            await message.answer("🚫 Siz bloklangansiz!")
-            return
-
-        txs = await self.db.get_user_transactions(user_id)
-        user = await self.db.get_user(user_id)
-
-        if not txs:
-            await message.answer(
-                "💳 <b>TRANZAKSIYALAR</b>\n\n"
-                "Hozircha tranzaksiyalar mavjud emas.\n\n"
-                f"💰 Balansingiz: <b>{user['balance']:,} so'm</b>",
-                parse_mode="HTML"
-            )
-            return
-
-        lines = [
-            "💳 <b>TRANZAKSIYALAR TARIXI</b>\n",
-            f"💰 Joriy balans: <b>{user['balance']:,} so'm</b>",
-            f"💸 Jami sarflangan: <b>{user['spent']:,} so'm</b>\n",
-            "━━━━━━━━━━━━━━━━━━━━\n",
-        ]
-
-        for tx in txs[:30]:
-            amount = tx["amount"]
-            tx_type = tx["type"]
-            status = tx["status"]
-            created = tx["created_at"].strftime("%d.%m.%Y %H:%M")
-
-            if tx_type == "topup":
-                emoji = "➕"
-                sign = "+"
-                label = "To'ldirish"
-            else:
-                emoji = "➖"
-                sign = "-"
-                label = "Sarflash"
-
-            status_emoji = {
-                "APPROVED": "✅",
-                "PENDING": "⏳",
-                "REJECTED": "❌",
-            }.get(status, "❓")
-
-            desc = (tx.get("description") or "")[:40]
-
-            lines.append(
-                f"{emoji} <b>{label}</b> {status_emoji}\n"
-                f"   {sign}{amount:,} so'm — {created}\n"
-                f"   📝 {desc}\n"
-            )
-
-        if len(txs) > 30:
-            lines.append(f"\n... va yana {len(txs) - 30} ta tranzaksiya")
-
-        text = "\n".join(lines)
-
-        # Uzun bo'lsa bo'lib yuborish
-        if len(text) > 4000:
-            for i in range(0, len(text), 4000):
-                await message.answer(text[i:i+4000], parse_mode="HTML")
-        else:
-            await message.answer(text, parse_mode="HTML")
-
-    # ---------- BOT HAQIDA ----------
-    async def handle_about(self, message: Message):
-        text = (
-            "ℹ️ <b>CARDINAL REKLAMA BOT HAQIDA</b>\n\n"
-            "🎮 <b>Nima qiladi?</b>\n"
-            "Bu bot PUBG Mobile akkauntlarini sotish va sotib olish uchun "
-            "reklama platformasi.\n\n"
-            "✨ <b>Imkoniyatlar:</b>\n"
-            "• 📢 Reklama joylash (Web App orqali)\n"
-            "• 🛒 Akkaunt sotib olish\n"
-            "• 💬 Sotuvchi bilan chat\n"
-            "• 💳 Balans to'ldirish\n"
-            "• 👤 Profil boshqaruvi\n"
-            "• 📊 Tranzaksiyalar tarixi\n\n"
-            "📋 <b>Tariflar:</b>\n"
-            "1️⃣ STANDARD (1 kun, Kanal) — 19,000 so'm\n"
-            "2️⃣ STANDARD (3 kun, Web App) — 9,000 so'm\n"
-            "3️⃣ RARE (7 kun, Web + Kanal) — 25,000 so'm\n"
-            "4️⃣ PREMIUM VIP (7 kun) — 29,000 so'm\n\n"
-            "💳 <b>To'lov:</b>\n"
-            f"Karta: <code>{SOZLAMA.ADMIN_CARD}</code>\n"
-            f"Egasi: {SOZLAMA.ADMIN_NAME}\n\n"
-            "📞 <b>Qo'llab-quvvatlash:</b>\n"
-            f"Admin: @{SOZLAMA.ADMIN_USERNAME}\n\n"
-            "⚠️ <b>Diqqat!</b>\n"
-            "Faqat rasmiy kanallar orqali to'lov qiling. "
-            "Boshqa hech kimga ishonmang!"
-        )
-
-        inline = InlineKeyboardMarkup(
+        keyboard = InlineKeyboardMarkup(
             inline_keyboard=[
                 [InlineKeyboardButton(
                     text="🌐 Web App ni ochish",
                     web_app=WebAppInfo(url=SOZLAMA.WEB_APP_URL)
                 )],
                 [InlineKeyboardButton(
-                    text="👨‍💻 Admin bilan bog'lanish",
-                    url=f"https://t.me/{SOZLAMA.ADMIN_USERNAME}"
+                    text="📢 Kanalimiz",
+                    url=f"https://t.me/{SOZLAMA.CHANNEL_USERNAME.replace('@', '')}"
                 )],
             ]
         )
 
-        await message.answer(text, parse_mode="HTML", reply_markup=inline)
+        is_admin = (user.id == SOZLAMA.ADMIN_CHAT_ID)
+        admin_text = "\n\n🛡️ <b>Siz ADMINSIZ!</b> Profilingizda Admin panel tugmasi bor." if is_admin else ""
+
+        await message.answer(
+            "✅ <b>Telefon raqamingiz qabul qilindi!</b>\n\n"
+            "🎮 Endi Web App'ga kirishingiz mumkin." + admin_text,
+            parse_mode="HTML", reply_markup=keyboard,
+        )
 
     # ---------- WEB APP DATA ----------
     async def handle_webapp_data(self, message: Message):
@@ -1253,6 +972,7 @@ class CardinalBot:
                     caption=text, parse_mode="HTML", reply_markup=keyboard
                 )
             elif ad.get("image_url"):
+                # Base64 yoki URL
                 if ad["image_url"].startswith("data:image"):
                     header, encoded = ad["image_url"].split(",", 1)
                     img_bytes = base64.b64decode(encoded)
@@ -1276,36 +996,6 @@ class CardinalBot:
 
     # ---------- CALLBACK'LAR ----------
     async def _setup_callbacks(self):
-        @self.dp.callback_query(F.data == "check_subscription")
-        async def check_sub_cb(cb: CallbackQuery):
-            not_sub = await self.check_subscription(cb.from_user.id)
-            if not_sub:
-                await cb.answer("❌ Hali ham obuna bo'lmagansiz!", show_alert=True)
-                await cb.message.edit_reply_markup(
-                    reply_markup=self._subscription_keyboard(not_sub)
-                )
-            else:
-                await cb.answer("✅ Obuna tasdiqlandi!")
-                try:
-                    await cb.message.delete()
-                except Exception:
-                    pass
-
-                user = await self.db.get_user(cb.from_user.id)
-                if user and user.get("phone"):
-                    await self.db.mark_registered(cb.from_user.id)
-                    await self.show_main_menu(cb.message)
-                else:
-                    keyboard = ReplyKeyboardMarkup(
-                        keyboard=[[KeyboardButton(text="📞 Raqamni yuborish", request_contact=True)]],
-                        resize_keyboard=True, one_time_keyboard=True,
-                    )
-                    await cb.message.answer(
-                        "✅ <b>Obuna tasdiqlandi!</b>\n\n"
-                        "Endi telefon raqamingizni yuboring:",
-                        parse_mode="HTML", reply_markup=keyboard
-                    )
-
         @self.dp.callback_query(F.data.startswith("approve_ad_"))
         async def approve_cb(cb: CallbackQuery):
             if cb.from_user.id != SOZLAMA.ADMIN_CHAT_ID:
@@ -1455,6 +1145,7 @@ class CardinalBot:
 
     async def handle_other(self, message: Message):
         if message.from_user.id == SOZLAMA.ADMIN_CHAT_ID:
+            # Admin uchun buyruqlar
             await message.answer(
                 "🛡️ Admin buyruqlar:\n"
                 "/admin - statistika\n"
@@ -1477,18 +1168,27 @@ class CardinalBot:
         })
 
         routes = [
+            # Asosiy
             self.api_app.router.add_get("/", self.api_index),
             self.api_app.router.add_get("/api/stats", self.api_stats),
+
+            # User
             self.api_app.router.add_get("/api/user/{telegram_id}", self.api_get_user),
             self.api_app.router.add_post("/api/update-profile", self.api_update_profile),
             self.api_app.router.add_get("/api/user-transactions/{telegram_id}", self.api_user_transactions),
+
+            # Ads
             self.api_app.router.add_get("/api/ads", self.api_get_ads),
             self.api_app.router.add_get("/api/ad/{ad_id}", self.api_get_ad),
             self.api_app.router.add_get("/api/my-ads/{telegram_id}", self.api_get_my_ads),
             self.api_app.router.add_post("/api/create-ad", self.api_create_ad),
             self.api_app.router.add_post("/api/react-ad", self.api_react_ad),
+
+            # Balance
             self.api_app.router.add_post("/api/topup", self.api_topup),
             self.api_app.router.add_post("/api/topup-receipt", self.api_topup_receipt),
+
+            # Chats
             self.api_app.router.add_get("/api/chats/{telegram_id}", self.api_get_chats),
             self.api_app.router.add_get("/api/chat/{chat_id}", self.api_get_chat),
             self.api_app.router.add_post("/api/chat/start", self.api_start_chat),
@@ -1496,6 +1196,8 @@ class CardinalBot:
             self.api_app.router.add_post("/api/chat/edit", self.api_edit_message),
             self.api_app.router.add_post("/api/chat/delete", self.api_delete_message),
             self.api_app.router.add_post("/api/chat/block", self.api_block_user),
+
+            # Admin
             self.api_app.router.add_get("/api/admin/pending-ads", self.api_pending_ads),
             self.api_app.router.add_get("/api/admin/pending-topups", self.api_pending_topups),
             self.api_app.router.add_get("/api/admin/chats", self.api_admin_chats),
@@ -1517,16 +1219,18 @@ class CardinalBot:
     def _check_admin(self, telegram_id: int) -> bool:
         return telegram_id == SOZLAMA.ADMIN_CHAT_ID
 
+    # ---------- ASOSIY API ----------
     async def api_index(self, request):
         return web.json_response({
             "app": "Cardinal API",
-            "version": "2.1",
+            "version": "2.0",
             "status": "running"
         })
 
     async def api_stats(self, request):
         return web.json_response(await self.db.get_stats())
 
+    # ---------- USER ----------
     async def api_get_user(self, request):
         tg_id = int(request.match_info["telegram_id"])
         user = await self.db.get_user(tg_id)
@@ -1534,6 +1238,7 @@ class CardinalBot:
             return web.json_response({"error": "Topilmadi"}, status=404)
         for k, v in user.items():
             if isinstance(v, datetime): user[k] = v.isoformat()
+        # Admin faqat shu ID uchun
         user["is_admin"] = self._check_admin(tg_id)
         return web.json_response(user)
 
@@ -1558,6 +1263,7 @@ class CardinalBot:
                 if isinstance(v, datetime): t[k] = v.isoformat()
         return web.json_response(txs)
 
+    # ---------- ADS ----------
     async def api_get_ads(self, request):
         ads = await self.db.get_active_ads()
         for ad in ads:
@@ -1650,6 +1356,7 @@ class CardinalBot:
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
+    # ---------- BALANCE ----------
     async def api_topup(self, request):
         try:
             data = await request.json()
@@ -1709,6 +1416,7 @@ class CardinalBot:
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
+    # ---------- CHAT ----------
     async def api_get_chats(self, request):
         tg_id = int(request.match_info["telegram_id"])
         chats = await self.db.get_user_chats(tg_id)
@@ -1739,7 +1447,22 @@ class CardinalBot:
             if not chat_id:
                 return web.json_response({"error": "Chat yaratilmadi"}, status=400)
 
-            # Botga xabar YUBORMAYMIZ — faqat web app'da ko'rinadi
+            chat = await self.db.get_chat_by_id(chat_id)
+            buyer = await self.db.get_user(int(data["telegram_id"]))
+            ad = await self.db.get_ad_by_id(int(data["ad_id"]))
+
+            notify = (
+                f"🆕 <b>Yangi chat</b>\n\n"
+                f"📢 {ad['title']}\n"
+                f"👤 Xaridor: {buyer['first_name']}"
+            )
+            for tg_id in [chat["seller_tg"], SOZLAMA.ADMIN_CHAT_ID]:
+                if tg_id != int(data["telegram_id"]):
+                    try:
+                        await self.bot.send_message(tg_id, notify, parse_mode="HTML")
+                    except Exception:
+                        pass
+
             return web.json_response({"ok": True, "chat_id": chat_id})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
@@ -1753,7 +1476,22 @@ class CardinalBot:
             if not msg_id:
                 return web.json_response({"error": "Xabar yuborilmadi"}, status=400)
 
-            # Botga xabar YUBORMAYMIZ — faqat web app'da ko'rinadi
+            chat = await self.db.get_chat_by_id(int(data["chat_id"]))
+            sender = await self.db.get_user(int(data["telegram_id"]))
+            sender_name = f"{sender['first_name'] or ''} {sender['last_name'] or ''}".strip()
+
+            for tg_id in [chat["seller_tg"], chat["buyer_tg"]]:
+                if tg_id != int(data["telegram_id"]):
+                    try:
+                        await self.bot.send_message(
+                            tg_id,
+                            f"💬 <b>{chat['ad_title']}</b>\n\n"
+                            f"👤 {sender_name}: {data['text'][:200]}",
+                            parse_mode="HTML"
+                        )
+                    except Exception:
+                        pass
+
             return web.json_response({"ok": True, "msg_id": msg_id})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
@@ -1802,6 +1540,7 @@ class CardinalBot:
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
+    # ---------- ADMIN ----------
     async def api_pending_ads(self, request):
         ads = await self.db.get_pending_ads()
         for ad in ads:
@@ -1999,6 +1738,7 @@ class CardinalBot:
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
+    # ---------- ISHGA TUSHIRISH ----------
     async def _start_api(self):
         runner = web.AppRunner(self.api_app)
         await runner.setup()
@@ -2014,24 +1754,3 @@ class CardinalBot:
 
     async def stop(self):
         await self.bot.session.close()
-
-
-# ============================================================
-# ISHGA TUSHIRISH
-# ============================================================
-async def main():
-    db = Database()
-    await db.connect()
-    await db.create_tables()
-
-    bot = CardinalBot(db)
-
-    try:
-        await bot.start()
-    finally:
-        await bot.stop()
-        await db.close()
-
-
-if __name__ == "__main__":
-    asyncio.run(main())
