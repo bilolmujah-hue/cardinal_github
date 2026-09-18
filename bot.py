@@ -1,5 +1,5 @@
 """
-CARDINAL REKLAMA BOT - MUKAMMAL VERSIYA v3.0
+CARDINAL REKLAMA BOT - MUKAMMAL VERSIYA v3.1
 =============================================
 YANGILIKLAR:
     1. Ko'p rasm (10 tagacha) yoki 1 video (10 daqiqagacha)
@@ -9,6 +9,7 @@ YANGILIKLAR:
     5. Kanalga chiroyli shablon + 2 tugma (Chat, Reklama berish)
     6. Admin panel API tuzatildi
     7. Chat orqali savdo
+    8. Content Too Large xatosi tuzatildi (100 MB limit)
 """
 
 import asyncio
@@ -65,6 +66,7 @@ class SOZLAMA:
     # ===== API =====
     API_HOST = "0.0.0.0"
     API_PORT = 8080
+    API_MAX_SIZE = 100 * 1024 * 1024  # 100 MB - rasm/video uchun
 
     # ===== TARIFLAR =====
     # channel=True bo'lganlar kanalga joylashadi
@@ -912,9 +914,42 @@ class CardinalBot:
         self.bot = Bot(token=SOZLAMA.BOT_TOKEN)
         self.dp = Dispatcher()
         self.db = db
-        self.api_app = web.Application()
+        # ============================================================
+        # ⚠️ MUHIM O'ZGARISH: client_max_size=100MB
+        # Bu "Content Too Large" xatosini tuzatadi
+        # ============================================================
+        self.api_app = web.Application(
+            client_max_size=SOZLAMA.API_MAX_SIZE,
+            middlewares=[self._error_middleware]
+        )
         self._register_handlers()
         self._setup_api_routes()
+
+    # ============================================================
+    # ⚠️ YANGI: Xatoliklarni ushlash middleware
+    # ============================================================
+    @web.middleware
+    async def _error_middleware(self, request, handler):
+        """Xatoliklarni ushlash va JSON qaytarish"""
+        try:
+            return await handler(request)
+        except web.HTTPRequestEntityTooLarge:
+            logger.error("❌ So'rov juda katta (Content Too Large)")
+            return web.json_response({
+                "ok": False,
+                "error": "Fayl juda katta. Maksimal 100 MB."
+            }, status=413)
+        except web.HTTPException as e:
+            return web.json_response({
+                "ok": False,
+                "error": f"HTTP {e.status}: {e.reason}"
+            }, status=e.status)
+        except Exception as e:
+            logger.error(f"❌ API xatosi: {e}")
+            return web.json_response({
+                "ok": False,
+                "error": str(e)
+            }, status=500)
 
     # ---------- HANDLERLAR ----------
     def _register_handlers(self):
@@ -1757,8 +1792,9 @@ class CardinalBot:
     async def api_index(self, request):
         return web.json_response({
             "app": "Cardinal API",
-            "version": "3.0",
-            "status": "running"
+            "version": "3.1",
+            "status": "running",
+            "max_upload_size": f"{SOZLAMA.API_MAX_SIZE // (1024*1024)} MB"
         })
 
     async def api_stats(self, request):
@@ -2227,6 +2263,7 @@ class CardinalBot:
         site = web.TCPSite(runner, SOZLAMA.API_HOST, SOZLAMA.API_PORT)
         await site.start()
         logger.info(f"🌐 API Server: http://{SOZLAMA.API_HOST}:{SOZLAMA.API_PORT}")
+        logger.info(f"📦 Max upload size: {SOZLAMA.API_MAX_SIZE // (1024*1024)} MB")
 
     async def start(self):
         logger.info("🚀 BOT ishga tushdi...")
@@ -2256,4 +2293,4 @@ async def main():
 
 
 if __name__ == "__main__":
-    asyncio.run(main())    # CHANNEL_ID
+    asyncio.run(main())
