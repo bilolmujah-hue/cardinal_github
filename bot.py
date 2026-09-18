@@ -879,7 +879,7 @@ class CardinalBot:
         await message.answer(
             "👋 Assalomu alaykum!\n\n"
             "🎮 <b>CARDINAL REKLAMA</b> botiga xush kelibsiz!\n\n"
-            "PUBG Mobile akkauntlaringizni sotish uchun reklama bering.\n\n"
+            "PUBG Mobile akkauntlaringizni sotish yokiy sotib olish uchun botdan ruyhatdan uting.\n\n"
             "Botdan foydalanish uchun telefon raqamingizni yuboring.",
             parse_mode="HTML", reply_markup=keyboard,
         )
@@ -1128,7 +1128,7 @@ class CardinalBot:
     async def handle_about(self, message: Message):
         text = (
             "ℹ️ <b>CARDINAL REKLAMA BOT HAQIDA</b>\n\n"
-            "🎮 <b>Nima qiladi?</b>\n"
+            "🎮 <b>Bot Nimalar qiloladi?</b>\n"
             "Bu bot PUBG Mobile akkauntlarini sotish va sotib olish uchun "
             "reklama platformasi.\n\n"
             "✨ <b>Imkoniyatlar:</b>\n"
@@ -1139,18 +1139,18 @@ class CardinalBot:
             "• 👤 Profil boshqaruvi\n"
             "• 📊 Tranzaksiyalar tarixi\n\n"
             "📋 <b>Tariflar:</b>\n"
-            "1️⃣ STANDARD (1 kun, Kanal) — 19,000 so'm\n"
-            "2️⃣ STANDARD (3 kun, Web App) — 9,000 so'm\n"
-            "3️⃣ RARE (7 kun, Web + Kanal) — 25,000 so'm\n"
-            "4️⃣ PREMIUM VIP (7 kun) — 29,000 so'm\n\n"
+            "1️⃣ STANDARD (Butunlay Kanalga) — 19,000 so'm\n"
+            "2️⃣ STANDARD (7 kun web app) — 9,000 so'm\n"
+            "3️⃣ RARE (7 kun webga va butunlay Kanalga) — 25,000 so'm\n"
+            "4️⃣ PREMIUM VIP (10 kun webga va butunlay kanalga) — 29,000 so'm\n\n"
             "💳 <b>To'lov:</b>\n"
             f"Karta: <code>{SOZLAMA.ADMIN_CARD}</code>\n"
             f"Egasi: {SOZLAMA.ADMIN_NAME}\n\n"
             "📞 <b>Qo'llab-quvvatlash:</b>\n"
             f"Admin: @{SOZLAMA.ADMIN_USERNAME}\n\n"
             "⚠️ <b>Diqqat!</b>\n"
-            "Faqat rasmiy kanallar orqali to'lov qiling. "
-            "Boshqa hech kimga ishonmang!"
+            "Faqat Turayev Adizbek nomida bulgan karta raqamga to'lov qiling. "
+            "Boshqa nomdagi kartalarga tulov qilmang!"
         )
 
         inline = InlineKeyboardMarkup(
