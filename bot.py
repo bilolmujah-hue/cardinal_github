@@ -64,9 +64,8 @@ class SOZLAMA:
     DB_USER = os.getenv("PGUSER", "postgres")
     DB_PASSWORD = os.getenv("PGPASSWORD", "root")
 
-    # ===== API =====
-    API_HOST = "0.0.0.0"
-    API_PORT = 8080
+   API_HOST = "0.0.0.0"
+    API_PORT = int(os.getenv("PORT", 8080))
 
     # ===== TARIFLAR =====
     TARIFFS = {
