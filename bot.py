@@ -1,15 +1,17 @@
 """
-CARDINAL REKLAMA BOT - MUKAMMAL VERSIYA v3.1
+CARDINAL REKLAMA BOT - MUKAMMAL VERSIYA v4.0
 =============================================
-YANGILIKLAR:
-    1. Ko'p rasm (10 tagacha) yoki 1 video (10 daqiqagacha)
-    2. Valyuta tanlash (so'm, dollar, rubl)
-    3. Kengaytirilgan akkaunt ma'lumotlari
-    4. Kanalga avtomatik joylash (19000, 25000, 29000 tariflar)
-    5. Kanalga chiroyli shablon + 2 tugma (Chat, Reklama berish)
-    6. Admin panel API tuzatildi
-    7. Chat orqali savdo
-    8. Content Too Large xatosi tuzatildi (100 MB limit)
+YANGILIKLAR v4.0:
+    1. Faqat video reklama (10 daqiqagacha) - rasm o'chirildi
+    2. Like/Dislike tizimi olib tashlandi
+    3. Saqlangan reklamalar (yurakcha) tizimi qo'shildi
+    4. Admin bilan chat - Telegram uslubida
+    5. Otzif (fikr qoldirish) tizimi
+    6. Yangi tarif tushuntirishlari (9k, 19k, 25k, 29k)
+    7. Akkaunt ma'lumotlari yangilandi
+    8. Admin panel to'liq yangilandi
+    9. Balans qo'shish funksiyasi (admin uchun)
+    10. Reklamani o'chirish (admin uchun)
 """
 
 import asyncio
@@ -46,7 +48,7 @@ class SOZLAMA:
         {"username": "@tajriva",  "id": -1001234567891, "name": "Tajriva"},
     ]
 
-    # ===== ASOSIY KANAL (reklama joylash uchun) =====
+    # ===== ASOSIY KANAL =====
     CHANNEL_USERNAME = "@tajriva2"
     CHANNEL_ID = -1001234567890  # O'ZINGIZNING KANAL ID RAQAMINI YOZING!
 
@@ -66,15 +68,58 @@ class SOZLAMA:
     # ===== API =====
     API_HOST = "0.0.0.0"
     API_PORT = 8080
-    API_MAX_SIZE = 100 * 1024 * 1024  # 100 MB - rasm/video uchun
+    API_MAX_SIZE = 500 * 1024 * 1024  # 500 MB - video uchun
 
-    # ===== TARIFLAR =====
-    # channel=True bo'lganlar kanalga joylashadi
+    # ===== TARIFLAR (YANGILANGAN) =====
     TARIFFS = {
-        1: {"price": 19000, "days": 7, "type": "STANDARD", "channel": True,  "webapp": True,  "name": "Kanalda reklama"},
-        2: {"price": 9000,  "days": 7, "type": "STANDARD", "channel": False, "webapp": True,  "name": "Web App"},
-        3: {"price": 25000, "days": 7, "type": "RARE",     "channel": True,  "webapp": True,  "name": "Web App + Kanal"},
-        4: {"price": 29000, "days": 7, "type": "PREMIUM",  "channel": True,  "webapp": True,  "name": "VIP"},
+        1: {
+            "price": 19000, "days": 7, "type": "STANDARD", 
+            "channel": True, "webapp": True, 
+            "name": "Kanalda reklama",
+            "features": {
+                "channel_post": True,
+                "webapp_post": False,
+                "vip_top": False,
+                "discount": False,
+                "priority": False
+            }
+        },
+        2: {
+            "price": 9000, "days": 7, "type": "STANDARD", 
+            "channel": False, "webapp": True, 
+            "name": "Web App reklama",
+            "features": {
+                "channel_post": False,
+                "webapp_post": True,
+                "vip_top": False,
+                "discount": False,
+                "priority": False
+            }
+        },
+        3: {
+            "price": 25000, "days": 7, "type": "RARE", 
+            "channel": True, "webapp": True, 
+            "name": "Web App + Kanal",
+            "features": {
+                "channel_post": True,
+                "webapp_post": True,
+                "vip_top": False,
+                "discount": True,
+                "priority": True
+            }
+        },
+        4: {
+            "price": 29000, "days": 7, "type": "PREMIUM", 
+            "channel": True, "webapp": True, 
+            "name": "VIP Tarif",
+            "features": {
+                "channel_post": True,
+                "webapp_post": True,
+                "vip_top": True,
+                "discount": True,
+                "priority": True
+            }
+        },
     }
 
     # ===== VALYUTALAR =====
@@ -84,8 +129,11 @@ class SOZLAMA:
         "RUB": {"symbol": "₽",    "flag": "🇷🇺", "name": "Rubl"},
     }
 
-    # ===== LOGO =====
-    LOGO_URL = "https://i.ibb.co/cardinal-logo.png"
+    # ===== LIMITLAR =====
+    MAX_VIDEO_MINUTES = 10
+    MAX_RARE_SKINS = 25
+    MAX_GUNS = 25
+    MAX_FEEDBACK_LENGTH = 30
 
 
 logging.basicConfig(
@@ -145,25 +193,24 @@ class Database:
                 );
             """)
 
-            # ===== ADS (YANGILANGAN) =====
+            # ===== ADS (FAQAT VIDEO) =====
             await conn.execute("""
                 CREATE TABLE IF NOT EXISTS ads (
                     id              SERIAL PRIMARY KEY,
                     user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
                     title           VARCHAR(255) NOT NULL,
                     description     TEXT,
-                    images          JSONB DEFAULT '[]'::jsonb,
                     video_url       TEXT,
+                    video_duration  INTEGER,
                     ad_type         VARCHAR(50) DEFAULT 'STANDARD',
                     price           BIGINT NOT NULL,
                     currency        VARCHAR(10) DEFAULT 'UZS',
                     location        VARCHAR(100),
+                    full_location   VARCHAR(255),
                     account_data    JSONB DEFAULT '{}'::jsonb,
                     tariff          INTEGER,
                     status          VARCHAR(20) DEFAULT 'PENDING',
                     views           INTEGER DEFAULT 0,
-                    likes           INTEGER DEFAULT 0,
-                    dislikes        INTEGER DEFAULT 0,
                     reject_reason   TEXT,
                     channel_msg_id  BIGINT,
                     created_at      TIMESTAMP DEFAULT NOW(),
@@ -172,22 +219,26 @@ class Database:
                 );
             """)
 
-            # Eski jadval uchun migratsiya
-            try:
-                await conn.execute("ALTER TABLE ads ADD COLUMN IF NOT EXISTS images JSONB DEFAULT '[]'::jsonb")
-                await conn.execute("ALTER TABLE ads ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'UZS'")
-            except Exception as e:
-                logger.warning(f"Migratsiya: {e}")
-
-            # ===== AD_REACTIONS =====
+            # ===== SAVED ADS (YANGI - YURAKCHA) =====
             await conn.execute("""
-                CREATE TABLE IF NOT EXISTS ad_reactions (
+                CREATE TABLE IF NOT EXISTS saved_ads (
                     id              SERIAL PRIMARY KEY,
-                    ad_id           INTEGER REFERENCES ads(id) ON DELETE CASCADE,
                     user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    reaction        VARCHAR(10) NOT NULL,
+                    ad_id           INTEGER REFERENCES ads(id) ON DELETE CASCADE,
                     created_at      TIMESTAMP DEFAULT NOW(),
-                    UNIQUE(ad_id, user_id)
+                    UNIQUE(user_id, ad_id)
+                );
+            """)
+
+            # ===== FEEDBACKS (OTZIF) =====
+            await conn.execute("""
+                CREATE TABLE IF NOT EXISTS feedbacks (
+                    id              SERIAL PRIMARY KEY,
+                    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    text            TEXT NOT NULL,
+                    rating          INTEGER DEFAULT 5,
+                    is_visible      BOOLEAN DEFAULT TRUE,
+                    created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
 
@@ -210,6 +261,8 @@ class Database:
                     chat_id         INTEGER REFERENCES chats(id) ON DELETE CASCADE,
                     user_id         INTEGER REFERENCES users(id),
                     text            TEXT NOT NULL,
+                    message_type    VARCHAR(20) DEFAULT 'text',
+                    file_url        TEXT,
                     is_admin        BOOLEAN DEFAULT FALSE,
                     is_edited       BOOLEAN DEFAULT FALSE,
                     is_deleted      BOOLEAN DEFAULT FALSE,
@@ -217,11 +270,6 @@ class Database:
                     created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            try:
-                await conn.execute("ALTER TABLE messages ADD COLUMN IF NOT EXISTS is_read BOOLEAN DEFAULT FALSE")
-            except Exception:
-                pass
 
             # ===== TRANSACTIONS =====
             await conn.execute("""
@@ -323,6 +371,13 @@ class Database:
             )
             return dict(user) if user else None
 
+    async def get_user_by_phone(self, phone: str) -> Optional[Dict]:
+        async with self.pool.acquire() as conn:
+            user = await conn.fetchrow(
+                "SELECT * FROM users WHERE phone=$1", phone
+            )
+            return dict(user) if user else None
+
     async def get_user_by_id(self, user_id: int) -> Optional[Dict]:
         async with self.pool.acquire() as conn:
             user = await conn.fetchrow("SELECT * FROM users WHERE id=$1", user_id)
@@ -394,7 +449,7 @@ class Database:
     # BALANCE
     # ============================================================
     async def update_balance(self, telegram_id: int, amount: int, tx_type: str = "topup",
-                             receipt_url: str = None):
+                             receipt_url: str = None, description: str = None):
         async with self.pool.acquire() as conn:
             async with conn.transaction():
                 if tx_type == "topup":
@@ -415,9 +470,36 @@ class Database:
                         INSERT INTO transactions (user_id, amount, type, description,
                                                    receipt_url, status)
                         VALUES ($1, $2, $3, $4, $5, $6)
-                    """, user["id"], amount, tx_type, f"Balance {tx_type}",
+                    """, user["id"], amount, tx_type, 
+                        description or f"Balance {tx_type}",
                         receipt_url,
                         "APPROVED" if (tx_type == "topup" and not receipt_url) else "PENDING")
+
+    async def admin_add_balance(self, admin_telegram_id: int, user_phone: str, 
+                                 amount: int) -> Dict:
+        """Admin tomonidan foydalanuvchiga balans qo'shish"""
+        async with self.pool.acquire() as conn:
+            # Telefon raqamni tozalash
+            phone = user_phone.replace("+", "").replace(" ", "").replace("-", "")
+            if phone.startswith("998"):
+                phone = phone[3:]
+            
+            user = await self.get_user_by_phone(phone)
+            if not user:
+                return {"ok": False, "error": f"Foydalanuvchi topilmadi: +998{phone}"}
+            
+            async with conn.transaction():
+                await conn.execute("""
+                    UPDATE users SET balance = balance + $1, updated_at=NOW()
+                    WHERE id = $2
+                """, amount, user["id"])
+                
+                await conn.execute("""
+                    INSERT INTO transactions (user_id, amount, type, description, status)
+                    VALUES ($1, $2, 'topup', $3, 'APPROVED')
+                """, user["id"], amount, f"Admin tomonidan qo'shildi")
+            
+            return {"ok": True, "user": user, "new_balance": user["balance"] + amount}
 
     async def create_topup_request(self, telegram_id: int, amount: int, receipt_url: str) -> int:
         async with self.pool.acquire() as conn:
@@ -473,6 +555,18 @@ class Database:
             """)
             return [dict(r) for r in rows]
 
+    async def get_all_transactions(self, limit: int = 200) -> List[Dict]:
+        """Admin uchun barcha tranzaksiyalar"""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT t.*, u.telegram_id, u.first_name, u.last_name, u.phone
+                FROM transactions t
+                JOIN users u ON u.id = t.user_id
+                ORDER BY t.created_at DESC
+                LIMIT $1
+            """, limit)
+            return [dict(r) for r in rows]
+
     async def get_user_transactions(self, telegram_id: int) -> List[Dict]:
         async with self.pool.acquire() as conn:
             user = await self.get_user(telegram_id)
@@ -484,28 +578,27 @@ class Database:
             return [dict(r) for r in rows]
 
     # ============================================================
-    # ADS (YANGILANGAN)
+    # ADS
     # ============================================================
     async def create_ad(self, user_id: int, data: Dict) -> int:
         async with self.pool.acquire() as conn:
-            # images: list → JSONB
-            images_json = json.dumps(data.get("images", []) or [])
             account_json = json.dumps(data.get("account_data", {}) or {})
 
             ad_id = await conn.fetchval("""
                 INSERT INTO ads (
-                    user_id, title, description, images, video_url,
-                    ad_type, price, currency, location, account_data, tariff,
-                    status, expires_at
-                ) VALUES ($1, $2, $3, $4::jsonb, $5, $6, $7, $8, $9, $10::jsonb, $11, $12, $13)
+                    user_id, title, description, video_url, video_duration,
+                    ad_type, price, currency, location, full_location, 
+                    account_data, tariff, status, expires_at
+                ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11::jsonb, $12, $13, $14)
                 RETURNING id
             """,
                 user_id, data.get("title"), data.get("description"),
-                images_json, data.get("video_url"),
+                data.get("video_url"), data.get("video_duration"),
                 data.get("ad_type", "STANDARD"),
                 data.get("price", 0),
                 data.get("currency", "UZS"),
                 data.get("location"),
+                data.get("full_location"),
                 account_json,
                 data.get("tariff"),
                 "PENDING", data.get("expires_at"),
@@ -550,7 +643,8 @@ class Database:
                 SELECT ads.*, users.first_name as seller_first_name,
                        users.last_name as seller_last_name,
                        users.telegram_id as seller_telegram_id,
-                       users.username as seller_username
+                       users.username as seller_username,
+                       users.phone as seller_phone
                 FROM ads JOIN users ON users.id = ads.user_id
                 WHERE ads.id = $1
             """, ad_id)
@@ -588,62 +682,31 @@ class Database:
                 """, status, reason, ad_id)
 
     async def delete_ad(self, ad_id: int) -> bool:
+        """Reklamani o'chirish (admin uchun)"""
         async with self.pool.acquire() as conn:
+            # Avval kanaldan o'chirishga harakat
+            ad = await self.get_ad_by_id(ad_id)
+            if ad and ad.get("channel_msg_id"):
+                try:
+                    await self._delete_channel_message(ad["channel_msg_id"])
+                except Exception as e:
+                    logger.warning(f"Kanaldan o'chirishda xato: {e}")
+            
             await conn.execute("DELETE FROM ads WHERE id=$1", ad_id)
             return True
+
+    async def _delete_channel_message(self, msg_id: int):
+        """Kanal xabarini o'chirish - Bot orqali"""
+        # Bu funksiya CardinalBot class da override qilinadi
+        pass
 
     async def increment_ad_views(self, ad_id: int):
         async with self.pool.acquire() as conn:
             await conn.execute("UPDATE ads SET views=views+1 WHERE id=$1", ad_id)
 
-    async def react_to_ad(self, ad_id: int, telegram_id: int, reaction: str) -> Dict:
-        async with self.pool.acquire() as conn:
-            user = await self.get_user(telegram_id)
-            if not user:
-                return {"ok": False}
-
-            old = await conn.fetchrow("""
-                SELECT * FROM ad_reactions WHERE ad_id=$1 AND user_id=$2
-            """, ad_id, user["id"])
-
-            if old:
-                if old["reaction"] == reaction:
-                    await conn.execute("DELETE FROM ad_reactions WHERE id=$1", old["id"])
-                    col = "likes" if reaction == "like" else "dislikes"
-                    await conn.execute(f"UPDATE ads SET {col}={col}-1 WHERE id=$1", ad_id)
-                else:
-                    await conn.execute(
-                        "UPDATE ad_reactions SET reaction=$1 WHERE id=$2",
-                        reaction, old["id"]
-                    )
-                    old_col = "likes" if old["reaction"] == "like" else "dislikes"
-                    new_col = "likes" if reaction == "like" else "dislikes"
-                    await conn.execute(f"""
-                        UPDATE ads SET {old_col}={old_col}-1, {new_col}={new_col}+1 WHERE id=$1
-                    """, ad_id)
-            else:
-                await conn.execute("""
-                    INSERT INTO ad_reactions (ad_id, user_id, reaction)
-                    VALUES ($1, $2, $3)
-                """, ad_id, user["id"], reaction)
-                col = "likes" if reaction == "like" else "dislikes"
-                await conn.execute(f"UPDATE ads SET {col}={col}+1 WHERE id=$1", ad_id)
-
-            ad = await self.get_ad_by_id(ad_id)
-            return {"ok": True, "likes": ad["likes"], "dislikes": ad["dislikes"]}
-
     def _parse_ad_row(self, row) -> Dict:
         """JSONB maydonlarni parse qilish"""
         d = dict(row)
-        # images
-        if isinstance(d.get("images"), str):
-            try:
-                d["images"] = json.loads(d["images"])
-            except Exception:
-                d["images"] = []
-        elif d.get("images") is None:
-            d["images"] = []
-
         # account_data
         if isinstance(d.get("account_data"), str):
             try:
@@ -654,6 +717,98 @@ class Database:
             d["account_data"] = {}
 
         return d
+
+    # ============================================================
+    # SAVED ADS (YANGI)
+    # ============================================================
+    async def toggle_saved_ad(self, telegram_id: int, ad_id: int) -> Dict:
+        """Reklamani saqlash/olib tashlash"""
+        async with self.pool.acquire() as conn:
+            user = await self.get_user(telegram_id)
+            if not user:
+                return {"ok": False, "error": "User topilmadi"}
+
+            existing = await conn.fetchrow("""
+                SELECT * FROM saved_ads WHERE user_id=$1 AND ad_id=$2
+            """, user["id"], ad_id)
+
+            if existing:
+                await conn.execute("""
+                    DELETE FROM saved_ads WHERE user_id=$1 AND ad_id=$2
+                """, user["id"], ad_id)
+                return {"ok": True, "saved": False}
+            else:
+                await conn.execute("""
+                    INSERT INTO saved_ads (user_id, ad_id) VALUES ($1, $2)
+                """, user["id"], ad_id)
+                return {"ok": True, "saved": True}
+
+    async def get_saved_ads(self, telegram_id: int) -> List[Dict]:
+        """Saqlangan reklamalar ro'yxati"""
+        async with self.pool.acquire() as conn:
+            user = await self.get_user(telegram_id)
+            if not user:
+                return []
+            
+            rows = await conn.fetch("""
+                SELECT ads.*, users.first_name, users.last_name,
+                       users.telegram_id as seller_tg
+                FROM saved_ads sa
+                JOIN ads ON ads.id = sa.ad_id
+                JOIN users ON users.id = ads.user_id
+                WHERE sa.user_id = $1
+                  AND ads.status = 'ACTIVE'
+                  AND (ads.expires_at IS NULL OR ads.expires_at > NOW())
+                ORDER BY sa.created_at DESC
+            """, user["id"])
+            return [self._parse_ad_row(r) for r in rows]
+
+    async def is_ad_saved(self, telegram_id: int, ad_id: int) -> bool:
+        """Reklama saqlanganmi?"""
+        async with self.pool.acquire() as conn:
+            user = await self.get_user(telegram_id)
+            if not user:
+                return False
+            row = await conn.fetchrow("""
+                SELECT * FROM saved_ads WHERE user_id=$1 AND ad_id=$2
+            """, user["id"], ad_id)
+            return bool(row)
+
+    # ============================================================
+    # FEEDBACKS (OTZIF)
+    # ============================================================
+    async def add_feedback(self, telegram_id: int, text: str, rating: int = 5) -> int:
+        """Fikr qoldirish"""
+        async with self.pool.acquire() as conn:
+            user = await self.get_user(telegram_id)
+            if not user:
+                return None
+            feedback_id = await conn.fetchval("""
+                INSERT INTO feedbacks (user_id, text, rating)
+                VALUES ($1, $2, $3) RETURNING id
+            """, user["id"], text, rating)
+            return feedback_id
+
+    async def get_all_feedbacks(self, limit: int = 100) -> List[Dict]:
+        """Barcha fikrlar (admin va foydalanuvchilar uchun)"""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT f.*, u.first_name, u.last_name, u.avatar, u.telegram_id
+                FROM feedbacks f
+                JOIN users u ON u.id = f.user_id
+                WHERE f.is_visible = TRUE
+                ORDER BY f.created_at DESC
+                LIMIT $1
+            """, limit)
+            return [dict(r) for r in rows]
+
+    async def delete_feedback(self, feedback_id: int) -> bool:
+        """Fikrni o'chirish (admin uchun)"""
+        async with self.pool.acquire() as conn:
+            await conn.execute(
+                "UPDATE feedbacks SET is_visible=FALSE WHERE id=$1", feedback_id
+            )
+            return True
 
     # ============================================================
     # CHATS
@@ -695,10 +850,12 @@ class Database:
 
             rows = await conn.fetch("""
                 SELECT c.*,
-                       a.title as ad_title, a.images as ad_images, a.price as ad_price,
-                       a.currency as ad_currency,
+                       a.title as ad_title, a.video_url as ad_video,
+                       a.price as ad_price, a.currency as ad_currency,
                        s.first_name as seller_name, s.telegram_id as seller_tg,
+                       s.avatar as seller_avatar,
                        b.first_name as buyer_name, b.telegram_id as buyer_tg,
+                       b.avatar as buyer_avatar,
                        (SELECT text FROM messages WHERE chat_id=c.id AND is_deleted=FALSE
                         ORDER BY created_at DESC LIMIT 1) as last_message,
                        (SELECT created_at FROM messages WHERE chat_id=c.id AND is_deleted=FALSE
@@ -718,28 +875,14 @@ class Database:
                 ORDER BY c.created_at DESC
             """, user["id"])
 
-            result = []
-            for r in rows:
-                d = dict(r)
-                # ad_images parse
-                if isinstance(d.get("ad_images"), str):
-                    try:
-                        imgs = json.loads(d["ad_images"])
-                        d["ad_image"] = imgs[0] if imgs else None
-                    except Exception:
-                        d["ad_image"] = None
-                elif isinstance(d.get("ad_images"), list):
-                    d["ad_image"] = d["ad_images"][0] if d["ad_images"] else None
-                else:
-                    d["ad_image"] = None
-                result.append(d)
-            return result
+            return [dict(r) for r in rows]
 
     async def get_all_chats_admin(self) -> List[Dict]:
         async with self.pool.acquire() as conn:
             rows = await conn.fetch("""
                 SELECT c.id, c.ad_id, c.created_at,
-                       a.title as ad_title, a.images as ad_images, a.price as ad_price,
+                       a.title as ad_title, a.video_url as ad_video, 
+                       a.price as ad_price,
                        s.first_name as seller_name, s.telegram_id as seller_tg,
                        s.id as seller_id,
                        b.first_name as buyer_name, b.telegram_id as buyer_tg,
@@ -755,21 +898,7 @@ class Database:
                 JOIN users b ON b.id = c.buyer_id
                 ORDER BY c.created_at DESC
             """)
-            result = []
-            for r in rows:
-                d = dict(r)
-                if isinstance(d.get("ad_images"), str):
-                    try:
-                        imgs = json.loads(d["ad_images"])
-                        d["ad_image"] = imgs[0] if imgs else None
-                    except Exception:
-                        d["ad_image"] = None
-                elif isinstance(d.get("ad_images"), list):
-                    d["ad_image"] = d["ad_images"][0] if d["ad_images"] else None
-                else:
-                    d["ad_image"] = None
-                result.append(d)
-            return result
+            return [dict(r) for r in rows]
 
     async def get_chat_messages(self, chat_id: int) -> List[Dict]:
         async with self.pool.acquire() as conn:
@@ -784,15 +913,16 @@ class Database:
             """, chat_id)
             return [dict(r) for r in rows]
 
-    async def send_message(self, chat_id: int, telegram_id: int, text: str) -> Optional[int]:
+    async def send_message(self, chat_id: int, telegram_id: int, text: str,
+                           message_type: str = "text", file_url: str = None) -> Optional[int]:
         async with self.pool.acquire() as conn:
             user = await self.get_user(telegram_id)
             if not user:
                 return None
             msg_id = await conn.fetchval("""
-                INSERT INTO messages (chat_id, user_id, text, is_admin)
-                VALUES ($1, $2, $3, $4) RETURNING id
-            """, chat_id, user["id"], text, user["is_admin"])
+                INSERT INTO messages (chat_id, user_id, text, message_type, file_url, is_admin)
+                VALUES ($1, $2, $3, $4, $5, $6) RETURNING id
+            """, chat_id, user["id"], text, message_type, file_url, user["is_admin"])
             return msg_id
 
     async def edit_message(self, msg_id: int, text: str, telegram_id: int) -> bool:
@@ -839,30 +969,19 @@ class Database:
     async def get_chat_by_id(self, chat_id: int) -> Optional[Dict]:
         async with self.pool.acquire() as conn:
             row = await conn.fetchrow("""
-                SELECT c.*, a.title as ad_title, a.images as ad_images, a.price as ad_price,
-                       a.currency as ad_currency,
+                SELECT c.*, a.title as ad_title, a.video_url as ad_video, 
+                       a.price as ad_price, a.currency as ad_currency,
                        s.telegram_id as seller_tg, s.first_name as seller_name,
-                       b.telegram_id as buyer_tg, b.first_name as buyer_name
+                       s.avatar as seller_avatar,
+                       b.telegram_id as buyer_tg, b.first_name as buyer_name,
+                       b.avatar as buyer_avatar
                 FROM chats c
                 JOIN ads a ON a.id = c.ad_id
                 JOIN users s ON s.id = c.seller_id
                 JOIN users b ON b.id = c.buyer_id
                 WHERE c.id=$1
             """, chat_id)
-            if not row:
-                return None
-            d = dict(row)
-            if isinstance(d.get("ad_images"), str):
-                try:
-                    imgs = json.loads(d["ad_images"])
-                    d["ad_image"] = imgs[0] if imgs else None
-                except Exception:
-                    d["ad_image"] = None
-            elif isinstance(d.get("ad_images"), list):
-                d["ad_image"] = d["ad_images"][0] if d["ad_images"] else None
-            else:
-                d["ad_image"] = None
-            return d
+            return dict(row) if row else None
 
     # ============================================================
     # BROADCAST
@@ -880,7 +999,7 @@ class Database:
             """, admin_id, message, sent_count)
 
     # ============================================================
-    # STATS
+    # STATS (YANGILANGAN)
     # ============================================================
     async def get_stats(self) -> Dict:
         async with self.pool.acquire() as conn:
@@ -891,6 +1010,20 @@ class Database:
             except Exception:
                 pending_topups = 0
 
+            # 1 oylik daromad (topup)
+            monthly_income = await conn.fetchval("""
+                SELECT COALESCE(SUM(amount), 0) FROM transactions
+                WHERE type='topup' AND status='APPROVED'
+                AND created_at > NOW() - INTERVAL '30 days'
+            """)
+
+            # 1 oylik sarflangan (reklama)
+            monthly_spent = await conn.fetchval("""
+                SELECT COALESCE(SUM(amount), 0) FROM transactions
+                WHERE type='spend' AND status='APPROVED'
+                AND created_at > NOW() - INTERVAL '30 days'
+            """)
+
             return {
                 "users": await conn.fetchval("SELECT COUNT(*) FROM users"),
                 "blocked": await conn.fetchval("SELECT COUNT(*) FROM users WHERE is_blocked=TRUE"),
@@ -899,9 +1032,35 @@ class Database:
                 "pending": await conn.fetchval("SELECT COUNT(*) FROM ads WHERE status='PENDING'"),
                 "pending_topups": pending_topups,
                 "chats": await conn.fetchval("SELECT COUNT(*) FROM chats"),
+                "feedbacks": await conn.fetchval("SELECT COUNT(*) FROM feedbacks WHERE is_visible=TRUE"),
                 "total_balance": await conn.fetchval("SELECT COALESCE(SUM(balance),0) FROM users"),
                 "total_spent": await conn.fetchval("SELECT COALESCE(SUM(spent),0) FROM users"),
+                "monthly_income": monthly_income,
+                "monthly_spent": monthly_spent,
             }
+
+    async def get_monthly_stats(self) -> List[Dict]:
+        """Oylik statistika"""
+        async with self.pool.acquire() as conn:
+            rows = await conn.fetch("""
+                SELECT 
+                    DATE_TRUNC('month', created_at) as month,
+                    COUNT(*) FILTER (WHERE type='topup' AND status='APPROVED') as topups,
+                    COALESCE(SUM(amount) FILTER (WHERE type='topup' AND status='APPROVED'), 0) as income,
+                    COUNT(*) FILTER (WHERE type='spend') as spends,
+                    COALESCE(SUM(amount) FILTER (WHERE type='spend'), 0) as spent
+                FROM transactions
+                WHERE created_at > NOW() - INTERVAL '12 months'
+                GROUP BY DATE_TRUNC('month', created_at)
+                ORDER BY month DESC
+            """)
+            result = []
+            for r in rows:
+                d = dict(r)
+                if isinstance(d.get("month"), datetime):
+                    d["month"] = d["month"].isoformat()
+                result.append(d)
+            return result
 
 
 # ============================================================
@@ -914,30 +1073,24 @@ class CardinalBot:
         self.bot = Bot(token=SOZLAMA.BOT_TOKEN)
         self.dp = Dispatcher()
         self.db = db
-        # ============================================================
-        # ⚠️ MUHIM O'ZGARISH: client_max_size=100MB
-        # Bu "Content Too Large" xatosini tuzatadi
-        # ============================================================
         self.api_app = web.Application(
             client_max_size=SOZLAMA.API_MAX_SIZE,
             middlewares=[self._error_middleware]
         )
+        # DB ga o'zimizni bog'laymiz
+        self.db._delete_channel_message = self._delete_channel_message
         self._register_handlers()
         self._setup_api_routes()
 
-    # ============================================================
-    # ⚠️ YANGI: Xatoliklarni ushlash middleware
-    # ============================================================
     @web.middleware
     async def _error_middleware(self, request, handler):
-        """Xatoliklarni ushlash va JSON qaytarish"""
         try:
             return await handler(request)
         except web.HTTPRequestEntityTooLarge:
             logger.error("❌ So'rov juda katta (Content Too Large)")
             return web.json_response({
                 "ok": False,
-                "error": "Fayl juda katta. Maksimal 100 MB."
+                "error": "Fayl juda katta. Maksimal 500 MB."
             }, status=413)
         except web.HTTPException as e:
             return web.json_response({
@@ -1095,7 +1248,9 @@ class CardinalBot:
             f"⏳ Reklama kutilmoqda: <b>{stats['pending']}</b>\n"
             f"💳 Chek kutilmoqda: <b>{stats['pending_topups']}</b>\n"
             f"💬 Chatlar: <b>{stats['chats']}</b>\n"
-            f"💵 Umumiy balans: <b>{stats['total_balance']:,} so'm</b>\n\n"
+            f"📝 Fikrlar: <b>{stats['feedbacks']}</b>\n"
+            f"💵 Umumiy balans: <b>{stats['total_balance']:,} so'm</b>\n"
+            f"📈 1 oylik daromad: <b>{stats['monthly_income']:,} so'm</b>\n\n"
             f"🌐 <b>Admin panel Web App'da:</b>\n{SOZLAMA.WEB_APP_URL}",
             parse_mode="HTML",
         )
@@ -1186,6 +1341,9 @@ class CardinalBot:
             pending_ads = await conn.fetchval(
                 "SELECT COUNT(*) FROM ads WHERE user_id=$1 AND status='PENDING'", user["id"]
             )
+            saved_count = await conn.fetchval(
+                "SELECT COUNT(*) FROM saved_ads WHERE user_id=$1", user["id"]
+            )
 
         status_emoji = "🟢" if not user["is_blocked"] else "🔴"
         admin_label = " 🛡️ <b>ADMIN</b>" if user["is_admin"] else ""
@@ -1203,9 +1361,9 @@ class CardinalBot:
             f"📢 <b>Reklamalar:</b>\n"
             f"   • Jami: {ads_count}\n"
             f"   • Faol: {active_ads}\n"
-            f"   • Kutilmoqda: {pending_ads}\n\n"
+            f"   • Kutilmoqda: {pending_ads}\n"
+            f"   • Saqlangan: {saved_count}\n\n"
             f"📅 Ro'yxatdan o'tgan: {user['created_at'].strftime('%d.%m.%Y %H:%M')}\n"
-            f"🔄 Oxirgi yangilanish: {user['updated_at'].strftime('%d.%m.%Y %H:%M')}\n"
             f"📊 Holat: {status_emoji} {'Faol' if not user['is_blocked'] else 'Bloklangan'}"
         )
 
@@ -1289,16 +1447,17 @@ class CardinalBot:
             "reklama platformasi.\n\n"
             "✨ <b>Imkoniyatlar:</b>\n"
             "• 📢 Reklama joylash (Web App orqali)\n"
+            "• 🎬 Video reklama (10 daqiqagacha)\n"
             "• 🛒 Akkaunt sotib olish\n"
             "• 💬 Sotuvchi bilan chat\n"
-            "• 💳 Balans to'ldirish\n"
-            "• 👤 Profil boshqaruvi\n"
-            "• 📊 Tranzaksiyalar tarixi\n\n"
+            "• ❤️ Saqlangan reklamalar\n"
+            "• 📝 Otzif (fikr) qoldirish\n"
+            "• 💳 Balans to'ldirish\n\n"
             "📋 <b>Tariflar:</b>\n"
-            "1️⃣ STANDARD (Kanalda reklama) — 19,000 so'm\n"
-            "2️⃣ STANDARD (Web App'da) — 9,000 so'm\n"
-            "3️⃣ RARE (Web App + Kanal) — 25,000 so'm\n"
-            "4️⃣ PREMIUM VIP (Web App + Kanal, tepada) — 29,000 so'm\n\n"
+            "1️⃣ <b>9,000 so'm</b> — Web App'da reklama\n"
+            "2️⃣ <b>19,000 so'm</b> — Kanalda reklama\n"
+            "3️⃣ <b>25,000 so'm</b> — Web App + Kanal (10% skidka)\n"
+            "4️⃣ <b>29,000 so'm</b> — VIP (Eng tepada)\n\n"
             "💳 <b>To'lov:</b>\n"
             f"Karta: <code>{SOZLAMA.ADMIN_CARD}</code>\n"
             f"Egasi: {SOZLAMA.ADMIN_NAME}\n\n"
@@ -1364,12 +1523,13 @@ class CardinalBot:
         ad_id = await self.db.create_ad(user["id"], {
             "title": ad_data.get("title"),
             "description": ad_data.get("description"),
-            "images": ad_data.get("images", []),
             "video_url": ad_data.get("video_url"),
+            "video_duration": ad_data.get("video_duration"),
             "ad_type": tariff["type"],
             "price": ad_data.get("price"),
             "currency": ad_data.get("currency", "UZS"),
             "location": ad_data.get("location"),
+            "full_location": ad_data.get("full_location"),
             "account_data": ad_data.get("account_data"),
             "tariff": tariff_id,
             "expires_at": expires_at,
@@ -1397,7 +1557,6 @@ class CardinalBot:
                 f"📍 {ad.get('location', '-')}\n"
                 f"🎯 Tarif: {ad.get('tariff')}\n"
                 f"🆔 ID: <code>{ad['id']}</code>\n"
-                f"📸 Rasmlar: {len(ad.get('images', []) or [])} ta\n"
                 f"🎬 Video: {'Bor' if ad.get('video_url') else 'Yo\'q'}\n\n"
                 f"Tasdiqlaysizmi?"
             )
@@ -1422,22 +1581,6 @@ class CardinalBot:
                 else:
                     await self.bot.send_video(
                         SOZLAMA.ADMIN_CHAT_ID, ad["video_url"],
-                        caption=text, parse_mode="HTML", reply_markup=keyboard
-                    )
-            # Rasmlar bo'lsa
-            elif ad.get("images"):
-                first_img = ad["images"][0]
-                if isinstance(first_img, str) and first_img.startswith("data:image"):
-                    header, encoded = first_img.split(",", 1)
-                    img_bytes = base64.b64decode(encoded)
-                    photo = BufferedInputFile(img_bytes, filename="ad.jpg")
-                    await self.bot.send_photo(
-                        SOZLAMA.ADMIN_CHAT_ID, photo,
-                        caption=text, parse_mode="HTML", reply_markup=keyboard
-                    )
-                else:
-                    await self.bot.send_photo(
-                        SOZLAMA.ADMIN_CHAT_ID, first_img,
                         caption=text, parse_mode="HTML", reply_markup=keyboard
                     )
             else:
@@ -1584,7 +1727,6 @@ class CardinalBot:
             """Kanalda 'Chat orqali savdo' tugmasi"""
             ad_id = int(cb.data.replace("channel_buy_", ""))
             await cb.answer("🌐 Web App'da chat oching!", show_alert=True)
-            # Web App havolasini yuborish
             url = f"{SOZLAMA.WEB_APP_URL}?open=ad&ad_id={ad_id}&chat=1"
             await cb.message.answer(
                 f"🤝 Savdo qilish uchun quyidagi havolani bosing:\n{url}"
@@ -1607,19 +1749,25 @@ class CardinalBot:
             currency_symbol = currency_info["symbol"]
             currency_flag = currency_info["flag"]
 
-            # Akkaunt ulangan turlari (list bo'lsa)
-            linked = acc.get("linked")
-            if isinstance(linked, list):
-                linked_str = ", ".join(linked) if linked else "-"
+            # Redkiy skinlar (list)
+            rare_skins = acc.get("rare_skins", [])
+            if isinstance(rare_skins, list):
+                skins_str = "\n".join(f"  • {s}" for s in rare_skins) if rare_skins else "  • -"
             else:
-                linked_str = str(linked) if linked else "-"
+                skins_str = f"  • {rare_skins}" if rare_skins else "  • -"
 
-            # Kuchaytirilgan qurollar (list yoki str)
+            # Kuchaytirilgan qurollar (list)
             guns = acc.get("guns", [])
             if isinstance(guns, list):
                 guns_str = "\n".join(f"  • {g}" for g in guns) if guns else "  • -"
             else:
                 guns_str = f"  • {guns}" if guns else "  • -"
+
+            linked = acc.get("linked", [])
+            if isinstance(linked, list):
+                linked_str = ", ".join(linked) if linked else "-"
+            else:
+                linked_str = str(linked) if linked else "-"
 
             text = (
                 f"🎮 <b>PUBG MOBILE AKKOUNT</b>\n"
@@ -1627,12 +1775,12 @@ class CardinalBot:
                 f"📈 <b>LVL:</b> {acc.get('level', '-')}\n"
                 f"🎯 <b>Kolleksiya darajasi:</b> {acc.get('collection', '-')}\n"
                 f"🏆 <b>RP:</b> {acc.get('rp', '-')}\n"
-                f"👕 <b>Mifik kiyimlar:</b> {acc.get('mythic_clothes', '-')}\n\n"
-                f"💎 <b>Redkiy skinlar:</b>\n{acc.get('rare_skins', '-')}\n\n"
+                f"👕 <b>Mifik kiyimlar:</b> {acc.get('mythic_clothes', '-')} ta\n\n"
+                f"💎 <b>Redkiy skinlar:</b>\n{skins_str}\n\n"
                 f"🔫 <b>Kuchaytirilgan qurollar:</b>\n{guns_str}\n"
                 f"🔢 <b>Jami:</b> {acc.get('guns_count', '-')} ta\n\n"
                 f"🔗 <b>Ulangan:</b> {linked_str}\n"
-                f"🏠 <b>Manzil:</b> {ad.get('location', '-')}\n\n"
+                f"🏠 <b>Manzil:</b> {ad.get('full_location') or ad.get('location', '-')}\n\n"
                 f"💰 <b>NARXI: {ad['price']:,} {currency_symbol}</b> {currency_flag}\n"
                 f"━━━━━━━━━━━━━━━━━━━━\n"
                 f"🆔 E'lon: #{ad['id']}"
@@ -1665,38 +1813,6 @@ class CardinalBot:
                         SOZLAMA.CHANNEL_ID, vid,
                         caption=text, parse_mode="HTML", reply_markup=keyboard
                     )
-
-            # Rasmlar bo'lsa (media group)
-            elif ad.get("images") and len(ad["images"]) > 0:
-                from aiogram.types import InputMediaPhoto
-
-                images = ad["images"]
-                # Base64 bo'lsa, faylga o'girish
-                media_list = []
-                for idx, img in enumerate(images[:10]):
-                    if isinstance(img, str) and img.startswith("data:image"):
-                        header, encoded = img.split(",", 1)
-                        img_bytes = base64.b64decode(encoded)
-                        photo = BufferedInputFile(img_bytes, filename=f"ad_{idx}.jpg")
-                    else:
-                        photo = img
-
-                    if idx == 0:
-                        media_list.append(InputMediaPhoto(
-                            media=photo, caption=text, parse_mode="HTML"
-                        ))
-                    else:
-                        media_list.append(InputMediaPhoto(media=photo))
-
-                # Media group yuborish
-                msgs = await self.bot.send_media_group(SOZLAMA.CHANNEL_ID, media=media_list)
-                # Tugmalarni alohida xabar sifatida
-                msg = await self.bot.send_message(
-                    SOZLAMA.CHANNEL_ID,
-                    f"📢 <b>{ad['title']}</b>\n\nYuqoridagi akkaunt uchun amallar:",
-                    parse_mode="HTML", reply_markup=keyboard,
-                    reply_to_message_id=msgs[0].message_id
-                )
             else:
                 msg = await self.bot.send_message(
                     SOZLAMA.CHANNEL_ID, text,
@@ -1709,19 +1825,15 @@ class CardinalBot:
 
         except Exception as e:
             logger.error(f"❌ Kanalga joylashda xato: {e}")
-            # Fallback: oddiy xabar
-            try:
-                msg = await self.bot.send_message(
-                    SOZLAMA.CHANNEL_ID,
-                    f"📢 <b>{ad.get('title', 'Reklama')}</b>\n\n"
-                    f"💰 {ad.get('price', 0):,}\n"
-                    f"🆔 #{ad['id']}",
-                    parse_mode="HTML"
-                )
-                await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.message_id)
-            except Exception as e2:
-                logger.error(f"❌ Fallback ham ishlamadi: {e2}")
             return None
+
+    async def _delete_channel_message(self, msg_id: int):
+        """Kanal xabarini o'chirish"""
+        try:
+            await self.bot.delete_message(SOZLAMA.CHANNEL_ID, msg_id)
+            logger.info(f"🗑️ Kanal xabari o'chirildi: {msg_id}")
+        except Exception as e:
+            logger.warning(f"Kanaldan o'chirishda xato: {e}")
 
     async def handle_other(self, message: Message):
         if message.from_user.id == SOZLAMA.ADMIN_CHAT_ID:
@@ -1750,16 +1862,26 @@ class CardinalBot:
         routes = [
             self.api_app.router.add_get("/", self.api_index),
             self.api_app.router.add_get("/api/stats", self.api_stats),
+            self.api_app.router.add_get("/api/monthly-stats", self.api_monthly_stats),
             self.api_app.router.add_get("/api/user/{telegram_id}", self.api_get_user),
             self.api_app.router.add_post("/api/update-profile", self.api_update_profile),
             self.api_app.router.add_get("/api/user-transactions/{telegram_id}", self.api_user_transactions),
+            # Ads
             self.api_app.router.add_get("/api/ads", self.api_get_ads),
             self.api_app.router.add_get("/api/ad/{ad_id}", self.api_get_ad),
             self.api_app.router.add_get("/api/my-ads/{telegram_id}", self.api_get_my_ads),
             self.api_app.router.add_post("/api/create-ad", self.api_create_ad),
-            self.api_app.router.add_post("/api/react-ad", self.api_react_ad),
-            self.api_app.router.add_post("/api/topup", self.api_topup),
+            # Saved ads
+            self.api_app.router.add_post("/api/save-ad", self.api_toggle_save_ad),
+            self.api_app.router.add_get("/api/saved-ads/{telegram_id}", self.api_get_saved_ads),
+            self.api_app.router.add_get("/api/is-saved/{telegram_id}/{ad_id}", self.api_is_ad_saved),
+            # Feedbacks
+            self.api_app.router.add_post("/api/feedback", self.api_add_feedback),
+            self.api_app.router.add_get("/api/feedbacks", self.api_get_feedbacks),
+            self.api_app.router.add_post("/api/admin/delete-feedback", self.api_delete_feedback),
+            # Topup
             self.api_app.router.add_post("/api/topup-receipt", self.api_topup_receipt),
+            # Chats
             self.api_app.router.add_get("/api/chats/{telegram_id}", self.api_get_chats),
             self.api_app.router.add_get("/api/chat/{chat_id}", self.api_get_chat),
             self.api_app.router.add_post("/api/chat/start", self.api_start_chat),
@@ -1768,8 +1890,10 @@ class CardinalBot:
             self.api_app.router.add_post("/api/chat/delete", self.api_delete_message),
             self.api_app.router.add_post("/api/chat/mark-read", self.api_mark_chat_read),
             self.api_app.router.add_post("/api/chat/block", self.api_block_user),
+            # Admin
             self.api_app.router.add_get("/api/admin/pending-ads", self.api_pending_ads),
             self.api_app.router.add_get("/api/admin/pending-topups", self.api_pending_topups),
+            self.api_app.router.add_get("/api/admin/all-transactions", self.api_admin_all_transactions),
             self.api_app.router.add_get("/api/admin/chats", self.api_admin_chats),
             self.api_app.router.add_get("/api/admin/users", self.api_admin_users),
             self.api_app.router.add_get("/api/admin/blocked", self.api_admin_blocked),
@@ -1780,6 +1904,7 @@ class CardinalBot:
             self.api_app.router.add_post("/api/admin/approve-topup", self.api_approve_topup),
             self.api_app.router.add_post("/api/admin/reject-topup", self.api_reject_topup),
             self.api_app.router.add_post("/api/admin/unblock-user", self.api_admin_unblock),
+            self.api_app.router.add_post("/api/admin/add-balance", self.api_admin_add_balance),
             self.api_app.router.add_post("/api/admin/broadcast", self.api_admin_broadcast),
         ]
 
@@ -1792,13 +1917,16 @@ class CardinalBot:
     async def api_index(self, request):
         return web.json_response({
             "app": "Cardinal API",
-            "version": "3.1",
+            "version": "4.0",
             "status": "running",
             "max_upload_size": f"{SOZLAMA.API_MAX_SIZE // (1024*1024)} MB"
         })
 
     async def api_stats(self, request):
         return web.json_response(await self.db.get_stats())
+
+    async def api_monthly_stats(self, request):
+        return web.json_response(await self.db.get_monthly_stats())
 
     async def api_get_user(self, request):
         tg_id = int(request.match_info["telegram_id"])
@@ -1879,12 +2007,13 @@ class CardinalBot:
             ad_id = await self.db.create_ad(user["id"], {
                 "title": ad_data.get("title"),
                 "description": ad_data.get("description"),
-                "images": ad_data.get("images", []),
                 "video_url": ad_data.get("video_url"),
+                "video_duration": ad_data.get("video_duration"),
                 "ad_type": tariff["type"],
                 "price": ad_data.get("price"),
                 "currency": ad_data.get("currency", "UZS"),
                 "location": ad_data.get("location"),
+                "full_location": ad_data.get("full_location"),
                 "account_data": ad_data.get("account_data"),
                 "tariff": tariff_id,
                 "expires_at": expires_at,
@@ -1900,29 +2029,66 @@ class CardinalBot:
             logger.error(f"❌ create_ad xato: {e}")
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
-    async def api_react_ad(self, request):
+    # ===== SAVED ADS =====
+    async def api_toggle_save_ad(self, request):
         try:
             data = await request.json()
-            result = await self.db.react_to_ad(
-                int(data["ad_id"]), int(data["telegram_id"]), data["reaction"]
+            result = await self.db.toggle_saved_ad(
+                int(data["telegram_id"]), int(data["ad_id"])
             )
             return web.json_response(result)
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
-    async def api_topup(self, request):
+    async def api_get_saved_ads(self, request):
+        tg_id = int(request.match_info["telegram_id"])
+        ads = await self.db.get_saved_ads(tg_id)
+        for ad in ads:
+            for k, v in ad.items():
+                if isinstance(v, datetime): ad[k] = v.isoformat()
+        return web.json_response(ads)
+
+    async def api_is_ad_saved(self, request):
+        tg_id = int(request.match_info["telegram_id"])
+        ad_id = int(request.match_info["ad_id"])
+        result = await self.db.is_ad_saved(tg_id, ad_id)
+        return web.json_response({"saved": result})
+
+    # ===== FEEDBACKS =====
+    async def api_add_feedback(self, request):
         try:
             data = await request.json()
-            tg_id = int(data["telegram_id"])
-            amount = int(data["amount"])
-            if amount < 1000:
-                return web.json_response({"error": "Min 1000"}, status=400)
-            await self.db.update_balance(tg_id, amount, "topup")
-            user = await self.db.get_user(tg_id)
-            return web.json_response({"ok": True, "new_balance": user["balance"]})
+            text = data.get("text", "").strip()
+            if not text:
+                return web.json_response({"error": "Bo'sh fikr"}, status=400)
+            if len(text) > 30:
+                return web.json_response({"error": "Fikr 30 ta belgidan oshmasin"}, status=400)
+            
+            feedback_id = await self.db.add_feedback(
+                int(data["telegram_id"]), text, int(data.get("rating", 5))
+            )
+            return web.json_response({"ok": True, "feedback_id": feedback_id})
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
+    async def api_get_feedbacks(self, request):
+        feedbacks = await self.db.get_all_feedbacks()
+        for f in feedbacks:
+            for k, v in f.items():
+                if isinstance(v, datetime): f[k] = v.isoformat()
+        return web.json_response(feedbacks)
+
+    async def api_delete_feedback(self, request):
+        try:
+            data = await request.json()
+            if not self._check_admin(int(data["admin_telegram_id"])):
+                return web.json_response({"error": "Ruxsat yo'q"}, status=403)
+            await self.db.delete_feedback(int(data["feedback_id"]))
+            return web.json_response({"ok": True})
+        except Exception as e:
+            return web.json_response({"ok": False, "error": str(e)}, status=400)
+
+    # ===== TOPUP =====
     async def api_topup_receipt(self, request):
         try:
             data = await request.json()
@@ -1969,6 +2135,7 @@ class CardinalBot:
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
+    # ===== CHATS =====
     async def api_get_chats(self, request):
         tg_id = int(request.match_info["telegram_id"])
         chats = await self.db.get_user_chats(tg_id)
@@ -2006,7 +2173,8 @@ class CardinalBot:
         try:
             data = await request.json()
             msg_id = await self.db.send_message(
-                int(data["chat_id"]), int(data["telegram_id"]), data["text"]
+                int(data["chat_id"]), int(data["telegram_id"]), data["text"],
+                data.get("message_type", "text"), data.get("file_url")
             )
             if not msg_id:
                 return web.json_response({"error": "Xabar yuborilmadi"}, status=400)
@@ -2068,6 +2236,7 @@ class CardinalBot:
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
+    # ===== ADMIN =====
     async def api_pending_ads(self, request):
         ads = await self.db.get_pending_ads()
         for ad in ads:
@@ -2077,6 +2246,13 @@ class CardinalBot:
 
     async def api_pending_topups(self, request):
         txs = await self.db.get_pending_topups()
+        for t in txs:
+            for k, v in t.items():
+                if isinstance(v, datetime): t[k] = v.isoformat()
+        return web.json_response(txs)
+
+    async def api_admin_all_transactions(self, request):
+        txs = await self.db.get_all_transactions()
         for t in txs:
             for k, v in t.items():
                 if isinstance(v, datetime): t[k] = v.isoformat()
@@ -2122,7 +2298,6 @@ class CardinalBot:
 
             await self.db.update_ad_status(ad_id, "ACTIVE")
 
-            # KANALGA JOYLASH
             tariff = SOZLAMA.TARIFFS.get(ad.get("tariff", 1))
             if tariff and tariff["channel"]:
                 await self._post_to_channel(ad)
@@ -2227,6 +2402,41 @@ class CardinalBot:
 
             await self.db.unblock_user(int(data["user_telegram_id"]))
             return web.json_response({"ok": True})
+        except Exception as e:
+            return web.json_response({"ok": False, "error": str(e)}, status=400)
+
+    async def api_admin_add_balance(self, request):
+        """Admin tomonidan foydalanuvchiga balans qo'shish"""
+        try:
+            data = await request.json()
+            if not self._check_admin(int(data["admin_telegram_id"])):
+                return web.json_response({"error": "Ruxsat yo'q"}, status=403)
+
+            phone = data.get("phone", "").strip()
+            amount = int(data.get("amount", 0))
+
+            if not phone:
+                return web.json_response({"error": "Telefon raqam kerak"}, status=400)
+            if amount <= 0:
+                return web.json_response({"error": "Summa 0 dan katta bo'lishi kerak"}, status=400)
+
+            result = await self.db.admin_add_balance(
+                SOZLAMA.ADMIN_CHAT_ID, phone, amount
+            )
+
+            if result["ok"]:
+                user = result["user"]
+                try:
+                    await self.bot.send_message(
+                        user["telegram_id"],
+                        f"✅ Balansingiz <b>{amount:,} so'm</b>ga to'ldirildi!\n"
+                        f"Yangi balans: <b>{result['new_balance']:,} so'm</b>",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
+
+            return web.json_response(result)
         except Exception as e:
             return web.json_response({"ok": False, "error": str(e)}, status=400)
 
