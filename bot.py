@@ -29,11 +29,11 @@ class SOZLAMA:
 
     REQUIRED_CHANNELS = [
         {"username": "@tajriva2", "id": -1004390708511, "name": "Tajriva 2"},
-        {"username": "@tajriva",  "id": -1001234567891, "name": "Tajriva"},
+        {"username": "@tajriva",  "id": -1004442636025, "name": "Tajriva"},
     ]
 
     CHANNEL_USERNAME = "@tajriva2"
-    CHANNEL_ID = -1001234567890
+    CHANNEL_ID = -1004390708511 
 
     ADMIN_CHAT_ID = 7038296036
     ADMIN_NAME = "CARDINAL ADMIN"
