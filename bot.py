@@ -3,7 +3,7 @@ CARDINAL REKLAMA BOT v5.1
 - Chat yo'q, faqat reklama
 - Avtomatik to'lov (userbot orqali)
 - Video 7 kunda o'chadi
-- Tariflar: 1=9000 (web), 2=19000 (kanal), 3=25000 (10% skidka), 4=29000 (VIP+TOP)
+- Tariflar: 1=9000 (web), =19000 (kanal), 3=25000 (10% skidka), 4=29000 (VIP+TOP)
 """
 import asyncio
 import logging
