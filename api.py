@@ -16,7 +16,8 @@ from decimal import Decimal
 from aiohttp import web
 import aiohttp_cors
 
-from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS, API
+from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS
+from config import API as API_CFG
 from db import Database
 from jwt_auth import (
     jwt_middleware, create_access_token, create_refresh_token, decode_token
@@ -46,9 +47,9 @@ def is_valid_video_data_url(url: str) -> bool:
 class API:
     def __init__(self, db: Database, bot_app):
         self.db = db
-        self.bot_app = bot_app  # CardinalBot instansiyasi (bot.api uchun)
+        self.bot_app = bot_app  # CardinalBot instansiyasi
         self.app = web.Application(
-            client_max_size=API.MAX_SIZE,
+            client_max_size=API_CFG.MAX_SIZE,
             middlewares=[jwt_middleware, self._err_mw]
         )
         self._routes()
@@ -131,7 +132,7 @@ class API:
     async def index(self, req):
         return jresp({
             "app": "Cardinal API", "version": "5.1", "status": "running",
-            "max_upload": f"{API.MAX_SIZE // (1024*1024)} MB"
+            "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
         })
 
     async def stats(self, req):
@@ -197,7 +198,7 @@ class API:
         try:
             data = await req.json()
             init_data = data.get("init_data", "")
-            user_data = data.get("user")  # debug uchun (production'da initData tekshirilishi shart)
+            user_data = data.get("user")
 
             if not user_data or not user_data.get("id"):
                 return jresp({"ok": False, "error": "User ma'lumoti yo'q"}, 400)
@@ -458,7 +459,7 @@ class API:
         try:
             header, encoded = data_url.split(",", 1)
             raw = base64.b64decode(encoded)
-            if len(raw) > API.MAX_SIZE:
+            if len(raw) > API_CFG.MAX_SIZE:
                 return None
             from aiogram.types import BufferedInputFile
             vid = BufferedInputFile(raw, filename="ad.mp4")
@@ -730,6 +731,6 @@ class API:
     async def start(self):
         runner = web.AppRunner(self.app)
         await runner.setup()
-        site = web.TCPSite(runner, API.HOST, API.PORT)
+        site = web.TCPSite(runner, API_CFG.HOST, API_CFG.PORT)
         await site.start()
-        logger.info(f"🌐 API: http://{API.HOST}:{API.PORT}")
+        logger.info(f"🌐 API: http://{API_CFG.HOST}:{API_CFG.PORT}")
