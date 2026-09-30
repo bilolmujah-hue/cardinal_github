@@ -7,6 +7,7 @@ from config import DB, TARIFFS, INITIAL_CARDS, LIMITS
 
 logger = logging.getLogger("DB")
 
+
 class Database:
     def __init__(self):
         self.pool: Optional[asyncpg.Pool] = None
@@ -46,7 +47,7 @@ class Database:
                 );
             """)
 
-            # CARDS (admin boshqaradi)
+            # CARDS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS cards (
                     id              SERIAL PRIMARY KEY,
@@ -65,7 +66,6 @@ class Database:
                     user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
                     title           VARCHAR(255) NOT NULL,
                     video_file_id   TEXT,
-                    video_url       TEXT,
                     ad_type         VARCHAR(50) DEFAULT 'STANDARD',
                     price           BIGINT NOT NULL,
                     currency        VARCHAR(10) DEFAULT 'UZS',
@@ -164,7 +164,11 @@ class Database:
                 );
             """)
 
-            # INDEXES
+        # ✅ MIGRATIONS — eski bazalarga yetishmayotgan ustunlarni qo'shish
+        await self._migrate()
+
+        # Indexes
+        async with self.pool.acquire() as c:
             await c.execute("CREATE INDEX IF NOT EXISTS idx_users_tg ON users(telegram_id);")
             await c.execute("CREATE INDEX IF NOT EXISTS idx_ads_status ON ads(status);")
             await c.execute("CREATE INDEX IF NOT EXISTS idx_ads_expires ON ads(expires_at);")
@@ -174,6 +178,51 @@ class Database:
         # Boshlang'ich kartalar
         await self._seed_cards()
         logger.info("✅ Jadvallar tayyor")
+
+    async def _migrate(self):
+        """
+        Eski bazalarga yetishmayotgan ustunlarni qo'shadi.
+        ADD COLUMN IF NOT EXISTS — xavfsiz, mavjud bo'lsa o'tkazib yuboradi.
+        """
+        migrations = [
+            # USERS
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE users ADD COLUMN IF NOT EXISTS spent BIGINT DEFAULT 0",
+
+            # ADS — video_file_id (asosiy muammo)
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS video_file_id TEXT",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS top_until TIMESTAMP",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'UZS'",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS account_data JSONB DEFAULT '{}'::jsonb",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS tariff INTEGER",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS reject_reason TEXT",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS channel_msg_id BIGINT",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS full_location VARCHAR(255)",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS ad_type VARCHAR(50) DEFAULT 'STANDARD'",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
+
+            # TRANSACTIONS
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS card_id INTEGER",
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS card_last4 VARCHAR(4)",
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payer_last4 VARCHAR(4)",
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_file_id TEXT",
+            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
+
+            # BLOCKED
+            "ALTER TABLE blocked_users ADD COLUMN IF NOT EXISTS blocked_by INTEGER",
+        ]
+
+        async with self.pool.acquire() as c:
+            for sql in migrations:
+                try:
+                    await c.execute(sql)
+                except Exception as e:
+                    logger.warning(f"⚠️ Migration skip: {e}")
+
+        logger.info("✅ Migrations bajarildi")
 
     async def _seed_cards(self):
         async with self.pool.acquire() as c:
@@ -418,11 +467,9 @@ class Database:
 
     # ==================== TOPUP (avto) ====================
     async def create_topup_request(self, telegram_id, amount):
-        """5 daqiqalik to'lov so'rovi. Tasodifiy karta beradi."""
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return None
-            # Tasodifiy aktiv karta
             card = await c.fetchrow("SELECT * FROM cards WHERE is_active=TRUE ORDER BY RANDOM() LIMIT 1")
             if not card: return None
             expires = datetime.now() + timedelta(minutes=LIMITS.PAYMENT_TIMEOUT_MIN)
@@ -448,14 +495,8 @@ class Database:
             await c.execute("UPDATE topup_requests SET status='EXPIRED' WHERE status='WAITING' AND expires_at <= NOW()")
 
     async def match_payment(self, amount, payer_last4):
-        """
-        Userbot kelgan xabarni moslashtirish:
-        - amount + payer_last4 (karta oxirgi 4 raqami) bo'yicha topup_request topiladi
-        - Agar topilsa -> balans qo'shiladi
-        """
         async with self.pool.acquire() as c:
             async with c.transaction():
-                # Eng eski kutayotgan so'rovni topish
                 req = await c.fetchrow("""
                     SELECT * FROM topup_requests
                     WHERE amount=$1 AND status='WAITING' AND expires_at > NOW()
@@ -464,8 +505,7 @@ class Database:
                 if not req:
                     return {"ok": False, "reason": "no_request"}
 
-                # Topildi - balans qo'shish
-                await c.execute("UPDATE topup_requests SET status='PAID', matched_tx_id=NULL WHERE id=$1", req["id"])
+                await c.execute("UPDATE topup_requests SET status='PAID' WHERE id=$1", req["id"])
                 u = await self.get_user_by_id(req["user_id"])
                 if not u:
                     return {"ok": False, "reason": "no_user"}
@@ -474,7 +514,6 @@ class Database:
                     INSERT INTO transactions (user_id, amount, type, description, status, card_last4, payer_last4)
                     VALUES ($1,$2,'topup',$3,'APPROVED',$4,$5)
                 """, req["user_id"], amount, f"Avto to'lov", req.get("card_number", "")[-4:], payer_last4)
-                # Karta statistikasi
                 await c.execute("UPDATE cards SET total_received=total_received+$1 WHERE id=$2", amount, req["card_id"])
                 return {"ok": True, "user_tg": u["telegram_id"], "amount": amount}
 
@@ -506,7 +545,6 @@ class Database:
 
     # ==================== VIDEO CLEANUP ====================
     async def get_expired_ads(self):
-        """7 kundan oshgan va video_file_id bor e'lonlar (web app dan o'chiriladi)"""
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
                 SELECT id, video_file_id, channel_msg_id, tariff
@@ -518,7 +556,7 @@ class Database:
 
     async def expire_ad(self, ad_id):
         async with self.pool.acquire() as c:
-            await c.execute("UPDATE ads SET status='EXPIRED', video_file_id=NULL, video_url=NULL WHERE id=$1", ad_id)
+            await c.execute("UPDATE ads SET status='EXPIRED', video_file_id=NULL WHERE id=$1", ad_id)
 
     # ==================== STATS ====================
     async def get_stats(self):
