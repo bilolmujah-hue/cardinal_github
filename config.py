@@ -32,8 +32,8 @@ class BOT:
 
 
 class USERBOT:
-    API_ID = 30030023
-    API_HASH = "a3a0b5d77ef12ec9ed208012844875c5"
+    App api_id: 30030023
+    App api_hash: a3a0b5d77ef12ec9ed208012844875c5
     PHONE = os.getenv("USERBOT_PHONE", "")
     SESSION_STRING = os.getenv("USERBOT_SESSION", "")  # StringSession
     # CardXabarBot ga kelgan xabarlarni kuzatish
