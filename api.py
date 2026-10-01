@@ -2,6 +2,7 @@
 Cardinal API v5.1
 - JWT (access 15min + refresh 7 kun)
 - Video upload → Telegram kanalga (@reklama_db)
+- Video streaming endpoint (/api/ad/{id}/video)
 - Avto to'lov (userbot orqali)
 - Chat YO'Q, Like YO'Q, Ko'rishlar YO'Q
 """
@@ -13,7 +14,7 @@ import re
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from aiohttp import web
+from aiohttp import web, ClientSession
 import aiohttp_cors
 
 from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS
@@ -82,8 +83,13 @@ class API:
             ("GET",  "/api/regions", self.regions),
             ("GET",  "/api/currencies", self.currencies),
             ("GET",  "/api/ads", self.get_ads),
-            ("GET",  "/api/ad/{ad_id}", self.get_ad),
             ("GET",  "/api/feedbacks", self.get_feedbacks),
+
+            # 🔥 VIDEO STREAMING — /api/ad/{id} dan OLDIN qo'yilishi kerak
+            ("GET",  "/api/ad/{ad_id}/video", self.stream_video),
+
+            # Ad detail
+            ("GET",  "/api/ad/{ad_id}", self.get_ad),
 
             # Auth
             ("POST", "/api/auth/telegram", self.auth_telegram),
@@ -120,6 +126,7 @@ class API:
             ("POST", "/api/admin/unblock", self.admin_unblock),
             ("POST", "/api/admin/broadcast", self.admin_broadcast),
             ("POST", "/api/admin/add-balance", self.admin_add_balance),
+            ("POST", "/api/admin/delete-feedback", self.admin_delete_feedback),
         ]
 
         for method, path, handler in r:
@@ -158,7 +165,6 @@ class API:
     async def get_ads(self, req):
         cat = req.query.get("category")
         ads = await self.db.get_active_ads(cat)
-        # tg id bo'lsa saved flag
         tg = req.query.get("telegram_id")
         if tg:
             try:
@@ -184,6 +190,62 @@ class API:
                 ad["is_saved"] = False
         return jresp(ad)
 
+    # ============================================================
+    # 🔥 VIDEO STREAMING — Telegram kanaldan proxy
+    # ============================================================
+    async def stream_video(self, req):
+        """
+        Video stream endpoint.
+        - Telegram bot.get_file orqali file_path oladi
+        - Telegram CDN dan proxy stream qiladi
+        - Small (< 20 MB) fayllar uchun ishlaydi
+        - Katta fayllar uchun 502 qaytaradi (userbot orqali ham ishlatish mumkin)
+        """
+        try:
+            ad_id = int(req.match_info["ad_id"])
+            ad = await self.db.get_ad(ad_id)
+            if not ad or not ad.get("video_file_id"):
+                return web.Response(status=404, text="Video topilmadi")
+
+            file_id = ad["video_file_id"]
+
+            # 1. Telegram dan file path olish
+            try:
+                tg_file = await self.bot_app.bot.get_file(file_id)
+                file_path = tg_file.file_path
+            except Exception as e:
+                logger.error(f"get_file xato (ad #{ad_id}): {e}")
+                return web.Response(status=502, text="Video yuklanmadi (Telegram)")
+
+            telegram_url = f"https://api.telegram.org/file/bot{BOT.TOKEN}/{file_path}"
+
+            # 2. Proxy stream qilish
+            async with ClientSession() as sess:
+                async with sess.get(telegram_url) as upstream:
+                    if upstream.status != 200:
+                        logger.error(f"Telegram CDN {upstream.status} (ad #{ad_id})")
+                        return web.Response(status=502, text="Video CDN xato")
+
+                    resp = web.StreamResponse()
+                    resp.headers["Content-Type"] = upstream.headers.get(
+                        "Content-Type", "video/mp4"
+                    )
+                    if "Content-Length" in upstream.headers:
+                        resp.headers["Content-Length"] = upstream.headers["Content-Length"]
+                    resp.headers["Accept-Ranges"] = "bytes"
+                    resp.headers["Cache-Control"] = "public, max-age=3600"
+                    resp.headers["Access-Control-Allow-Origin"] = "*"
+
+                    await resp.prepare(req)
+                    async for chunk in upstream.content.iter_chunked(64 * 1024):
+                        await resp.write(chunk)
+                    await resp.write_eof()
+                    return resp
+
+        except Exception as e:
+            logger.error(f"stream_video: {e}", exc_info=True)
+            return web.Response(status=500, text="Server xatosi")
+
     async def get_feedbacks(self, req):
         return jresp(await self.db.get_feedbacks())
 
@@ -191,10 +253,6 @@ class API:
     # AUTH
     # ============================================================
     async def auth_telegram(self, req):
-        """
-        Telegram WebApp initData ni tekshiradi va JWT beradi.
-        Frontend: window.Telegram.WebApp.initData
-        """
         try:
             data = await req.json()
             init_data = data.get("init_data", "")
@@ -271,7 +329,6 @@ class API:
     # ============================================================
     async def get_user(self, req):
         tg = int(req.match_info["telegram_id"])
-        # JWT dan tekshirish
         jwt_u = req.get("user")
         if jwt_u and int(jwt_u.get("tg", 0)) != tg and not jwt_u.get("adm"):
             return jresp({"error": "Ruxsat yo'q"}, 403)
@@ -330,7 +387,7 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     # ============================================================
-    # CREATE AD — video yuklash va barcha validatsiya
+    # CREATE AD
     # ============================================================
     async def create_ad(self, req):
         try:
@@ -361,7 +418,6 @@ class API:
 
             acc = ad_data.get("account_data", {}) or {}
 
-            # ========== VALIDATSIYA ==========
             # Kolleksiya max 101
             try:
                 coll = int(acc.get("collection", 0))
@@ -371,9 +427,8 @@ class API:
             except Exception:
                 acc["collection"] = 0
 
-            # RP max 50 harf
-            rp = str(acc.get("rp", ""))[:LIMITS.RP_MAX_CHARS]
-            acc["rp"] = rp
+            # RP max 50
+            acc["rp"] = str(acc.get("rp", ""))[:LIMITS.RP_MAX_CHARS]
 
             # Mifik kiyimlar son
             try:
@@ -393,7 +448,7 @@ class API:
             except Exception:
                 acc["guns_count"] = len(acc.get("guns") or [])
 
-            # Telefon/username kamida bittasi
+            # Telefon / username
             phone = (acc.get("phone") or "").strip()
             username = (acc.get("username") or "").strip()
             if not phone and not username:
@@ -422,12 +477,12 @@ class API:
             if price <= 0:
                 return jresp({"ok": False, "error": "Narx noto'g'ri"}, 400)
 
-            # ========== VIDEO KANALGA YUKLASH ==========
+            # Video kanalga yuklash
             file_id = await self._upload_video_to_channel(video_data)
             if not file_id:
                 return jresp({"ok": False, "error": "Videoni yuklashda xatolik"}, 500)
 
-            # ========== DB ==========
+            # DB
             expires_at = datetime.now() + timedelta(days=t.days)
             ad_id = await self.db.create_ad(user["id"], {
                 "title": f"PUBG Mobile - {acc.get('level', '?')} LVL",
@@ -470,10 +525,9 @@ class API:
             return None
 
     # ============================================================
-    # TOPUP (avtomatik)
+    # TOPUP
     # ============================================================
     async def topup_request(self, req):
-        """Foydalanuvchi summa kiritadi → biz karta beramiz (5 daqiqa)"""
         try:
             data = await req.json()
             tg = int(data["telegram_id"])
@@ -482,7 +536,6 @@ class API:
             if amount < LIMITS.MIN_TOPUP:
                 return jresp({"ok": False, "error": f"Minimal {LIMITS.MIN_TOPUP} so'm"}, 400)
 
-            # Eski kutayotgan so'rovlarni tekshiramiz
             existing = await self.db.get_pending_topup(tg)
             if existing:
                 return jresp({
@@ -511,12 +564,10 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def topup_pending(self, req):
-        """Frontend har 3 sekundda tekshiradi — to'lov bo'ldimi?"""
         try:
             tg = int(req.query.get("telegram_id", 0))
             r = await self.db.get_pending_topup(tg)
             if not r:
-                # To'langan bo'lishi mumkin
                 user = await self.db.get_user(tg)
                 return jresp({"ok": True, "status": "paid_or_expired",
                               "balance": user["balance"] if user else 0})
@@ -544,8 +595,7 @@ class API:
 
     async def admin_all_ads(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
-        ads = await self.db.get_active_ads()
-        return jresp(ads)
+        return jresp(await self.db.get_active_ads())
 
     async def admin_users(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
@@ -724,6 +774,15 @@ class API:
                 )
             except Exception:
                 pass
+            return jresp({"ok": True})
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_delete_feedback(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            await self.db.delete_feedback(int(data["feedback_id"]))
             return jresp({"ok": True})
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
