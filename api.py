@@ -1,10 +1,10 @@
 """
-Cardinal API v5.1
+Cardinal API v5.2
 - JWT (access 15min + refresh 7 kun)
-- Video upload → Telegram kanalga (@reklama_db)
-- Video streaming endpoint (/api/ad/{id}/video) — Range support bilan
+- Video upload → Telegram kanalga
+- Video streaming (/api/ad/{id}/video) — Range support
+- Userbot boshqaruvi (admin panel orqali)
 - Avto to'lov (userbot orqali)
-- Chat YO'Q, Like YO'Q, Ko'rishlar YO'Q
 """
 import asyncio
 import json
@@ -48,7 +48,7 @@ def is_valid_video_data_url(url: str) -> bool:
 class API:
     def __init__(self, db: Database, bot_app):
         self.db = db
-        self.bot_app = bot_app  # CardinalBot instansiyasi
+        self.bot_app = bot_app
         self.app = web.Application(
             client_max_size=API_CFG.MAX_SIZE,
             middlewares=[jwt_middleware, self._err_mw]
@@ -85,10 +85,8 @@ class API:
             ("GET",  "/api/ads", self.get_ads),
             ("GET",  "/api/feedbacks", self.get_feedbacks),
 
-            # 🔥 VIDEO STREAMING — /api/ad/{id} dan OLDIN qo'yilishi kerak
+            # Video streaming
             ("GET",  "/api/ad/{ad_id}/video", self.stream_video),
-
-            # Ad detail
             ("GET",  "/api/ad/{ad_id}", self.get_ad),
 
             # Auth
@@ -96,7 +94,7 @@ class API:
             ("POST", "/api/auth/refresh", self.auth_refresh),
             ("POST", "/api/auth/logout", self.auth_logout),
 
-            # User (JWT kerak)
+            # User
             ("GET",  "/api/user/{telegram_id}", self.get_user),
             ("POST", "/api/update-profile", self.update_profile),
             ("GET",  "/api/my-ads/{telegram_id}", self.my_ads),
@@ -106,7 +104,7 @@ class API:
             ("GET",  "/api/user-transactions/{telegram_id}", self.user_txs),
             ("POST", "/api/feedbacks/add", self.add_feedback),
 
-            # Topup (avtomatik)
+            # Topup
             ("POST", "/api/topup/request", self.topup_request),
             ("GET",  "/api/topup/pending", self.topup_pending),
 
@@ -127,6 +125,13 @@ class API:
             ("POST", "/api/admin/broadcast", self.admin_broadcast),
             ("POST", "/api/admin/add-balance", self.admin_add_balance),
             ("POST", "/api/admin/delete-feedback", self.admin_delete_feedback),
+
+            # Userbot management
+            ("POST", "/api/admin/userbot/send-code", self.admin_userbot_send_code),
+            ("POST", "/api/admin/userbot/verify-code", self.admin_userbot_verify_code),
+            ("POST", "/api/admin/userbot/verify-2fa", self.admin_userbot_verify_2fa),
+            ("GET",  "/api/admin/userbot/status", self.admin_userbot_status),
+            ("POST", "/api/admin/userbot/logout", self.admin_userbot_logout),
         ]
 
         for method, path, handler in r:
@@ -138,7 +143,7 @@ class API:
     # ============================================================
     async def index(self, req):
         return jresp({
-            "app": "Cardinal API", "version": "5.1", "status": "running",
+            "app": "Cardinal API", "version": "5.2", "status": "running",
             "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
         })
 
@@ -191,16 +196,9 @@ class API:
         return jresp(ad)
 
     # ============================================================
-    # 🔥 VIDEO STREAMING — Telegram kanaldan proxy (Range support)
+    # VIDEO STREAMING
     # ============================================================
     async def stream_video(self, req):
-        """
-        Video stream endpoint.
-        - Telegram bot.get_file orqali file_path oladi
-        - Telegram CDN dan proxy stream qiladi
-        - HTTP Range requests qo'llab-quvvatlanadi (video seek uchun)
-        - Client disconnect bo'lsa graceful tugatadi
-        """
         ad_id = None
         try:
             ad_id = int(req.match_info["ad_id"])
@@ -210,29 +208,24 @@ class API:
 
             file_id = ad["video_file_id"]
 
-            # 1. Telegram dan file path olish
             try:
                 tg_file = await self.bot_app.bot.get_file(file_id)
                 file_path = tg_file.file_path
             except Exception as e:
                 logger.error(f"get_file xato (ad #{ad_id}): {e}")
-                return web.Response(status=502, text="Video yuklanmadi (Telegram)")
+                return web.Response(status=502, text="Video yuklanmadi")
 
             telegram_url = f"https://api.telegram.org/file/bot{BOT.TOKEN}/{file_path}"
 
-            # 2. Client Range headerini uzatish
             req_headers = {}
             if "Range" in req.headers:
                 req_headers["Range"] = req.headers["Range"]
 
-            # 3. Proxy stream
             async with ClientSession() as sess:
                 async with sess.get(telegram_url, headers=req_headers) as upstream:
                     if upstream.status not in (200, 206):
-                        logger.error(f"Telegram CDN {upstream.status} (ad #{ad_id})")
                         return web.Response(status=502, text="Video CDN xato")
 
-                    # Response tayyorlash
                     resp = web.StreamResponse(status=upstream.status)
                     resp.headers["Content-Type"] = upstream.headers.get("Content-Type", "video/mp4")
 
@@ -248,27 +241,19 @@ class API:
                     try:
                         await resp.prepare(req)
                     except (ConnectionResetError, ConnectionAbortedError):
-                        logger.debug(f"Client disconnect (prepare) ad #{ad_id}")
                         return resp
 
-                    # Chunk stream
                     try:
                         async for chunk in upstream.content.iter_chunked(64 * 1024):
-                            if not chunk:
-                                continue
+                            if not chunk: continue
                             try:
                                 await resp.write(chunk)
                             except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                                logger.debug(f"Client stream to'xtatdi (ad #{ad_id})")
                                 return resp
                             except Exception as e:
-                                err_name = type(e).__name__
-                                err_str = str(e)
-                                if "closing transport" in err_str or "ConnectionReset" in err_name:
-                                    logger.debug(f"Stream yopildi (ad #{ad_id}): {e}")
+                                if "closing transport" in str(e):
                                     return resp
                                 raise
-
                         try:
                             await resp.write_eof()
                         except Exception:
@@ -279,19 +264,11 @@ class API:
                     return resp
 
         except asyncio.CancelledError:
-            logger.debug(f"Stream cancelled (ad #{ad_id})")
             raise
         except Exception as e:
-            err_name = type(e).__name__
             err_str = str(e)
-            if (
-                "ConnectionReset" in err_name
-                or "Cannot write to closing transport" in err_str
-                or "closing transport" in err_str
-                or isinstance(e, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError))
-            ):
-                logger.debug(f"stream_video (client disconnect): {e}")
-                return web.Response(status=499, text="Client closed")
+            if "closing transport" in err_str or isinstance(e, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)):
+                return web.Response(status=499)
             logger.error(f"stream_video (ad #{ad_id}): {e}", exc_info=True)
             return web.Response(status=500, text="Server xatosi")
 
@@ -304,9 +281,7 @@ class API:
     async def auth_telegram(self, req):
         try:
             data = await req.json()
-            init_data = data.get("init_data", "")
             user_data = data.get("user")
-
             if not user_data or not user_data.get("id"):
                 return jresp({"ok": False, "error": "User ma'lumoti yo'q"}, 400)
 
@@ -317,7 +292,6 @@ class API:
                 first_name=user_data.get("first_name"),
                 last_name=user_data.get("last_name"),
             )
-
             if user.get("is_blocked"):
                 return jresp({"ok": False, "error": "Siz bloklangansiz"}, 403)
 
@@ -329,8 +303,7 @@ class API:
                 "access_token": access,
                 "refresh_token": refresh,
                 "user": {
-                    "id": user["id"],
-                    "telegram_id": tg_id,
+                    "id": user["id"], "telegram_id": tg_id,
                     "first_name": user.get("first_name"),
                     "last_name": user.get("last_name"),
                     "username": user.get("username"),
@@ -341,10 +314,8 @@ class API:
                     "phone": user.get("phone"),
                 }
             })
-            resp.set_cookie("access_token", access, max_age=900, httponly=True,
-                            secure=True, samesite="Strict")
-            resp.set_cookie("refresh_token", refresh, max_age=604800, httponly=True,
-                            secure=True, samesite="Strict")
+            resp.set_cookie("access_token", access, max_age=900, httponly=True, secure=True, samesite="Strict")
+            resp.set_cookie("refresh_token", refresh, max_age=604800, httponly=True, secure=True, samesite="Strict")
             return resp
         except Exception as e:
             logger.error(f"auth: {e}")
@@ -381,7 +352,6 @@ class API:
         jwt_u = req.get("user")
         if jwt_u and int(jwt_u.get("tg", 0)) != tg and not jwt_u.get("adm"):
             return jresp({"error": "Ruxsat yo'q"}, 403)
-
         u = await self.db.get_user(tg)
         if not u:
             return jresp({"error": "Topilmadi"}, 404)
@@ -456,8 +426,7 @@ class API:
 
             if user["balance"] < t.price:
                 return jresp({
-                    "ok": False,
-                    "error": "Balans yetarli emas",
+                    "ok": False, "error": "Balans yetarli emas",
                     "need": t.price, "have": user["balance"]
                 }, 400)
 
@@ -467,7 +436,6 @@ class API:
 
             acc = ad_data.get("account_data", {}) or {}
 
-            # Kolleksiya max 101
             try:
                 coll = int(acc.get("collection", 0))
                 if coll > LIMITS.COLLECTION_MAX:
@@ -476,28 +444,23 @@ class API:
             except Exception:
                 acc["collection"] = 0
 
-            # RP max 50
             acc["rp"] = str(acc.get("rp", ""))[:LIMITS.RP_MAX_CHARS]
 
-            # Mifik kiyimlar son
             try:
                 acc["mythic_clothes"] = int(re.sub(r"\D", "", str(acc.get("mythic_clothes", 0))) or 0)
             except Exception:
                 acc["mythic_clothes"] = 0
 
-            # Dinamik ro'yxatlar max 25
             for k in ("rare_skins", "x_costume", "guns", "supar_car"):
                 arr = acc.get(k) or []
                 if isinstance(arr, list):
                     acc[k] = arr[:LIMITS.ADD_LIST_MAX]
 
-            # Guns count
             try:
                 acc["guns_count"] = int(re.sub(r"\D", "", str(acc.get("guns_count", 0))) or 0)
             except Exception:
                 acc["guns_count"] = len(acc.get("guns") or [])
 
-            # Telefon / username
             phone = (acc.get("phone") or "").strip()
             username = (acc.get("username") or "").strip()
             if not phone and not username:
@@ -509,16 +472,13 @@ class API:
                     return jresp({"ok": False, "error": "Telefon formati +998XXXXXXXXX"}, 400)
                 acc["phone"] = digits
             if username:
-                if not username.startswith("@"):
-                    username = "@" + username
+                if not username.startswith("@"): username = "@" + username
                 acc["username"] = username[:64]
 
-            # Valyuta
             cur_code = ad_data.get("currency", "UZS")
             if cur_code not in CURRENCIES:
                 cur_code = "UZS"
 
-            # Narx
             try:
                 price = int(re.sub(r"\D", "", str(ad_data.get("price", 0))))
             except Exception:
@@ -526,12 +486,10 @@ class API:
             if price <= 0:
                 return jresp({"ok": False, "error": "Narx noto'g'ri"}, 400)
 
-            # Video kanalga yuklash
             file_id = await self._upload_video_to_channel(video_data)
             if not file_id:
                 return jresp({"ok": False, "error": "Videoni yuklashda xatolik"}, 500)
 
-            # DB
             expires_at = datetime.now() + timedelta(days=t.days)
             ad_id = await self.db.create_ad(user["id"], {
                 "title": f"PUBG Mobile - {acc.get('level', '?')} LVL",
@@ -546,10 +504,8 @@ class API:
                 "expires_at": expires_at,
             })
 
-            # Balansdan yechish
             await self.db.update_balance(tg, t.price, "spend", f"Reklama #{ad_id}")
 
-            # Adminga yuborish (background)
             ad = await self.db.get_ad(ad_id)
             asyncio.create_task(self.bot_app.notify_admin_new_ad(ad))
 
@@ -559,7 +515,6 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def _upload_video_to_channel(self, data_url: str) -> str | None:
-        """data:video/mp4;base64,... → Telegram video kanalga yuklab, file_id qaytaradi"""
         try:
             header, encoded = data_url.split(",", 1)
             raw = base64.b64decode(encoded)
@@ -581,15 +536,13 @@ class API:
             data = await req.json()
             tg = int(data["telegram_id"])
             amount = int(data["amount"])
-
             if amount < LIMITS.MIN_TOPUP:
                 return jresp({"ok": False, "error": f"Minimal {LIMITS.MIN_TOPUP} so'm"}, 400)
 
             existing = await self.db.get_pending_topup(tg)
             if existing:
                 return jresp({
-                    "ok": True,
-                    "request_id": existing["id"],
+                    "ok": True, "request_id": existing["id"],
                     "card_number": existing["card_number"],
                     "amount": existing["amount"],
                     "expires_at": existing["expires_at"].isoformat(),
@@ -601,8 +554,7 @@ class API:
                 return jresp({"ok": False, "error": "Karta mavjud emas"}, 500)
 
             return jresp({
-                "ok": True,
-                "request_id": r["id"],
+                "ok": True, "request_id": r["id"],
                 "card_number": r["card_number"],
                 "amount": amount,
                 "expires_at": r["expires_at"].isoformat(),
@@ -621,8 +573,7 @@ class API:
                 return jresp({"ok": True, "status": "paid_or_expired",
                               "balance": user["balance"] if user else 0})
             return jresp({
-                "ok": True,
-                "status": "waiting",
+                "ok": True, "status": "waiting",
                 "request_id": r["id"],
                 "card_number": r["card_number"],
                 "amount": r["amount"],
@@ -836,6 +787,69 @@ class API:
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
 
+    # ============================================================
+    # 🔥 USERBOT MANAGEMENT
+    # ============================================================
+    async def admin_userbot_send_code(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            phone = (data.get("phone") or "").strip()
+            if not phone:
+                return jresp({"ok": False, "error": "Telefon raqam kiriting"}, 400)
+            result = await self.bot_app.userbot.send_code(phone)
+            return jresp(result)
+        except Exception as e:
+            logger.error(f"userbot send_code: {e}")
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_userbot_verify_code(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            phone = (data.get("phone") or "").strip()
+            code = (data.get("code") or "").strip()
+            if not phone or not code:
+                return jresp({"ok": False, "error": "Telefon va kod kerak"}, 400)
+            result = await self.bot_app.userbot.verify_code(phone, code)
+            return jresp(result)
+        except Exception as e:
+            logger.error(f"userbot verify_code: {e}")
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_userbot_verify_2fa(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            phone = (data.get("phone") or "").strip()
+            password = (data.get("password") or "").strip()
+            if not phone or not password:
+                return jresp({"ok": False, "error": "Telefon va parol kerak"}, 400)
+            result = await self.bot_app.userbot.verify_2fa(phone, password)
+            return jresp(result)
+        except Exception as e:
+            logger.error(f"userbot verify_2fa: {e}")
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_userbot_status(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            result = await self.bot_app.userbot.get_status()
+            return jresp(result)
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_userbot_logout(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            result = await self.bot_app.userbot.logout()
+            return jresp(result)
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    # ============================================================
+    # START
+    # ============================================================
     async def start(self):
         runner = web.AppRunner(self.app)
         await runner.setup()
