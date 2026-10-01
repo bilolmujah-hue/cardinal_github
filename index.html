@@ -1,0 +1,2531 @@
+<!DOCTYPE html>
+<html lang="uz">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="theme-color" content="#070A12">
+<title>Cardinal — PUBG Akkauntlar</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+*,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{width:100%;min-height:100%;overflow-x:hidden}
+body{
+  font-family:'Manrope',-apple-system,system-ui,sans-serif;
+  background:#070A12;color:#E8EBF2;font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:calc(96px + env(safe-area-inset-bottom,0));
+}
+h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
+button,input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
+button{border:0;background:none;cursor:pointer;color:inherit}
+input,select,textarea{outline:0;border:0;background:none}
+img,video{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+
+:root{
+  --bg:#070A12;--bg-2:#0B1220;--surface:#0F1729;--surface-2:#141C30;--surface-3:#1A2440;
+  --border:rgba(96,165,250,.10);--border-2:rgba(96,165,250,.18);--border-3:rgba(96,165,250,.32);
+  --blue:#3B82F6;--blue-2:#2563EB;--cyan:#22D3EE;--sky:#38BDF8;
+  --text:#E8EBF2;--text-2:#A8B2C7;--text-3:#6B7A94;--text-4:#4A5670;
+  --heart:#FF3B6B;--green:#10B981;--amber:#F59E0B;--red:#EF4444;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);--shadow:0 4px 16px rgba(0,0,0,.5);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.6);
+  --radius:20px;--radius-sm:14px;--radius-lg:26px;
+}
+
+.app{min-height:100vh;position:relative}
+.container{width:100%;max-width:1200px;margin:0 auto;padding:0 16px}
+.page{display:none}
+.page.active{display:block;animation:pageIn .35s cubic-bezier(.16,1,.3,1)}
+@keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+
+.topbar{
+  position:sticky;top:0;z-index:50;
+  background:rgba(7,10,18,.85);backdrop-filter:blur(20px) saturate(180%);
+  -webkit-backdrop-filter:blur(20px) saturate(180%);
+  border-bottom:1px solid var(--border);
+}
+.topbar-in{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
+.brand{display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0;transition:transform .15s}
+.brand:active{transform:scale(.98)}
+.brand-logo{
+  width:42px;height:42px;border-radius:13px;
+  background:linear-gradient(135deg,#3B82F6,#06B6D4);
+  display:flex;align-items:center;justify-content:center;
+  font-size:20px;font-weight:800;color:#fff;
+  font-family:'Space Grotesk',sans-serif;
+  box-shadow:0 8px 24px rgba(59,130,246,.4);
+  overflow:hidden;flex-shrink:0;position:relative;
+}
+.brand-logo::after{content:'';position:absolute;inset:0;background:linear-gradient(135deg,rgba(255,255,255,.3),transparent 60%);border-radius:inherit;pointer-events:none}
+.brand-logo img{width:100%;height:100%;object-fit:cover}
+.brand-txt{min-width:0;flex:1}
+.brand-name{font-size:15px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.brand-sub{font-size:11px;color:var(--text-3);font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-top:1px}
+.balance{
+  display:flex;align-items:center;gap:8px;padding:8px 12px;
+  background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(34,211,238,.06));
+  border:1px solid var(--border-2);border-radius:14px;cursor:pointer;
+  transition:all .2s;flex-shrink:0;
+}
+.balance:active{transform:scale(.96);border-color:var(--border-3)}
+.balance-icon{width:26px;height:26px;border-radius:8px;background:linear-gradient(135deg,#3B82F6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:13px}
+.balance-info{text-align:right}
+.balance-val{font-size:13px;font-weight:800;white-space:nowrap}
+.balance-lbl{font-size:9px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-top:1px}
+
+.nav{
+  position:fixed;left:0;right:0;bottom:0;z-index:100;
+  padding:0 12px calc(8px + env(safe-area-inset-bottom,0));
+  background:linear-gradient(180deg,transparent,rgba(7,10,18,.9) 30%);
+  pointer-events:none;
+}
+.nav-in{
+  max-width:680px;margin:0 auto;
+  background:rgba(15,23,41,.95);
+  backdrop-filter:blur(24px) saturate(180%);
+  -webkit-backdrop-filter:blur(24px) saturate(180%);
+  border:1px solid var(--border-2);border-radius:22px;
+  padding:6px;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;
+  pointer-events:auto;box-shadow:0 -8px 40px rgba(0,0,0,.6),0 0 0 1px rgba(96,165,250,.05);
+}
+.nav-btn{
+  display:flex;flex-direction:column;align-items:center;gap:3px;
+  padding:8px 2px;border-radius:16px;
+  color:var(--text-3);font-size:9.5px;font-weight:600;
+  transition:all .2s;position:relative;
+}
+.nav-btn .nav-icon{
+  width:24px;height:24px;display:flex;align-items:center;justify-content:center;
+  transition:all .25s cubic-bezier(.16,1,.3,1);
+}
+.nav-btn .nav-icon svg{width:22px;height:22px;stroke-width:2}
+.nav-btn.active{color:#60A5FA}
+.nav-btn.active .nav-icon{
+  background:linear-gradient(135deg,rgba(59,130,246,.18),rgba(34,211,238,.08));
+  width:38px;height:30px;border-radius:11px;color:#60A5FA;
+}
+.nav-btn:active .nav-icon{transform:scale(.92)}
+.nav-btn.nav-create .nav-icon{
+  width:56px;height:56px;border-radius:50%;
+  background:linear-gradient(135deg,#3B82F6,#06B6D4);
+  color:#fff;font-size:26px;
+  box-shadow:0 10px 30px rgba(59,130,246,.55),0 0 0 5px rgba(59,130,246,.12);
+  margin-top:-32px;
+  border:3px solid var(--bg);
+  position:relative;
+}
+.nav-btn.nav-create .nav-icon::after{
+  content:'';position:absolute;inset:0;border-radius:50%;
+  background:linear-gradient(135deg,rgba(255,255,255,.3),transparent 60%);
+  pointer-events:none;
+}
+.nav-btn.nav-create .nav-icon svg{width:28px;height:28px;stroke-width:2.5}
+.nav-btn.nav-create span:last-child{color:#60A5FA;font-weight:800;font-size:10px;margin-top:4px}
+.nav-btn.nav-create:active .nav-icon{transform:scale(.9) rotate(90deg)}
+
+.hero{padding:24px 0 8px}
+.hero-title{font-size:28px;font-weight:700;display:flex;align-items:center;gap:10px;line-height:1.15;flex-wrap:wrap}
+.hero-title .accent{background:linear-gradient(135deg,#60A5FA,#22D3EE);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.hero-sub{font-size:13px;color:var(--text-3);margin-top:6px;font-weight:500}
+
+.cats{display:flex;gap:8px;overflow-x:auto;padding:16px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
+.cats::-webkit-scrollbar{display:none}
+.cat{
+  flex-shrink:0;padding:10px 16px;background:var(--surface);
+  border:1px solid var(--border);border-radius:14px;color:var(--text-2);
+  font-size:12.5px;font-weight:600;transition:all .2s;white-space:nowrap;
+  display:flex;align-items:center;gap:6px;
+}
+.cat svg{width:14px;height:14px}
+.cat:active{transform:scale(.95)}
+.cat.active{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(59,130,246,.4);font-weight:700}
+
+.grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
+@media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:960px){.grid{grid-template-columns:repeat(4,1fr)}}
+
+.ad{
+  background:var(--surface);border:1px solid var(--border);
+  border-radius:var(--radius);overflow:hidden;cursor:pointer;
+  transition:all .25s cubic-bezier(.16,1,.3,1);
+  position:relative;display:flex;flex-direction:column;
+}
+.ad:active{transform:scale(.97);border-color:var(--border-3)}
+@media(hover:hover){.ad:hover{border-color:var(--border-2);transform:translateY(-2px);box-shadow:var(--shadow-lg)}}
+.ad-media{
+  position:relative;aspect-ratio:4/5;
+  background:linear-gradient(135deg,#0F1729,#141C30);
+  overflow:hidden;
+}
+.ad-media video,.ad-media img{width:100%;height:100%;object-fit:cover}
+.ad-media .placeholder{
+  width:100%;height:100%;display:flex;align-items:center;justify-content:center;
+  color:var(--text-4);font-size:40px;
+}
+.ad-badge{
+  position:absolute;top:10px;left:10px;padding:5px 10px;border-radius:9px;
+  font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;
+  display:flex;align-items:center;gap:4px;backdrop-filter:blur(12px);
+  border:1px solid rgba(255,255,255,.1);
+}
+.ad-badge svg{width:11px;height:11px}
+.ad-badge.vip{background:linear-gradient(135deg,rgba(59,130,246,.95),rgba(34,211,238,.9));color:#fff;box-shadow:0 4px 16px rgba(59,130,246,.5)}
+.ad-badge.rare{background:linear-gradient(135deg,rgba(34,211,238,.95),rgba(56,189,248,.9));color:#04121D;box-shadow:0 4px 16px rgba(34,211,238,.5)}
+.ad-badge.std{background:rgba(15,23,41,.9);color:#93C5FD}
+.ad-heart{
+  position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:12px;
+  background:rgba(7,10,18,.6);backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+  border:1px solid rgba(255,255,255,.1);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .25s cubic-bezier(.34,1.56,.64,1);z-index:5;
+}
+.ad-heart svg{width:18px;height:18px;stroke:#fff;stroke-width:2;fill:none;transition:all .25s}
+.ad-heart:active{transform:scale(.85)}
+.ad-heart.saved{background:rgba(255,59,107,.15);border-color:rgba(255,59,107,.35)}
+.ad-heart.saved svg{fill:var(--heart);stroke:var(--heart);animation:heartBeat .5s cubic-bezier(.34,1.56,.64,1)}
+@keyframes heartBeat{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(.95)}100%{transform:scale(1)}}
+.ad-top{
+  position:absolute;bottom:10px;left:10px;padding:4px 8px;border-radius:8px;
+  background:linear-gradient(135deg,#F59E0B,#F97316);color:#fff;
+  font-size:9px;font-weight:800;letter-spacing:.4px;text-transform:uppercase;
+  display:flex;align-items:center;gap:3px;box-shadow:0 4px 14px rgba(245,158,11,.4);
+}
+.ad-top svg{width:10px;height:10px}
+.ad-body{padding:12px 12px 14px;display:flex;flex-direction:column;gap:6px}
+.ad-title{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
+.ad-meta{font-size:11.5px;color:var(--text-3);display:flex;align-items:center;gap:4px;font-weight:500}
+.ad-meta svg{width:12px;height:12px;flex-shrink:0}
+.ad-price{
+  margin-top:2px;font-size:16px;font-weight:800;
+  font-family:'Space Grotesk',sans-serif;
+  background:linear-gradient(135deg,#60A5FA,#22D3EE);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;letter-spacing:-.02em;
+  white-space:nowrap;overflow:hidden;text-overflow:ellipsis;
+}
+
+.empty{grid-column:1/-1;padding:60px 20px;text-align:center;color:var(--text-3)}
+.empty-icon{
+  width:64px;height:64px;margin:0 auto 14px;border-radius:20px;
+  background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(34,211,238,.05));
+  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;
+  color:#60A5FA;
+}
+.empty-icon svg{width:30px;height:30px;stroke-width:1.8}
+.empty h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
+.empty p{font-size:12.5px;color:var(--text-3);max-width:280px;margin:0 auto}
+
+.btn{
+  display:inline-flex;align-items:center;justify-content:center;gap:8px;
+  padding:13px 20px;border-radius:14px;font-size:13.5px;font-weight:700;
+  transition:all .2s;cursor:pointer;white-space:nowrap;
+}
+.btn svg{width:16px;height:16px}
+.btn:active{transform:scale(.97)}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+.btn-block{width:100%}
+.btn-primary{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;box-shadow:0 8px 24px rgba(59,130,246,.35)}
+.btn-primary:not(:disabled):hover{box-shadow:0 12px 32px rgba(59,130,246,.5)}
+.btn-secondary{background:var(--surface-2);border:1px solid var(--border-2);color:var(--text)}
+.btn-secondary:hover{border-color:var(--border-3)}
+.btn-success{background:linear-gradient(135deg,#10B981,#059669);color:#fff;box-shadow:0 8px 24px rgba(16,185,129,.3)}
+.btn-danger{background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff;box-shadow:0 8px 24px rgba(239,68,68,.3)}
+.btn-ghost{background:rgba(59,130,246,.08);border:1px solid var(--border-2);color:#60A5FA}
+
+.icon-btn{
+  width:44px;height:44px;flex-shrink:0;border-radius:14px;
+  background:var(--surface-2);border:1px solid var(--border-2);
+  display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+.icon-btn:active{transform:scale(.92);border-color:var(--border-3)}
+.icon-btn svg{width:20px;height:20px;stroke-width:2}
+.icon-btn.small{width:40px;height:40px;border-radius:12px}
+.icon-btn.small svg{width:17px;height:17px}
+
+.page-head{display:flex;align-items:center;gap:12px;padding:20px 0 8px}
+.page-head-txt{flex:1;min-width:0}
+.page-head h1{font-size:22px;font-weight:700;line-height:1.2}
+.page-head p{font-size:12.5px;color:var(--text-3);margin-top:2px;font-weight:500}
+
+.field{margin-bottom:16px}
+.label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:8px}
+.label svg{width:15px;height:15px;color:#60A5FA;flex-shrink:0}
+.label .hint{margin-left:auto;font-size:11px;color:var(--text-4);font-weight:500}
+.input,.select,.textarea{
+  width:100%;padding:14px 16px;background:var(--surface);
+  border:1.5px solid var(--border-2);border-radius:14px;color:var(--text);
+  font-size:14px;font-weight:500;transition:all .2s;
+}
+.input::placeholder,.textarea::placeholder{color:var(--text-4)}
+.input:focus,.select:focus,.textarea:focus{border-color:#3B82F6;background:var(--surface-2);box-shadow:0 0 0 4px rgba(59,130,246,.1)}
+.textarea{resize:vertical;min-height:100px;line-height:1.6}
+.select{
+  appearance:none;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%236B7A94' stroke-width='2.5' stroke-linecap='round'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right 14px center;background-size:18px;padding-right:44px;
+}
+.select option{background:var(--surface-2);color:var(--text)}
+.input-group{display:flex;gap:8px;align-items:stretch}
+.input-prefix{
+  display:flex;align-items:center;gap:6px;padding:14px 14px;
+  background:var(--surface-2);border:1.5px solid var(--border-2);
+  border-radius:14px;font-weight:700;font-size:14px;color:var(--text-2);flex-shrink:0;
+}
+.input-group .input{flex:1;min-width:0}
+
+.card-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px}
+.card-box-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:10px;margin-bottom:16px;color:var(--text)}
+.card-box-ic{
+  width:34px;height:34px;border-radius:10px;
+  background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(34,211,238,.08));
+  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;
+  color:#60A5FA;flex-shrink:0;
+}
+.card-box-ic svg{width:17px;height:17px;stroke-width:2}
+
+.dyn-row{display:flex;gap:8px;margin-bottom:8px}
+.dyn-row .input{flex:1;min-width:0}
+.dyn-del{
+  width:46px;flex-shrink:0;background:rgba(239,68,68,.08);
+  border:1.5px solid rgba(239,68,68,.2);border-radius:14px;
+  display:flex;align-items:center;justify-content:center;color:#F87171;
+}
+.dyn-del svg{width:16px;height:16px}
+.dyn-del:active{background:rgba(239,68,68,.15)}
+
+.chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
+.chip{
+  display:flex;align-items:center;gap:10px;padding:12px 14px;
+  background:var(--surface-2);border:1.5px solid var(--border-2);
+  border-radius:13px;font-size:12.5px;font-weight:600;color:var(--text-2);
+  transition:all .2s;text-align:left;
+}
+.chip:active{transform:scale(.97)}
+.chip-check{
+  width:18px;height:18px;flex-shrink:0;border:2px solid var(--border-3);
+  border-radius:6px;background:transparent;display:flex;align-items:center;justify-content:center;transition:all .2s;
+}
+.chip-check svg{width:11px;height:11px;stroke:#fff;stroke-width:3.5;opacity:0;transition:opacity .2s}
+.chip.active{background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(34,211,238,.08));border-color:#3B82F6;color:#93C5FD}
+.chip.active .chip-check{background:#3B82F6;border-color:#3B82F6}
+.chip.active .chip-check svg{opacity:1}
+.chip-icon{font-size:16px;flex-shrink:0}
+
+.cur-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.cur{
+  padding:14px 8px;border-radius:14px;background:var(--surface-2);
+  border:1.5px solid var(--border-2);display:flex;flex-direction:column;
+  align-items:center;gap:3px;transition:all .2s;cursor:pointer;color:var(--text-2);
+}
+.cur:active{transform:scale(.96)}
+.cur-flag{font-size:20px}
+.cur-name{font-size:11px;font-weight:700;letter-spacing:.2px}
+.cur-sym{font-size:11px;font-weight:600;color:var(--text-4)}
+.cur.active{background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(34,211,238,.1));border-color:#3B82F6;box-shadow:0 0 0 4px rgba(59,130,246,.08)}
+.cur.active .cur-name{color:#93C5FD}
+
+.tariff{
+  position:relative;padding:20px;background:var(--surface);
+  border:2px solid var(--border-2);border-radius:var(--radius-lg);
+  cursor:pointer;transition:all .25s cubic-bezier(.16,1,.3,1);
+  margin-bottom:12px;overflow:hidden;
+}
+.tariff:active{transform:scale(.98)}
+.tariff.selected{border-color:#3B82F6;box-shadow:0 20px 60px rgba(59,130,246,.25),0 0 0 4px rgba(59,130,246,.08);background:linear-gradient(135deg,var(--surface),rgba(59,130,246,.03))}
+.tariff-tag{
+  position:absolute;top:0;right:0;padding:6px 14px;
+  border-radius:0 var(--radius-lg) 0 14px;font-size:10px;font-weight:800;
+  letter-spacing:.5px;text-transform:uppercase;color:#fff;
+}
+.tariff-tag.vip{background:linear-gradient(135deg,#3B82F6,#06B6D4)}
+.tariff-tag.rare{background:linear-gradient(135deg,#22D3EE,#0EA5E9);color:#04121D}
+.tariff-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
+.tariff-name{font-size:16px;font-weight:700;font-family:'Space Grotesk',sans-serif}
+.tariff-desc{font-size:12px;color:var(--text-3);margin-top:3px;font-weight:500}
+.tariff-price{text-align:right;font-family:'Space Grotesk',sans-serif}
+.tariff-price-val{font-size:22px;font-weight:700;background:linear-gradient(135deg,#60A5FA,#22D3EE);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.02em;line-height:1.1}
+.tariff-price-lbl{font-size:10px;color:var(--text-3);font-weight:600;margin-top:2px}
+.tariff-feats{padding-top:12px;margin-top:12px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:6px}
+.feat{display:flex;align-items:center;gap:8px;font-size:12px;font-weight:500;color:var(--text-2)}
+.feat-ic{width:16px;height:16px;flex-shrink:0;border-radius:5px;display:flex;align-items:center;justify-content:center}
+.feat-ic svg{width:10px;height:10px;stroke-width:3.5}
+.feat.yes .feat-ic{background:rgba(16,185,129,.15);color:#34D399}
+.feat.no .feat-ic{background:rgba(239,68,68,.1);color:#F87171}
+.feat.no{color:var(--text-4)}
+
+.steps{display:flex;gap:6px;margin:20px 0 24px}
+.step{height:4px;flex:1;border-radius:10px;background:var(--surface-3);transition:all .4s cubic-bezier(.16,1,.3,1)}
+.step.active{background:linear-gradient(90deg,#3B82F6,#22D3EE);box-shadow:0 0 12px rgba(59,130,246,.5)}
+.step-page{display:none}
+.step-page.active{display:block;animation:pageIn .35s cubic-bezier(.16,1,.3,1)}
+
+.upload{
+  display:flex;flex-direction:column;align-items:center;justify-content:center;
+  gap:10px;padding:44px 24px;background:var(--surface);
+  border:2px dashed var(--border-3);border-radius:var(--radius-lg);
+  text-align:center;cursor:pointer;transition:all .25s;
+}
+.upload:active{background:rgba(59,130,246,.05);border-color:#3B82F6}
+.upload-ic{
+  width:60px;height:60px;border-radius:20px;
+  background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(34,211,238,.08));
+  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:#60A5FA;
+}
+.upload-ic svg{width:28px;height:28px;stroke-width:1.8}
+.upload strong{font-size:14px;font-weight:700;color:var(--text)}
+.upload span{font-size:12px;color:var(--text-3)}
+.preview-video{width:100%;border-radius:var(--radius);background:#000;max-height:400px;margin-top:14px}
+
+.profile-hero{
+  position:relative;padding:28px 20px;
+  background:linear-gradient(135deg,#0B1220 0%,#0F1729 100%);
+  border:1px solid var(--border-2);border-radius:var(--radius-lg);
+  overflow:hidden;text-align:center;margin-bottom:16px;
+}
+.profile-hero::before{content:'';position:absolute;inset:0;background:radial-gradient(circle at 50% 0%,rgba(59,130,246,.25),transparent 60%);pointer-events:none}
+.profile-hero-in{position:relative;z-index:1}
+.profile-av{
+  width:88px;height:88px;margin:0 auto 12px;border-radius:50%;
+  background:linear-gradient(135deg,#3B82F6,#06B6D4);padding:3px;
+  position:relative;cursor:pointer;transition:transform .2s;
+}
+.profile-av:active{transform:scale(.95)}
+.profile-av-in{
+  width:100%;height:100%;border-radius:50%;background:var(--surface);
+  display:flex;align-items:center;justify-content:center;
+  font-size:34px;font-weight:800;color:#60A5FA;overflow:hidden;
+  font-family:'Space Grotesk',sans-serif;
+}
+.profile-av-in img{width:100%;height:100%;object-fit:cover}
+.profile-av-badge{
+  position:absolute;bottom:0;right:0;width:28px;height:28px;border-radius:50%;
+  background:linear-gradient(135deg,#3B82F6,#06B6D4);
+  border:3px solid var(--bg-2);display:flex;align-items:center;justify-content:center;color:#fff;
+}
+.profile-av-badge svg{width:12px;height:12px;stroke-width:3}
+.profile-name{font-size:20px;font-weight:700;display:flex;align-items:center;justify-content:center;gap:6px;font-family:'Space Grotesk',sans-serif}
+.profile-admin{width:18px;height:18px;border-radius:50%;background:linear-gradient(135deg,#3B82F6,#06B6D4);display:inline-flex;align-items:center;justify-content:center;color:#fff;flex-shrink:0}
+.profile-admin svg{width:10px;height:10px;stroke-width:3.5}
+.profile-user{font-size:12.5px;color:var(--text-3);margin-top:4px;font-weight:500}
+.profile-stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-top:20px}
+.pstat{padding:12px 8px;border-radius:14px;background:rgba(15,23,41,.6);backdrop-filter:blur(10px);border:1px solid var(--border-2)}
+.pstat-val{
+  font-size:17px;font-weight:800;font-family:'Space Grotesk',sans-serif;
+  background:linear-gradient(135deg,#60A5FA,#22D3EE);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;letter-spacing:-.02em;
+}
+.pstat-lbl{font-size:10px;color:var(--text-3);margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.4px}
+.menu{display:flex;flex-direction:column;gap:8px}
+.menu-item{
+  display:flex;align-items:center;gap:14px;padding:14px 16px;
+  background:var(--surface);border:1px solid var(--border);border-radius:16px;
+  text-align:left;width:100%;transition:all .2s;
+}
+.menu-item:active{transform:scale(.98);border-color:var(--border-3)}
+.menu-ic{
+  width:40px;height:40px;flex-shrink:0;border-radius:12px;
+  background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(34,211,238,.08));
+  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:#60A5FA;
+}
+.menu-ic svg{width:19px;height:19px;stroke-width:2}
+.menu-txt{flex:1;min-width:0}
+.menu-txt strong{display:block;font-size:13.5px;font-weight:700}
+.menu-txt span{display:block;font-size:11.5px;color:var(--text-3);margin-top:2px;font-weight:500}
+.menu-arrow{color:var(--text-4);flex-shrink:0}
+.menu-arrow svg{width:18px;height:18px}
+
+.modal{
+  position:fixed;inset:0;z-index:500;background:rgba(0,0,0,.75);
+  backdrop-filter:blur(10px);-webkit-backdrop-filter:blur(10px);
+  display:none;align-items:flex-end;justify-content:center;padding:0;
+}
+.modal.active{display:flex;animation:fadeIn .2s}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+.modal-in{
+  width:100%;max-width:640px;max-height:92vh;background:var(--bg-2);
+  border:1px solid var(--border-2);border-bottom:0;
+  border-radius:24px 24px 0 0;overflow-y:auto;
+  animation:slideUp .35s cubic-bezier(.16,1,.3,1);padding:20px;
+  padding-bottom:calc(24px + env(safe-area-inset-bottom,0));
+}
+@keyframes slideUp{from{transform:translateY(100%)}to{transform:translateY(0)}}
+.modal-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+.modal-head h2{font-size:19px;font-weight:700}
+.modal-close{
+  width:36px;height:36px;border-radius:12px;background:var(--surface-2);
+  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;
+}
+.modal-close:active{transform:scale(.9);background:rgba(239,68,68,.15);border-color:rgba(239,68,68,.3);color:#F87171}
+.modal-close svg{width:17px;height:17px;stroke-width:2.5}
+.modal-handle{width:40px;height:4px;border-radius:10px;background:var(--surface-3);margin:0 auto 12px}
+
+.detail-video{width:100%;border-radius:18px;background:#000;max-height:60vh;object-fit:contain;margin-bottom:16px}
+.detail-title{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;line-height:1.2;margin-bottom:8px}
+.detail-price{
+  font-size:26px;font-weight:800;font-family:'Space Grotesk',sans-serif;
+  background:linear-gradient(135deg,#60A5FA,#22D3EE);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;
+  background-clip:text;letter-spacing:-.02em;margin-bottom:18px;
+}
+.detail-actions{display:grid;grid-template-columns:auto 1fr;gap:10px;margin-bottom:18px}
+.detail-heart{
+  width:52px;height:52px;border-radius:14px;background:var(--surface-2);
+  border:1.5px solid var(--border-2);display:flex;align-items:center;justify-content:center;
+  transition:all .25s cubic-bezier(.34,1.56,.64,1);
+}
+.detail-heart svg{width:22px;height:22px;stroke:var(--text-3);stroke-width:2;fill:none;transition:all .2s}
+.detail-heart.saved{background:rgba(255,59,107,.12);border-color:rgba(255,59,107,.35)}
+.detail-heart.saved svg{fill:var(--heart);stroke:var(--heart)}
+.detail-heart:active{transform:scale(.9)}
+.detail-section{margin-bottom:16px}
+.detail-section-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--text-2)}
+.detail-section-title .icon-sm{
+  width:28px;height:28px;border-radius:8px;
+  background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(34,211,238,.08));
+  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:#60A5FA;
+}
+.detail-section-title .icon-sm svg{width:14px;height:14px;stroke-width:2.2}
+.detail-section-title .count{
+  margin-left:auto;padding:3px 8px;border-radius:8px;
+  background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.2);
+  font-size:10px;font-weight:700;color:#93C5FD;letter-spacing:.3px;
+}
+.detail-list{display:flex;flex-direction:column;gap:6px}
+.detail-item{
+  padding:11px 13px;background:var(--surface);border:1px solid var(--border);
+  border-radius:11px;font-size:12.5px;font-weight:600;
+  display:flex;align-items:center;gap:8px;color:var(--text);
+}
+.detail-item svg{width:14px;height:14px;color:#60A5FA;flex-shrink:0}
+.detail-info-row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);font-size:13px}
+.detail-info-row:last-child{border-bottom:0}
+.detail-info-row .k{color:var(--text-3);font-weight:500;display:flex;align-items:center;gap:6px}
+.detail-info-row .k svg{width:13px;height:13px}
+.detail-info-row .v{font-weight:700;text-align:right;color:var(--text)}
+
+.amount-wrap{position:relative;margin-bottom:14px}
+.amount-input{
+  width:100%;padding:22px 66px 22px 22px;background:var(--surface);
+  border:2px solid var(--border-2);border-radius:18px;
+  font-size:24px;font-weight:800;text-align:center;color:var(--text);
+  font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em;
+}
+.amount-input:focus{border-color:#3B82F6;box-shadow:0 0 0 5px rgba(59,130,246,.1)}
+.amount-cur{position:absolute;right:22px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;color:var(--text-3)}
+.quick-amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.quick-amount{
+  padding:12px 8px;border-radius:13px;background:var(--surface-2);
+  border:1.5px solid var(--border-2);font-size:12.5px;font-weight:700;
+  color:var(--text-2);transition:all .2s;
+}
+.quick-amount:active{transform:scale(.95)}
+.quick-amount.active{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(59,130,246,.4)}
+.pay-card{
+  padding:22px;border-radius:18px;
+  background:linear-gradient(135deg,#0B1220,#0F1729);
+  border:1px solid var(--border-2);position:relative;overflow:hidden;
+}
+.pay-card::before{content:'';position:absolute;top:-40%;right:-20%;width:200px;height:200px;border-radius:50%;background:radial-gradient(circle,rgba(59,130,246,.25),transparent 70%);pointer-events:none}
+.pay-card-lbl{font-size:10.5px;font-weight:700;color:var(--text-3);letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px}
+.pay-card-num{font-size:20px;font-weight:800;font-family:'Space Grotesk',monospace;letter-spacing:1.5px;color:#93C5FD;word-break:break-all;position:relative;z-index:1}
+.pay-card-amt{margin-top:14px;padding-top:14px;border-top:1px solid var(--border);font-size:13px;color:var(--text-3);position:relative;z-index:1}
+.pay-card-amt b{color:var(--text);font-family:'Space Grotesk',sans-serif}
+.pay-timer{margin-top:16px;font-size:26px;font-weight:800;text-align:center;color:#60A5FA;font-family:'Space Grotesk',sans-serif;letter-spacing:.05em;animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.7}}
+.pay-note{
+  margin-top:12px;padding:12px 14px;background:rgba(16,185,129,.08);
+  border:1px solid rgba(16,185,129,.2);border-radius:12px;
+  font-size:12px;color:#34D399;font-weight:600;line-height:1.5;text-align:center;
+}
+
+.my-ad{display:flex;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:10px}
+.my-ad-thumb{
+  width:80px;height:80px;flex-shrink:0;border-radius:14px;
+  background:linear-gradient(135deg,#0F1729,#141C30);
+  display:flex;align-items:center;justify-content:center;
+  font-size:28px;overflow:hidden;
+  color:#60A5FA;
+}
+.my-ad-thumb img,.my-ad-thumb video{width:100%;height:100%;object-fit:cover}
+.my-ad-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
+.my-ad-title{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.my-ad-price{font-size:13px;font-weight:700;background:linear-gradient(135deg,#60A5FA,#22D3EE);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
+.my-ad-meta{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:4px}
+.my-ad-meta svg{width:11px;height:11px}
+.my-ad-status{display:inline-flex;align-items:center;gap:4px;padding:3px 8px;border-radius:7px;font-size:10px;font-weight:700;align-self:flex-start;margin-top:2px;letter-spacing:.3px;text-transform:uppercase}
+.my-ad-status svg{width:10px;height:10px}
+.my-ad-status.active{background:rgba(16,185,129,.12);color:#34D399;border:1px solid rgba(16,185,129,.2)}
+.my-ad-status.pending{background:rgba(245,158,11,.12);color:#FBBF24;border:1px solid rgba(245,158,11,.2)}
+.my-ad-status.rejected{background:rgba(239,68,68,.12);color:#F87171;border:1px solid rgba(239,68,68,.2)}
+.my-ad-status.expired{background:rgba(107,122,148,.12);color:var(--text-3);border:1px solid var(--border)}
+
+.feedback-card{
+  padding:16px;background:var(--surface);border:1px solid var(--border);
+  border-radius:16px;margin-bottom:10px;
+}
+.feedback-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
+.feedback-av{
+  width:40px;height:40px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(34,211,238,.1));
+  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;
+  overflow:hidden;color:#60A5FA;font-weight:700;font-size:15px;
+}
+.feedback-av img{width:100%;height:100%;object-fit:cover}
+.feedback-name{font-size:13px;font-weight:700;display:flex;align-items:center;gap:5px}
+.feedback-admin{width:14px;height:14px;border-radius:50%;background:linear-gradient(135deg,#3B82F6,#06B6D4);display:inline-flex;align-items:center;justify-content:center;color:#fff}
+.feedback-admin svg{width:8px;height:8px;stroke-width:3.5}
+.feedback-time{font-size:11px;color:var(--text-3);margin-top:2px}
+.feedback-stars{display:flex;gap:2px;margin-bottom:8px}
+.feedback-stars svg{width:14px;height:14px}
+.feedback-text{font-size:13px;color:var(--text-2);line-height:1.6;word-break:break-word}
+.feedback-del{
+  margin-left:auto;width:32px;height:32px;border-radius:10px;
+  background:rgba(239,68,68,.1);border:1px solid rgba(239,68,68,.2);
+  display:flex;align-items:center;justify-content:center;color:#F87171;
+}
+.feedback-del svg{width:15px;height:15px}
+.feedback-del:active{background:rgba(239,68,68,.2)}
+
+.rate-row{display:flex;gap:8px;margin-top:8px}
+.rate-btn{
+  width:48px;height:48px;border-radius:14px;
+  background:var(--surface-2);border:1.5px solid var(--border-2);
+  display:flex;align-items:center;justify-content:center;
+  transition:all .2s;cursor:pointer;
+}
+.rate-btn:active{transform:scale(.9)}
+.rate-btn svg{width:22px;height:22px;stroke:var(--text-3);stroke-width:2;fill:none;transition:all .2s}
+.rate-btn.on{background:linear-gradient(135deg,#3B82F6,#06B6D4);border-color:transparent;box-shadow:0 6px 20px rgba(59,130,246,.4)}
+.rate-btn.on svg{stroke:#fff;fill:#fff}
+
+.admin-stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
+.admin-stat{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px}
+.admin-stat-ic{
+  width:36px;height:36px;border-radius:11px;
+  background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(34,211,238,.08));
+  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:#60A5FA;margin-bottom:10px;
+}
+.admin-stat-ic svg{width:18px;height:18px}
+.admin-stat-val{
+  font-size:24px;font-weight:800;font-family:'Space Grotesk',sans-serif;
+  background:linear-gradient(135deg,#60A5FA,#22D3EE);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  letter-spacing:-.02em;line-height:1;
+}
+.admin-stat-lbl{font-size:11px;color:var(--text-3);font-weight:600;margin-top:6px}
+.admin-tabs{display:flex;gap:6px;overflow-x:auto;padding:4px 0;margin-bottom:14px;scrollbar-width:none}
+.admin-tabs::-webkit-scrollbar{display:none}
+.admin-tab{
+  flex-shrink:0;padding:10px 14px;background:var(--surface-2);
+  border:1px solid var(--border);border-radius:12px;
+  font-size:12px;font-weight:700;color:var(--text-2);
+  display:flex;align-items:center;gap:6px;white-space:nowrap;transition:all .2s;
+}
+.admin-tab svg{width:13px;height:13px}
+.admin-tab.active{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(59,130,246,.35)}
+.mod-card{padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px}
+.mod-head{display:flex;gap:10px;margin-bottom:10px}
+.mod-thumb{
+  width:64px;height:64px;border-radius:12px;flex-shrink:0;
+  background:linear-gradient(135deg,#0B1220,#141C30);
+  display:flex;align-items:center;justify-content:center;font-size:24px;overflow:hidden;
+  color:#60A5FA;
+}
+.mod-thumb video,.mod-thumb img{width:100%;height:100%;object-fit:cover}
+.mod-body{flex:1;min-width:0}
+.mod-title{font-size:13.5px;font-weight:700;margin-bottom:4px}
+.mod-meta{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:4px;margin-top:2px}
+.mod-meta svg{width:11px;height:11px}
+.mod-actions{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.mod-actions .btn{padding:10px;font-size:12.5px}
+.user-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:14px;margin-bottom:8px}
+.user-av{
+  width:40px;height:40px;border-radius:50%;flex-shrink:0;
+  background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(34,211,238,.1));
+  border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;
+  overflow:hidden;color:#60A5FA;font-weight:700;
+}
+.user-av img{width:100%;height:100%;object-fit:cover}
+.user-info{flex:1;min-width:0}
+.user-name{font-size:13px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.user-meta{font-size:11px;color:var(--text-3);margin-top:3px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.user-meta span{display:flex;align-items:center;gap:3px}
+.user-meta svg{width:11px;height:11px}
+.card-item{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:14px;margin-bottom:8px}
+.card-num{flex:1;font-family:'Space Grotesk',monospace;font-weight:700;font-size:13px;color:#93C5FD;letter-spacing:.5px}
+.card-sum{font-size:11px;color:var(--text-3);margin-top:2px}
+
+.toast-wrap{position:fixed;top:14px;left:14px;right:14px;z-index:1000;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
+.toast{
+  background:linear-gradient(135deg,#0F1729,#141C30);
+  border:1px solid var(--border-3);color:#fff;
+  padding:12px 18px;border-radius:14px;font-size:13px;font-weight:600;
+  box-shadow:0 20px 60px rgba(0,0,0,.7);display:flex;align-items:center;gap:8px;
+  max-width:100%;animation:toastIn .4s cubic-bezier(.34,1.56,.64,1);
+  backdrop-filter:blur(20px);
+}
+.toast svg{width:16px;height:16px;flex-shrink:0}
+.toast.success{border-color:rgba(16,185,129,.4)}
+.toast.success svg{color:#34D399}
+.toast.error{border-color:rgba(239,68,68,.4)}
+.toast.error svg{color:#F87171}
+@keyframes toastIn{from{opacity:0;transform:translateY(-20px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
+
+.load{position:fixed;inset:0;z-index:9999;background:rgba(7,10,18,.85);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center}
+.load.active{display:flex}
+.spin{width:48px;height:48px;border:3px solid rgba(59,130,246,.15);border-top-color:#3B82F6;border-right-color:#22D3EE;border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+
+.hidden{display:none !important}
+.mt-8{margin-top:8px}.mt-16{margin-top:16px}.mt-24{margin-top:24px}
+.mb-16{margin-bottom:16px}
+</style>
+</head>
+<body>
+
+<!-- SVG ICONS -->
+<svg style="display:none" xmlns="http://www.w3.org/2000/svg">
+  <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
+  <symbol id="i-heart" viewBox="0 0 24 24"><path d="M20.84 4.61a5.5 5.5 0 0 0-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 0 0-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 0 0 0-7.78z" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" fill="none" stroke="currentColor"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></symbol>
+  <symbol id="i-user" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></symbol>
+  <symbol id="i-wallet" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"/><path d="M3 5v14a2 2 0 0 0 2 2h16v-5"/><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"/></symbol>
+  <symbol id="i-chev-r" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="9 18 15 12 9 6"/></symbol>
+  <symbol id="i-arrow-l" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 6 9 17 4 12"/></symbol>
+  <symbol id="i-check-circle" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></symbol>
+  <symbol id="i-clock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></symbol>
+  <symbol id="i-map" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 10c0 7-9 13-9 13s-9-6-9-13a9 9 0 0 1 18 0z"/><circle cx="12" cy="10" r="3"/></symbol>
+  <symbol id="i-mega" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 11 18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
+  <symbol id="i-crown" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M2 18h20l-2-10-4 4-4-8-4 8-4-4z"/><path d="M2 18v3h20v-3"/></symbol>
+  <symbol id="i-fire" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M8.5 14.5A2.5 2.5 0 0 0 11 12c0-1.38-.5-2-1-3-1.07-2.14-.22-4.05 2-6 .5 2.5 2 4.9 4 6.5 2 1.6 3 3.5 3 5.5a7 7 0 1 1-14 0c0-1.15.43-2.29 1-3a2.5 2.5 0 0 0 2.5 2.5z"/></symbol>
+  <symbol id="i-star" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></symbol>
+  <symbol id="i-upload" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></symbol>
+  <symbol id="i-camera" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M23 19a2 2 0 0 1-2 2H3a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4l2-3h6l2 3h4a2 2 0 0 1 2 2z"/><circle cx="12" cy="13" r="4"/></symbol>
+  <symbol id="i-lvl" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/><polyline points="17 6 23 6 23 12"/></symbol>
+  <symbol id="i-target" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="12" r="6"/><circle cx="12" cy="12" r="2"/></symbol>
+  <symbol id="i-award" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8" r="7"/><polyline points="8.21 13.89 7 23 12 20 17 23 15.79 13.88"/></symbol>
+  <symbol id="i-shirt" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.38 3.46 16 2a4 4 0 0 1-8 0L3.62 3.46a2 2 0 0 0-1.34 2.23l.58 3.47a1 1 0 0 0 .99.84H6v10a1 1 0 0 0 1 1h10a1 1 0 0 0 1-1V10h2.15a1 1 0 0 0 .99-.84l.58-3.47a2 2 0 0 0-1.34-2.23z"/></symbol>
+  <symbol id="i-gift" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="20 12 20 22 4 22 4 12"/><rect x="2" y="7" width="20" height="5"/><line x1="12" y1="22" x2="12" y2="7"/><path d="M12 7H7.5a2.5 2.5 0 0 1 0-5C11 2 12 7 12 7z"/><path d="M12 7h4.5a2.5 2.5 0 0 0 0-5C13 2 12 7 12 7z"/></symbol>
+  <symbol id="i-car" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M19 17h2a1 1 0 0 0 1-1v-3l-1.5-4.5A2 2 0 0 0 18.6 7H5.4a2 2 0 0 0-1.9 1.5L2 13v3a1 1 0 0 0 1 1h2"/><circle cx="7" cy="17" r="2"/><circle cx="17" cy="17" r="2"/></symbol>
+  <symbol id="i-link" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/><path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/></symbol>
+  <symbol id="i-phone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></symbol>
+  <symbol id="i-msg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15a2 2 0 0 1-2 2H7l-4 4V5a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2z"/></symbol>
+  <symbol id="i-send" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/></symbol>
+  <symbol id="i-shield" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/></symbol>
+  <symbol id="i-ban" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="4.93" y1="4.93" x2="19.07" y2="19.07"/></symbol>
+  <symbol id="i-credit" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="1" y="4" width="22" height="16" rx="2" ry="2"/><line x1="1" y1="10" x2="23" y2="10"/></symbol>
+  <symbol id="i-users" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></symbol>
+  <symbol id="i-info" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="10"/><line x1="12" y1="16" x2="12" y2="12"/><line x1="12" y1="8" x2="12.01" y2="8"/></symbol>
+  <symbol id="i-zap" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24" fill="currentColor"><polygon points="6 4 20 12 6 20"/></symbol>
+  <symbol id="i-copy" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></symbol>
+</svg>
+
+<div class="app">
+  <header class="topbar">
+    <div class="topbar-in">
+      <div class="brand" onclick="go('pageProfile')">
+        <div class="brand-logo" id="brandAv">C</div>
+        <div class="brand-txt">
+          <div class="brand-name" id="brandN">Yuklanmoqda...</div>
+          <div class="brand-sub" id="brandS">Cardinal</div>
+        </div>
+      </div>
+      <button class="balance" onclick="openTopup()">
+        <div class="balance-icon">💰</div>
+        <div class="balance-info">
+          <div class="balance-val" id="balVal">0</div>
+          <div class="balance-lbl">so'm</div>
+        </div>
+      </button>
+    </div>
+  </header>
+
+  <!-- DASHBOARD -->
+  <section class="page active" id="pageDashboard">
+    <div class="container">
+      <div class="hero">
+        <h1 class="hero-title">PUBG <span class="accent">Akkauntlar</span></h1>
+        <p class="hero-sub">Eng so'nggi reklamalar va premium akkauntlar</p>
+      </div>
+      <div class="cats">
+        <button class="cat active" data-cat="ALL"><svg><use href="#i-home"/></svg>Hammasi</button>
+        <button class="cat" data-cat="PREMIUM"><svg><use href="#i-crown"/></svg>Premium</button>
+        <button class="cat" data-cat="RARE"><svg><use href="#i-fire"/></svg>Noyob</button>
+        <button class="cat" data-cat="STANDARD"><svg><use href="#i-zap"/></svg>Arzon</button>
+      </div>
+      <div class="grid" id="gridAds"></div>
+    </div>
+  </section>
+
+  <!-- SAVED -->
+  <section class="page" id="pageSaved">
+    <div class="container">
+      <div class="page-head">
+        <button class="icon-btn" onclick="go('pageDashboard')"><svg><use href="#i-arrow-l"/></svg></button>
+        <div class="page-head-txt">
+          <h1>Saqlanganlar</h1>
+          <p>Yurakcha bosilgan reklamalar</p>
+        </div>
+      </div>
+      <div class="grid" id="gridSaved"></div>
+    </div>
+  </section>
+
+  <!-- CREATE AD -->
+  <section class="page" id="pageCreate">
+    <div class="container">
+      <div class="page-head">
+        <button class="icon-btn" onclick="go('pageDashboard')"><svg><use href="#i-arrow-l"/></svg></button>
+        <div class="page-head-txt">
+          <h1>Reklama berish</h1>
+          <p>4 ta qadamda joylang</p>
+        </div>
+      </div>
+      <div class="steps" id="steps"></div>
+
+      <div class="step-page active" data-step="1">
+        <div class="hero"><h2 class="hero-title" style="font-size:20px">Tarifni <span class="accent">tanlang</span></h2>
+          <p class="hero-sub">Reklamangiz qayerda chiqishini tanlang</p></div>
+        <div id="tariffList" style="margin-top:16px"></div>
+      </div>
+
+      <div class="step-page" data-step="2">
+        <div class="hero"><h2 class="hero-title" style="font-size:20px">Video <span class="accent">yuklang</span></h2>
+          <p class="hero-sub">MP4 formatda, max 200 MB, 10 daqiqagacha</p></div>
+        <label class="upload" for="videoInput" style="margin-top:16px">
+          <div class="upload-ic"><svg><use href="#i-upload"/></svg></div>
+          <strong>Video tanlash uchun bosing</strong>
+          <span>MP4 · 200 MB gacha · 10 daqiqa</span>
+        </label>
+        <input type="file" id="videoInput" accept="video/*" hidden>
+        <div id="videoPreview"></div>
+      </div>
+
+      <div class="step-page" data-step="3">
+        <div class="hero"><h2 class="hero-title" style="font-size:20px">Akkaunt <span class="accent">ma'lumotlari</span></h2>
+          <p class="hero-sub">Barcha maydonlarni to'ldiring</p></div>
+
+        <div class="card-box" style="margin-top:16px">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-lvl"/></svg></div>Asosiy ma'lumotlar</div>
+          <div class="field">
+            <label class="label"><svg><use href="#i-lvl"/></svg>LVL · Akkaunt darajasi</label>
+            <input class="input" id="accLevel" inputmode="numeric" placeholder="Masalan: 75">
+          </div>
+          <div class="field">
+            <label class="label"><svg><use href="#i-target"/></svg>Kolleksiya darajasi<span class="hint">max 101</span></label>
+            <input class="input" id="accColl" inputmode="numeric" placeholder="Masalan: 56">
+          </div>
+          <div class="field">
+            <label class="label"><svg><use href="#i-award"/></svg>RP · Nechinchi sezondan<span class="hint">max 50 harf</span></label>
+            <input class="input" id="accRP" maxlength="50" placeholder="Masalan: S2 sezondan">
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label class="label"><svg><use href="#i-shirt"/></svg>Mifik kiyimlar soni</label>
+            <input class="input" id="accMythic" inputmode="numeric" placeholder="Masalan: 20">
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-fire"/></svg></div>Redkiy skinlar<span style="margin-left:auto;font-size:10px;color:var(--text-4)">max 25</span></div>
+          <div id="skinsList"></div>
+          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('skinsList','skin-input','Masalan: M416 Glacier')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
+        </div>
+
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-gift"/></svg></div>X-KOSTYUM<span style="margin-left:auto;font-size:10px;color:var(--text-4)">majburiy emas · max 25</span></div>
+          <div id="xcList"></div>
+          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('xcList','xc-input','Masalan: Phantom Set')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
+        </div>
+
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-target"/></svg></div>Kuchaytirilgan qurollar<span style="margin-left:auto;font-size:10px;color:var(--text-4)">max 25</span></div>
+          <div id="gunsList"></div>
+          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('gunsList','gun-input','Masalan: AKM Glacier')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
+          <div class="field mt-16" style="margin-bottom:0">
+            <label class="label"><svg><use href="#i-zap"/></svg>Jami qurollar soni</label>
+            <input class="input" id="gunsCount" inputmode="numeric" placeholder="Masalan: 5">
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-car"/></svg></div>SUPAR-CAR<span style="margin-left:auto;font-size:10px;color:var(--text-4)">majburiy emas · max 25</span></div>
+          <div id="carList"></div>
+          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('carList','car-input','Masalan: Lamborghini')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
+        </div>
+
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-link"/></svg></div>Ulangan tarmoqlar</div>
+          <div class="chips" id="linkedGrid"></div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-map"/></svg></div>Manzil va narx</div>
+          <div class="field">
+            <label class="label"><svg><use href="#i-map"/></svg>Viloyat</label>
+            <select class="select" id="accRegion"></select>
+          </div>
+          <div class="field">
+            <label class="label"><svg><use href="#i-map"/></svg>To'liq manzil</label>
+            <input class="input" id="accFull" placeholder="Masalan: Chilonzor 5-mavze">
+          </div>
+          <div class="field">
+            <label class="label"><svg><use href="#i-credit"/></svg>Narx qaysi valyutada?</label>
+            <div class="cur-grid" id="curGrid"></div>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label class="label" id="priceLabel"><svg><use href="#i-wallet"/></svg>Akkauntiz narxini yozing</label>
+            <div class="input-group">
+              <div class="input-prefix" id="priceFlag">🇺🇿</div>
+              <input class="input" id="accPrice" inputmode="numeric" placeholder="400 000">
+              <div class="input-prefix" id="priceSuffix">so'm</div>
+            </div>
+            <div id="pricePreview" style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:center;font-weight:600"></div>
+          </div>
+        </div>
+
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-phone"/></svg></div>Aloqa<span style="margin-left:auto;font-size:10px;color:var(--text-4)">kamida bittasi</span></div>
+          <div class="field">
+            <label class="label"><svg><use href="#i-phone"/></svg>Telefon raqam</label>
+            <div class="input-group">
+              <div class="input-prefix">🇺🇿 +998</div>
+              <input class="input" id="accPhone" inputmode="numeric" maxlength="9" placeholder="901234567">
+            </div>
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <label class="label"><svg><use href="#i-msg"/></svg>Telegram username</label>
+            <input class="input" id="accUser" placeholder="@username" maxlength="64">
+          </div>
+        </div>
+      </div>
+
+      <div class="step-page" data-step="4">
+        <div class="hero"><h2 class="hero-title" style="font-size:20px">Tekshiring va <span class="accent">tasdiqlang</span></h2>
+          <p class="hero-sub">Ma'lumotlarni diqqat bilan ko'rib chiqing</p></div>
+        <div id="previewBox" style="margin-top:16px"></div>
+      </div>
+
+      <div style="display:flex;gap:10px;margin-top:24px">
+        <button class="btn btn-secondary" style="flex:1" id="btnBack">← Orqaga</button>
+        <button class="btn btn-primary" style="flex:2" id="btnNext">Davom etish →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MY ADS -->
+  <section class="page" id="pageMyAds">
+    <div class="container">
+      <div class="page-head">
+        <button class="icon-btn" onclick="go('pageProfile')"><svg><use href="#i-arrow-l"/></svg></button>
+        <div class="page-head-txt">
+          <h1>Reklamalarim</h1>
+          <p>Siz joylagan e'lonlar</p>
+        </div>
+        <button class="icon-btn" onclick="startCreate()"><svg><use href="#i-plus"/></svg></button>
+      </div>
+      <div id="myAdsList" class="mt-8"></div>
+    </div>
+  </section>
+
+  <!-- FEEDBACKS -->
+  <section class="page" id="pageFeedbacks">
+    <div class="container">
+      <div class="page-head">
+        <button class="icon-btn" onclick="go('pageProfile')"><svg><use href="#i-arrow-l"/></svg></button>
+        <div class="page-head-txt">
+          <h1>Otziflar</h1>
+          <p>Foydalanuvchilar fikri</p>
+        </div>
+        <button class="icon-btn" onclick="openFeedbackCompose()"><svg><use href="#i-plus"/></svg></button>
+      </div>
+      <div id="feedbacksList" class="mt-8"></div>
+    </div>
+  </section>
+
+  <!-- PROFILE -->
+  <section class="page" id="pageProfile">
+    <div class="container">
+      <div class="page-head">
+        <div class="page-head-txt">
+          <h1>Profil</h1>
+          <p>Shaxsiy hisobingiz</p>
+        </div>
+      </div>
+      <div class="profile-hero">
+        <div class="profile-hero-in">
+          <div class="profile-av" onclick="openEditAv()">
+            <div class="profile-av-in" id="profAv">U</div>
+            <div class="profile-av-badge"><svg><use href="#i-camera"/></svg></div>
+          </div>
+          <div class="profile-name" id="profName">Foydalanuvchi <span class="profile-admin hidden" id="profAdmin"><svg><use href="#i-check"/></svg></span></div>
+          <div class="profile-user" id="profUser">@username</div>
+          <div class="profile-stats">
+            <div class="pstat"><div class="pstat-val" id="profBal">0</div><div class="pstat-lbl">Balans</div></div>
+            <div class="pstat"><div class="pstat-val" id="profSpent">0</div><div class="pstat-lbl">Sarflangan</div></div>
+            <div class="pstat"><div class="pstat-val" id="profAds">0</div><div class="pstat-lbl">Reklamalar</div></div>
+          </div>
+        </div>
+      </div>
+
+      <div class="menu">
+        <button class="menu-item" onclick="openEditProfile()">
+          <div class="menu-ic"><svg><use href="#i-user"/></svg></div>
+          <div class="menu-txt"><strong>Shaxsiy ma'lumotlar</strong><span>Ism va familiya</span></div>
+          <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
+        </button>
+        <button class="menu-item" onclick="go('pageMyAds')">
+          <div class="menu-ic"><svg><use href="#i-mega"/></svg></div>
+          <div class="menu-txt"><strong>Reklamalarim</strong><span>Sizning e'lonlaringiz</span></div>
+          <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
+        </button>
+        <button class="menu-item" onclick="go('pageSaved')">
+          <div class="menu-ic"><svg><use href="#i-heart"/></svg></div>
+          <div class="menu-txt"><strong>Saqlanganlar</strong><span>Yurakcha bosilgan reklamalar</span></div>
+          <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
+        </button>
+        <button class="menu-item" onclick="go('pageFeedbacks')">
+          <div class="menu-ic"><svg><use href="#i-star"/></svg></div>
+          <div class="menu-txt"><strong>Otziflar</strong><span>Fikrlar va sharhlar</span></div>
+          <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
+        </button>
+        <button class="menu-item" onclick="openTopup()">
+          <div class="menu-ic"><svg><use href="#i-wallet"/></svg></div>
+          <div class="menu-txt"><strong>Hisobni to'ldirish</strong><span>Avtomatik to'lov</span></div>
+          <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
+        </button>
+        <button class="menu-item" onclick="advertiseBot()">
+          <div class="menu-ic"><svg><use href="#i-mega"/></svg></div>
+          <div class="menu-txt"><strong>Reklama bermoqchiman</strong><span>Bot orqali bog'lanish</span></div>
+          <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
+        </button>
+        <button class="menu-item hidden" id="adminBtn" onclick="go('pageAdmin')">
+          <div class="menu-ic" style="background:linear-gradient(135deg,rgba(59,130,246,.25),rgba(34,211,238,.15));color:#60A5FA"><svg><use href="#i-shield"/></svg></div>
+          <div class="menu-txt"><strong>Admin panel</strong><span>Boshqaruv markazi</span></div>
+          <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ADMIN -->
+  <section class="page" id="pageAdmin">
+    <div class="container">
+      <div class="page-head">
+        <button class="icon-btn" onclick="go('pageProfile')"><svg><use href="#i-arrow-l"/></svg></button>
+        <div class="page-head-txt">
+          <h1>Admin panel</h1>
+          <p>Boshqaruv markazi</p>
+        </div>
+      </div>
+      <div class="admin-stat-grid">
+        <div class="admin-stat"><div class="admin-stat-ic"><svg><use href="#i-mega"/></svg></div><div class="admin-stat-val" id="sAds">0</div><div class="admin-stat-lbl">Jami e'lonlar</div></div>
+        <div class="admin-stat"><div class="admin-stat-ic"><svg><use href="#i-users"/></svg></div><div class="admin-stat-val" id="sUsers">0</div><div class="admin-stat-lbl">Foydalanuvchi</div></div>
+        <div class="admin-stat"><div class="admin-stat-ic"><svg><use href="#i-clock"/></svg></div><div class="admin-stat-val" id="sPending">0</div><div class="admin-stat-lbl">Kutilmoqda</div></div>
+        <div class="admin-stat"><div class="admin-stat-ic"><svg><use href="#i-credit"/></svg></div><div class="admin-stat-val" id="sCards">0</div><div class="admin-stat-lbl">Kartalar</div></div>
+      </div>
+      <div class="admin-tabs">
+        <button class="admin-tab active" data-at="ads"><svg><use href="#i-mega"/></svg>E'lonlar</button>
+        <button class="admin-tab" data-at="cards"><svg><use href="#i-credit"/></svg>Kartalar</button>
+        <button class="admin-tab" data-at="users"><svg><use href="#i-users"/></svg>Users</button>
+        <button class="admin-tab" data-at="feedbacks"><svg><use href="#i-star"/></svg>Otziflar</button>
+        <button class="admin-tab" data-at="userbot"><svg><use href="#i-phone"/></svg>Userbot</button>
+        <button class="admin-tab" data-at="broadcast"><svg><use href="#i-send"/></svg>Xabar</button>
+      </div>
+      <div id="atAds"></div>
+      <div id="atCards" class="hidden"></div>
+      <div id="atUsers" class="hidden"></div>
+      <div id="atFeedbacks" class="hidden"></div>
+      <div id="atUserbot" class="hidden"></div>
+      <div id="atBroadcast" class="hidden">
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-send"/></svg></div>Barcha foydalanuvchilarga xabar</div>
+          <textarea class="textarea" id="bcastText" placeholder="Xabar matnini yozing..."></textarea>
+          <button class="btn btn-primary btn-block mt-16" onclick="sendBroadcast()">Yuborish</button>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- TOPUP -->
+  <section class="page" id="pageTopup">
+    <div class="container">
+      <div class="page-head">
+        <button class="icon-btn" onclick="closeTopup()"><svg><use href="#i-arrow-l"/></svg></button>
+        <div class="page-head-txt">
+          <h1>Hisobni to'ldirish</h1>
+          <p>Avtomatik to'lov tizimi</p>
+        </div>
+      </div>
+
+      <div id="topupStep1" class="mt-16">
+        <div class="card-box">
+          <div class="card-box-title">
+            <div class="card-box-ic"><svg><use href="#i-wallet"/></svg></div>
+            Summani kiriting
+          </div>
+          <div class="field" style="margin-bottom:0">
+            <div class="amount-wrap">
+              <input class="amount-input" id="topupAmt" inputmode="numeric" placeholder="0">
+              <span class="amount-cur">so'm</span>
+            </div>
+            <div class="quick-amounts">
+              <button class="quick-amount" data-q="5000">5 000</button>
+              <button class="quick-amount" data-q="10000">10 000</button>
+              <button class="quick-amount" data-q="25000">25 000</button>
+              <button class="quick-amount" data-q="50000">50 000</button>
+              <button class="quick-amount" data-q="100000">100 000</button>
+              <button class="quick-amount" data-q="500000">500 000</button>
+            </div>
+          </div>
+        </div>
+        <div class="pay-note">⚡ To'lov <b>5 daqiqa</b> ichida amalga oshirilishi kerak</div>
+        <button class="btn btn-primary btn-block mt-16" id="topupBtn" onclick="topupSend()" disabled>
+          <svg><use href="#i-chev-r"/></svg>
+          Davom etish
+        </button>
+      </div>
+
+      <div id="topupStep2" class="hidden">
+        <div class="pay-card">
+          <div class="pay-card-lbl">To'lov uchun karta</div>
+          <div class="pay-card-num" id="payCard">----</div>
+          <div class="pay-card-amt">Summa: <b id="payAmt">0</b></div>
+        </div>
+        <button class="btn btn-secondary btn-block mt-16" onclick="copyPayCard()">
+          <svg><use href="#i-copy"/></svg>
+          Karta raqamini nusxalash
+        </button>
+        <div class="pay-timer" id="payTimer">05:00</div>
+        <div class="pay-note">
+          ✅ Pul o'tkazgach <b>hech narsa qilish shart emas</b> — tizim avtomatik tekshiradi
+        </div>
+        <div class="card-box" style="margin-top:14px">
+          <div class="card-box-title">
+            <div class="card-box-ic"><svg><use href="#i-info"/></svg></div>
+            Qanday ishlaydi?
+          </div>
+          <div style="font-size:12.5px;color:var(--text-2);line-height:1.7">
+            1. Yuqoridagi kartaga summani o'tkazing<br>
+            2. To'lov avtomatik aniqlanadi<br>
+            3. Balansingizga qo'shiladi<br>
+            4. Sahifa yangilanadi
+          </div>
+        </div>
+        <button class="btn btn-secondary btn-block mt-16" onclick="closeTopup()">
+          <svg><use href="#i-x"/></svg>
+          Bekor qilish
+        </button>
+      </div>
+    </div>
+  </section>
+
+  <nav class="nav">
+    <div class="nav-in">
+      <button class="nav-btn active" data-nav="pageDashboard"><div class="nav-icon"><svg><use href="#i-home"/></svg></div><span>Asosiy</span></button>
+      <button class="nav-btn" data-nav="pageSaved"><div class="nav-icon"><svg><use href="#i-heart"/></svg></div><span>Saqlangan</span></button>
+      <button class="nav-btn nav-create" onclick="startCreate()"><div class="nav-icon"><svg><use href="#i-plus"/></svg></div><span>Reklama</span></button>
+      <button class="nav-btn" data-nav="pageMyAds"><div class="nav-icon"><svg><use href="#i-mega"/></svg></div><span>Reklamalarim</span></button>
+      <button class="nav-btn" data-nav="pageProfile"><div class="nav-icon"><svg><use href="#i-user"/></svg></div><span>Profil</span></button>
+    </div>
+  </nav>
+</div>
+
+<!-- MODALS -->
+<div class="modal" id="mAd">
+  <div class="modal-in">
+    <div class="modal-handle"></div>
+    <div class="modal-head"><h2>E'lon</h2><button class="modal-close" onclick="closeModal('mAd')"><svg><use href="#i-x"/></svg></button></div>
+    <div id="mAdBody"></div>
+  </div>
+</div>
+
+<div class="modal" id="mProfile">
+  <div class="modal-in">
+    <div class="modal-handle"></div>
+    <div class="modal-head"><h2>Profilni tahrirlash</h2><button class="modal-close" onclick="closeModal('mProfile')"><svg><use href="#i-x"/></svg></button></div>
+    <div class="field"><label class="label"><svg><use href="#i-user"/></svg>Ism</label><input class="input" id="pFirst" placeholder="Ismingiz"></div>
+    <div class="field"><label class="label"><svg><use href="#i-user"/></svg>Familiya</label><input class="input" id="pLast" placeholder="Familiyangiz"></div>
+    <button class="btn btn-primary btn-block" onclick="saveProfile()">Saqlash</button>
+  </div>
+</div>
+
+<div class="modal" id="mFeedback">
+  <div class="modal-in">
+    <div class="modal-handle"></div>
+    <div class="modal-head"><h2>Otzif qoldirish</h2><button class="modal-close" onclick="closeModal('mFeedback')"><svg><use href="#i-x"/></svg></button></div>
+    <div class="field">
+      <label class="label"><svg><use href="#i-star"/></svg>Baho</label>
+      <div class="rate-row" id="fbStars">
+        <button class="rate-btn" data-r="1"><svg><use href="#i-star"/></svg></button>
+        <button class="rate-btn" data-r="2"><svg><use href="#i-star"/></svg></button>
+        <button class="rate-btn" data-r="3"><svg><use href="#i-star"/></svg></button>
+        <button class="rate-btn" data-r="4"><svg><use href="#i-star"/></svg></button>
+        <button class="rate-btn" data-r="5"><svg><use href="#i-star"/></svg></button>
+      </div>
+    </div>
+    <div class="field"><label class="label"><svg><use href="#i-msg"/></svg>Fikringiz</label><textarea class="textarea" id="fbText" placeholder="Bot haqida fikringizni yozing..."></textarea></div>
+    <button class="btn btn-primary btn-block" onclick="submitFeedback()">Yuborish</button>
+  </div>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+<div class="load" id="loadOverlay"><div class="spin"></div></div>
+
+<script>
+// =========================================================
+// CONFIG
+// =========================================================
+const API_URL = "https://cardinalgithub-production.up.railway.app";
+const BOT_LINK = "https://t.me/CardinalReklama_Bot";
+const USERBOT_BOT = "CardXabarBot";
+
+// =========================================================
+// STATE
+// =========================================================
+const tg = window.Telegram?.WebApp;
+let TOKEN = null;
+let USER = null;
+let IS_ADMIN = false;
+let S = {
+  balance:0, spent:0, avatar:"",
+  ads:[], saved:[], myAds:[], feedbacks:[],
+  category:"ALL",
+  step:1, tariff:null, videoData:null,
+  linked:[], currency:"UZS",
+  topupTimer:null, topupPoll:null,
+  fbRating:5,
+};
+let UB_PHONE = null;
+let _videoObserver = null;
+
+// =========================================================
+// HELPERS
+// =========================================================
+const $ = id => document.getElementById(id);
+const svg = (id, cls="") => `<svg class="${cls}"><use href="#${id}"/></svg>`;
+const esc = s => !s ? "" : String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
+const num = n => (Number(n)||0).toLocaleString("uz-UZ");
+
+function show(){ $("loadOverlay").classList.add("active") }
+function hide(){ $("loadOverlay").classList.remove("active") }
+
+function toast(msg, type="info"){
+  const w = $("toastWrap");
+  const t = document.createElement("div");
+  t.className = "toast " + type;
+  const ic = type==="success" ? "i-check-circle" : type==="error" ? "i-info" : "i-info";
+  t.innerHTML = `${svg(ic)}<span>${esc(msg)}</span>`;
+  w.appendChild(t);
+  setTimeout(() => t.remove(), 3200);
+}
+
+function openModal(id){ $(id).classList.add("active"); document.body.style.overflow = "hidden" }
+function closeModal(id){ $(id).classList.remove("active"); document.body.style.overflow = "" }
+
+async function api(path, method="GET", body=null, auth=true){
+  const h = {"Content-Type":"application/json"};
+  if(auth && TOKEN) h["Authorization"] = "Bearer " + TOKEN;
+  const opts = { method, headers:h };
+  if(body) opts.body = JSON.stringify(body);
+  const r = await fetch(API_URL + path, opts);
+  const d = await r.json().catch(() => ({}));
+  if(!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+  return d;
+}
+
+const CURRENCIES = [
+  {code:"UZS", flag:"🇺🇿", name:"So'm", sym:"so'm", label:"Akkauntiz narxini yozing", placeholder:"400 000"},
+  {code:"USD", flag:"🇺🇸", name:"Dollar", sym:"$", label:"Akkauntiz narxini yozing", placeholder:"80"},
+  {code:"RUB", flag:"🇷🇺", name:"Rubl", sym:"₽", label:"Akkauntiz narxini yozing", placeholder:"7 500"},
+];
+
+function getCur(code){ return CURRENCIES.find(c => c.code === code) || CURRENCIES[0] }
+
+function fmtPrice(price, cur="UZS"){
+  const c = getCur(cur);
+  const n = Number(price)||0;
+  if(c.code === "UZS") return `${num(n)} so'm`;
+  if(c.code === "USD") return `${n}$`;
+  if(c.code === "RUB") return `${num(n)} ₽`;
+  return `${num(n)} ${c.sym}`;
+}
+
+function go(pageId){
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === pageId));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.nav === pageId));
+  window.scrollTo({top:0, behavior:"smooth"});
+  if(pageId === "pageDashboard") renderAds();
+  if(pageId === "pageSaved") renderSaved();
+  if(pageId === "pageMyAds") renderMyAds();
+  if(pageId === "pageProfile") renderProfile();
+  if(pageId === "pageAdmin") renderAdmin();
+  if(pageId === "pageFeedbacks") renderFeedbacks();
+}
+
+function formatTime(dateStr){
+  if(!dateStr) return "";
+  try{
+    const d = new Date(dateStr);
+    const now = new Date();
+    const diff = Math.floor((now - d) / 1000);
+    if(diff < 60) return "hozir";
+    if(diff < 3600) return `${Math.floor(diff/60)} daqiqa oldin`;
+    if(diff < 86400) return `${Math.floor(diff/3600)} soat oldin`;
+    if(diff < 604800) return `${Math.floor(diff/86400)} kun oldin`;
+    return d.toLocaleDateString("uz-UZ");
+  } catch { return "" }
+}
+
+// =========================================================
+// VIDEO OBSERVER (WebView crash oldini olish)
+// =========================================================
+function setupVideoObserver(){
+  if(!window.IntersectionObserver) return;
+  // Eski observerni tozalash
+  if(_videoObserver){
+    try { _videoObserver.disconnect(); } catch(e){}
+  }
+  _videoObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      const v = entry.target;
+      if(entry.isIntersecting){
+        // Faqat ekranga kirganda yuklash
+        if(v.dataset.loaded !== "1"){
+          v.dataset.loaded = "1";
+          try {
+            v.preload = "metadata";
+            const p = v.play();
+            if(p && p.catch) p.catch(() => {});
+          } catch(e){}
+        } else {
+          try { v.play().catch(() => {}); } catch(e){}
+        }
+      } else {
+        // Ekrandan chiqqanda to'xtatish — xotira tejash
+        try { v.pause(); } catch(e){}
+      }
+    });
+  }, { threshold: 0.3, rootMargin: "50px" });
+
+  document.querySelectorAll(".ad-media video").forEach(v => {
+    if(!v.dataset.loaded) v.dataset.loaded = "0";
+    _videoObserver.observe(v);
+  });
+}
+
+// =========================================================
+// AUTH
+// =========================================================
+async function initAuth(){
+  if(!tg || !tg.initDataUnsafe?.user){
+    toast("Telegram WebApp da oching", "error");
+    return;
+  }
+  const u = tg.initDataUnsafe.user;
+  show();
+  try{
+    const r = await api("/api/auth/telegram", "POST", {
+      init_data: tg.initData || "",
+      user: {
+        id: u.id,
+        username: u.username || null,
+        first_name: u.first_name || "",
+        last_name: u.last_name || "",
+      }
+    }, false);
+    TOKEN = r.access_token;
+    USER = r.user;
+    IS_ADMIN = !!r.user.is_admin;
+    S.balance = r.user.balance || 0;
+    S.spent = r.user.spent || 0;
+    S.avatar = r.user.avatar || "";
+    updateTopbar();
+    if(IS_ADMIN) $("adminBtn").classList.remove("hidden");
+  }catch(e){
+    toast("Kirishda xatolik: " + e.message, "error");
+  }
+  hide();
+}
+
+function updateTopbar(){
+  $("balVal").innerText = num(S.balance);
+  if(USER){
+    $("brandN").innerText = USER.first_name || "Foydalanuvchi";
+    $("brandS").innerText = USER.last_name || "Cardinal";
+    if(S.avatar){
+      $("brandAv").innerHTML = `<img src="${S.avatar}" alt="">`;
+    }else{
+      $("brandAv").innerText = (USER.first_name || "C").slice(0,1).toUpperCase();
+    }
+  }
+}
+
+// =========================================================
+// ADS
+// =========================================================
+async function loadAds(){
+  try{
+    const url = USER ? `/api/ads?telegram_id=${USER.telegram_id}` : "/api/ads";
+    S.ads = await api(url, "GET", null, false);
+  }catch(e){ S.ads = [] }
+}
+
+function renderAds(){
+  const g = $("gridAds");
+  const arr = S.ads.filter(a => S.category === "ALL" || a.ad_type === S.category);
+  if(!arr.length){
+    g.innerHTML = `<div class="empty"><div class="empty-icon">${svg("i-mega")}</div><h3>Reklama topilmadi</h3><p>Hozircha bu bo'limda reklamalar yo'q</p></div>`;
+    return;
+  }
+  g.innerHTML = arr.map(adCard).join("");
+  setTimeout(setupVideoObserver, 100);
+}
+
+function adCard(a){
+  const acc = a.account_data || {};
+  const badge = a.ad_type==="PREMIUM" ? {c:"vip", t:"VIP", i:"i-crown"} :
+                a.ad_type==="RARE" ? {c:"rare", t:"NOYOB", i:"i-fire"} :
+                {c:"std", t:"STANDARD", i:"i-mega"};
+  const isSaved = a.is_saved === true;
+  const isTop = a.top_until && new Date(a.top_until) > new Date();
+  return `
+    <article class="ad" onclick="openAd(${a.id})">
+      <div class="ad-media">
+        ${a.video_file_id
+          ? `<video src="${API_URL}/api/ad/${a.id}/video" muted playsinline preload="none" data-loaded="0" onerror="this.style.display='none'"></video>`
+          : `<div class="placeholder">${svg("i-play")}</div>`
+        }
+        <div class="ad-badge ${badge.c}">${svg(badge.i)}${badge.t}</div>
+        <button class="ad-heart ${isSaved?'saved':''}" onclick="event.stopPropagation();toggleSave(${a.id}, this)">${svg("i-heart")}</button>
+        ${isTop ? `<div class="ad-top">${svg("i-zap")}TOP</div>` : ""}
+      </div>
+      <div class="ad-body">
+        <div class="ad-title">PUBG · ${esc(acc.level||"?")} LVL</div>
+        <div class="ad-meta">${svg("i-map")}${esc(a.location||"-")}</div>
+        <div class="ad-price">${fmtPrice(a.price, a.currency)}</div>
+      </div>
+    </article>
+  `;
+}
+
+// =========================================================
+// AD DETAIL
+// =========================================================
+async function openAd(id){
+  show();
+  try{
+    const a = await api(`/api/ad/${id}${USER ? "?telegram_id="+USER.telegram_id : ""}`, "GET", null, false);
+    const acc = a.account_data || {};
+    const cur = a.currency || "UZS";
+    const isSaved = a.is_saved === true;
+
+    const linked = Array.isArray(acc.linked) ? acc.linked : [];
+    const linkNames = {google:"Google", facebook:"Facebook", twitter:"Twitter/X", vk:"VKontakte", email:"Email", phone:"Telefon", apple:"Apple ID", discord:"Discord"};
+    const linkedTxt = linked.map(x => linkNames[x] || x).join(", ") || "-";
+
+    const skins = Array.isArray(acc.rare_skins) ? acc.rare_skins : [];
+    const xc = Array.isArray(acc.x_costume) ? acc.x_costume : [];
+    const guns = Array.isArray(acc.guns) ? acc.guns : [];
+    const cars = Array.isArray(acc.supar_car) ? acc.supar_car : [];
+
+    let html = "";
+    if(a.video_file_id){
+      html += `<video class="detail-video" src="${API_URL}/api/ad/${a.id}/video" controls playsinline preload="metadata"></video>`;
+    }
+    html += `<h2 class="detail-title">PUBG Mobile · ${esc(acc.level||"?")} LVL</h2>`;
+    html += `<div class="detail-price">${fmtPrice(a.price, cur)}</div>`;
+    html += `<div class="detail-actions">
+      <button class="detail-heart ${isSaved?'saved':''}" id="detailHeart" onclick="toggleSaveDetail(${a.id})">${svg("i-heart")}</button>
+      <button class="btn btn-primary" onclick="advertiseBot()">${svg("i-mega")}Sotuvchi bilan bog'lanish</button>
+    </div>`;
+
+    html += `<div class="detail-section">
+      <div class="detail-section-title"><span class="icon-sm">${svg("i-lvl")}</span>Asosiy ma'lumotlar</div>
+      <div class="detail-info-row"><span class="k">${svg("i-lvl")}LVL</span><span class="v">${esc(acc.level||"-")}</span></div>
+      <div class="detail-info-row"><span class="k">${svg("i-target")}Kolleksiya</span><span class="v">${esc(acc.collection||"-")}</span></div>
+      <div class="detail-info-row"><span class="k">${svg("i-award")}RP</span><span class="v">${esc(acc.rp||"-")}</span></div>
+      <div class="detail-info-row"><span class="k">${svg("i-shirt")}Mifik kiyimlar</span><span class="v">${num(acc.mythic_clothes||0)} ta</span></div>
+    </div>`;
+
+    if(skins.length){
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${svg("i-fire")}</span>Redkiy skinlar<span class="count">${skins.length}</span></div>
+        <div class="detail-list">${skins.map(s => `<div class="detail-item">${svg("i-fire")}${esc(s)}</div>`).join("")}</div>
+      </div>`;
+    }
+    if(xc.length){
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${svg("i-gift")}</span>X-KOSTYUM<span class="count">${xc.length}</span></div>
+        <div class="detail-list">${xc.map(s => `<div class="detail-item">${svg("i-gift")}${esc(s)}</div>`).join("")}</div>
+      </div>`;
+    }
+    if(guns.length || acc.guns_count){
+      const count = acc.guns_count || guns.length;
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${svg("i-target")}</span>Kuchaytirilgan qurollar<span class="count">${count}</span></div>
+        ${guns.length ? `<div class="detail-list">${guns.map(s => `<div class="detail-item">${svg("i-target")}${esc(s)}</div>`).join("")}</div>` : ""}
+      </div>`;
+    }
+    if(cars.length){
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${svg("i-car")}</span>SUPAR-CAR<span class="count">${cars.length}</span></div>
+        <div class="detail-list">${cars.map(s => `<div class="detail-item">${svg("i-car")}${esc(s)}</div>`).join("")}</div>
+      </div>`;
+    }
+
+    html += `<div class="detail-section">
+      <div class="detail-section-title"><span class="icon-sm">${svg("i-info")}</span>Qo'shimcha</div>
+      <div class="detail-info-row"><span class="k">${svg("i-link")}Ulangan</span><span class="v">${esc(linkedTxt)}</span></div>
+      <div class="detail-info-row"><span class="k">${svg("i-map")}Manzil</span><span class="v">${esc(a.location||"-")}</span></div>
+      ${a.full_location ? `<div class="detail-info-row"><span class="k">${svg("i-map")}To'liq</span><span class="v">${esc(a.full_location)}</span></div>` : ""}
+      ${acc.phone ? `<div class="detail-info-row"><span class="k">${svg("i-phone")}Telefon</span><span class="v">+998 ${esc(acc.phone)}</span></div>` : ""}
+      ${acc.username ? `<div class="detail-info-row"><span class="k">${svg("i-msg")}Telegram</span><span class="v"><a href="https://t.me/${esc(acc.username.replace("@",""))}" target="_blank" style="color:#60A5FA">${esc(acc.username)}</a></span></div>` : ""}
+    </div>`;
+
+    $("mAdBody").innerHTML = html;
+    openModal("mAd");
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+function toggleSaveDetail(id){
+  const btn = $("detailHeart");
+  if(!btn) return;
+  toggleSave(id, btn, true);
+}
+
+async function toggleSave(adId, btn){
+  if(!USER) return;
+  try{
+    const r = await api("/api/toggle-save", "POST", {
+      ad_id: adId, telegram_id: USER.telegram_id
+    });
+    if(btn) btn.classList.toggle("saved", r.saved);
+
+    const find = (arr) => arr.find(x => x.id === adId);
+    const update = (a) => { if(a) a.is_saved = r.saved };
+    update(find(S.ads));
+    update(find(S.saved));
+
+    if(r.saved){
+      toast("❤️ Saqlandi", "success");
+      const ad = find(S.ads) || find(S.saved);
+      if(ad && !find(S.saved)) S.saved.unshift({...ad, is_saved:true});
+    }else{
+      toast("Saqlanganlardan olib tashlandi");
+      S.saved = S.saved.filter(x => x.id !== adId);
+    }
+    renderAds();
+    renderSaved();
+  }catch(e){
+    toast(e.message, "error");
+  }
+}
+
+// =========================================================
+// SAVED
+// =========================================================
+async function loadSaved(){
+  if(!USER) return;
+  try{ S.saved = await api(`/api/saved-ads/${USER.telegram_id}`) }
+  catch(e){ S.saved = [] }
+}
+
+function renderSaved(){
+  const g = $("gridSaved");
+  if(!S.saved.length){
+    g.innerHTML = `<div class="empty">
+      <div class="empty-icon">${svg("i-heart")}</div>
+      <h3>Saqlanganlar yo'q</h3>
+      <p>Reklamadagi yurakchani bosib saqlang</p>
+    </div>`;
+    return;
+  }
+  g.innerHTML = S.saved.map(a => adCard({...a, is_saved:true})).join("");
+  setTimeout(setupVideoObserver, 100);
+}
+
+// =========================================================
+// PROFILE
+// =========================================================
+function renderProfile(){
+  if(!USER) return;
+  $("profName").innerHTML = (esc(USER.first_name||"") + " " + esc(USER.last_name||"")).trim() + 
+    (IS_ADMIN ? ` <span class="profile-admin">${svg("i-check")}</span>` : "");
+  $("profUser").innerText = USER.username ? "@" + USER.username : (USER.phone ? "+998 " + USER.phone : "@username");
+  $("profBal").innerText = num(S.balance);
+  $("profSpent").innerText = num(S.spent);
+  $("profAds").innerText = S.myAds.length;
+  if(S.avatar) $("profAv").innerHTML = `<img src="${S.avatar}" alt="">`;
+  else $("profAv").innerText = (USER.first_name || "U").slice(0,1).toUpperCase();
+}
+
+function openEditProfile(){
+  $("pFirst").value = USER?.first_name || "";
+  $("pLast").value = USER?.last_name || "";
+  openModal("mProfile");
+}
+
+async function saveProfile(){
+  const f = $("pFirst").value.trim();
+  const l = $("pLast").value.trim();
+  if(!f){ toast("Ismingizni kiriting", "error"); return }
+  show();
+  try{
+    await api("/api/update-profile", "POST", {
+      telegram_id: USER.telegram_id, first_name: f, last_name: l
+    });
+    USER.first_name = f; USER.last_name = l;
+    updateTopbar(); renderProfile();
+    closeModal("mProfile");
+    toast("Profil saqlandi", "success");
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+function openEditAv(){
+  const input = document.createElement("input");
+  input.type = "file"; input.accept = "image/*";
+  input.onchange = async (e) => {
+    const f = e.target.files[0];
+    if(!f) return;
+    if(f.size > 2 * 1024 * 1024){ toast("Rasm 2 MB dan kichik", "error"); return }
+    const r = new FileReader();
+    r.onload = async ev => {
+      show();
+      try{
+        await api("/api/update-profile", "POST", {
+          telegram_id: USER.telegram_id,
+          first_name: USER.first_name,
+          last_name: USER.last_name,
+          avatar: ev.target.result
+        });
+        S.avatar = ev.target.result;
+        updateTopbar(); renderProfile();
+        toast("Rasm saqlandi", "success");
+      }catch(err){ toast(err.message, "error") }
+      hide();
+    };
+    r.readAsDataURL(f);
+  };
+  input.click();
+}
+
+// =========================================================
+// FEEDBACKS
+// =========================================================
+async function loadFeedbacks(){
+  try{ S.feedbacks = await api("/api/feedbacks", "GET", null, false) }
+  catch(e){ S.feedbacks = [] }
+}
+
+function renderFeedbacks(){
+  const c = $("feedbacksList");
+  if(!S.feedbacks.length){
+    c.innerHTML = `<div class="empty">
+      <div class="empty-icon">${svg("i-star")}</div>
+      <h3>Hali otziflar yo'q</h3>
+      <p>Birinchi bo'lib fikr qoldiring</p>
+      <button class="btn btn-primary mt-16" onclick="openFeedbackCompose()">${svg("i-plus")}Otzif qoldirish</button>
+    </div>`;
+    return;
+  }
+  c.innerHTML = S.feedbacks.map(fb => feedbackCard(fb, IS_ADMIN)).join("");
+}
+
+function feedbackCard(fb, showDelete){
+  const stars = Array(5).fill(0).map((_, i) =>
+    `<svg style="${i < (fb.rating||5) ? 'fill:#FBBF24;stroke:#FBBF24' : 'fill:none;stroke:#6B7A94'}" viewBox="0 0 24 24" stroke-width="2"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>`
+  ).join("");
+  return `
+    <div class="feedback-card">
+      <div class="feedback-head">
+        <div class="feedback-av">${fb.avatar ? `<img src="${fb.avatar}">` : (fb.first_name||"U")[0].toUpperCase()}</div>
+        <div style="flex:1;min-width:0">
+          <div class="feedback-name">${esc(fb.first_name||"Foydalanuvchi")} ${esc(fb.last_name||"")}
+            ${fb.is_admin ? `<span class="feedback-admin">${svg("i-check")}</span>` : ""}
+          </div>
+          <div class="feedback-time">${formatTime(fb.created_at)}</div>
+        </div>
+        ${showDelete ? `<button class="feedback-del" onclick="deleteFeedback(${fb.id})">${svg("i-trash")}</button>` : ""}
+      </div>
+      <div class="feedback-stars">${stars}</div>
+      <div class="feedback-text">${esc(fb.text)}</div>
+    </div>
+  `;
+}
+
+function openFeedbackCompose(){
+  S.fbRating = 5;
+  updateFbStars();
+  $("fbText").value = "";
+  openModal("mFeedback");
+}
+
+function updateFbStars(){
+  document.querySelectorAll("#fbStars .rate-btn").forEach(b => {
+    b.classList.toggle("on", +b.dataset.r <= S.fbRating);
+  });
+}
+
+document.querySelectorAll("#fbStars .rate-btn").forEach(b => {
+  b.onclick = () => { S.fbRating = +b.dataset.r; updateFbStars() };
+});
+
+async function submitFeedback(){
+  const t = $("fbText").value.trim();
+  if(!t){ toast("Fikr yozing", "error"); return }
+  show();
+  try{
+    await api("/api/feedbacks/add", "POST", {
+      telegram_id: USER.telegram_id, text: t, rating: S.fbRating
+    });
+    toast("Rahmat! Fikringiz qabul qilindi", "success");
+    closeModal("mFeedback");
+    await loadFeedbacks();
+    renderFeedbacks();
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+async function deleteFeedback(id){
+  if(!confirm("Otzifni o'chirish?")) return;
+  show();
+  try{
+    await api("/api/admin/delete-feedback", "POST", { feedback_id: id });
+    toast("O'chirildi", "success");
+    await loadFeedbacks();
+    renderFeedbacks();
+    if($("pageAdmin").classList.contains("active")) renderAdmin();
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+// =========================================================
+// CREATE AD
+// =========================================================
+const LINKED_OPTIONS = [
+  {id:"google", name:"Google", icon:"🔍"},
+  {id:"facebook", name:"Facebook", icon:"📘"},
+  {id:"twitter", name:"Twitter/X", icon:"𝕏"},
+  {id:"vk", name:"VK", icon:"🔵"},
+  {id:"email", name:"Email", icon:"✉️"},
+  {id:"phone", name:"Telefon", icon:"📞"},
+  {id:"apple", name:"Apple ID", icon:"🍎"},
+  {id:"discord", name:"Discord", icon:"🎮"},
+];
+
+const REGIONS = ["Toshkent","Samarqand","Buxoro","Namangan","Andijon","Farg'ona","Qashqadaryo","Surxondaryo","Xorazm","Navoiy","Jizzax","Sirdaryo","Toshkent viloyati","Qoraqalpog'iston"];
+
+const TARIFFS = [
+  {id:1, name:"STANDART", price:9000, desc:"Faqat Web App'da chiqadi", badge:null,
+   feats:[["yes","Web App'da joylash"],["yes","7 kun faol"],["no","Kanalga chiqmaydi"],["no","TOP'da turmaydi"]]},
+  {id:2, name:"KANAL", price:19000, desc:"Faqat kanalda chiqadi", badge:null,
+   feats:[["yes","Kanalga joylash"],["yes","7 kun kanalda"],["no","Web App'da chiqmaydi"],["no","TOP'da turmaydi"]]},
+  {id:3, name:"RARE 10%", price:25000, desc:"Kanal + Web App + 10% skidka", badge:{t:"RARE", c:"rare"},
+   feats:[["yes","Web App'da joylash"],["yes","Kanalga joylash"],["yes","10% skidka keyingi"],["yes","7 kun faol"]]},
+  {id:4, name:"PREMIUM VIP", price:29000, desc:"Kanal + Web App + 48 soat TOP", badge:{t:"VIP", c:"vip"},
+   feats:[["yes","Web App'da joylash"],["yes","Kanalga joylash"],["yes","48 soat TOP'da"],["yes","7 kun faol"]]},
+];
+
+function renderTariffs(){
+  $("tariffList").innerHTML = TARIFFS.map(t => `
+    <div class="tariff" data-t="${t.id}">
+      ${t.badge ? `<div class="tariff-tag ${t.badge.c}">${t.badge.t}</div>` : ""}
+      <div class="tariff-head">
+        <div>
+          <div class="tariff-name">${t.name}</div>
+          <div class="tariff-desc">${t.desc}</div>
+        </div>
+        <div class="tariff-price">
+          <div class="tariff-price-val">${num(t.price)}</div>
+          <div class="tariff-price-lbl">so'm · 7 kun</div>
+        </div>
+      </div>
+      <div class="tariff-feats">
+        ${t.feats.map(f => `
+          <div class="feat ${f[0]}">
+            <div class="feat-ic">${svg(f[0]==="yes"?"i-check":"i-x")}</div>
+            <span>${f[1]}</span>
+          </div>
+        `).join("")}
+      </div>
+    </div>
+  `).join("");
+  $("tariffList").querySelectorAll(".tariff").forEach(el => {
+    el.onclick = () => {
+      $("tariffList").querySelectorAll(".tariff").forEach(x => x.classList.remove("selected"));
+      el.classList.add("selected");
+      S.tariff = +el.dataset.t;
+      setTimeout(nextStep, 250);
+    };
+  });
+}
+
+function renderLinked(){
+  $("linkedGrid").innerHTML = LINKED_OPTIONS.map(l => `
+    <button class="chip" data-l="${l.id}">
+      <div class="chip-check">${svg("i-check")}</div>
+      <div class="chip-icon">${l.icon}</div>
+      <div>${l.name}</div>
+    </button>
+  `).join("");
+  $("linkedGrid").querySelectorAll(".chip").forEach(c => {
+    c.onclick = () => {
+      const id = c.dataset.l;
+      if(S.linked.includes(id)){ S.linked = S.linked.filter(x => x !== id); c.classList.remove("active") }
+      else{ S.linked.push(id); c.classList.add("active") }
+    };
+  });
+}
+
+function renderCurrencies(){
+  $("curGrid").innerHTML = CURRENCIES.map(c => `
+    <div class="cur ${c.code===S.currency?'active':''}" data-cur="${c.code}">
+      <div class="cur-flag">${c.flag}</div>
+      <div class="cur-name">${c.name}</div>
+      <div class="cur-sym">${c.sym}</div>
+    </div>
+  `).join("");
+  $("curGrid").querySelectorAll(".cur").forEach(c => {
+    c.onclick = () => {
+      $("curGrid").querySelectorAll(".cur").forEach(x => x.classList.remove("active"));
+      c.classList.add("active");
+      S.currency = c.dataset.cur;
+      updatePriceUI();
+    };
+  });
+  updatePriceUI();
+}
+
+function updatePriceUI(){
+  const c = getCur(S.currency);
+  $("priceFlag").innerText = c.flag;
+  $("priceSuffix").innerText = c.sym;
+  $("priceLabel").innerHTML = `${svg("i-wallet")}${c.label}`;
+  const inp = $("accPrice");
+  if(inp) inp.placeholder = c.placeholder;
+  updatePricePreview();
+}
+
+function updatePricePreview(){
+  const v = +($("accPrice")?.value.replace(/\D/g,"")) || 0;
+  if(v > 0){
+    $("pricePreview").innerText = `Ko'rinishi: ${fmtPrice(v, S.currency)}`;
+  } else {
+    $("pricePreview").innerText = "";
+  }
+}
+
+function addDyn(listId, cls, ph){
+  const c = $(listId);
+  if(!c) return;
+  if(c.children.length >= 25){ toast("Maksimal 25 ta", "error"); return }
+  const d = document.createElement("div");
+  d.className = "dyn-row";
+  d.innerHTML = `
+    <input class="input ${cls}" placeholder="${ph}">
+    <button class="dyn-del" onclick="this.parentElement.remove()">${svg("i-trash")}</button>
+  `;
+  c.appendChild(d);
+}
+
+function startCreate(){
+  S.step = 1; S.tariff = null; S.videoData = null;
+  S.linked = []; S.currency = "UZS";
+  ["accLevel","accColl","accRP","accMythic","gunsCount","accFull","accPrice","accPhone","accUser"].forEach(id => {
+    const el = $(id); if(el) el.value = "";
+  });
+  ["skinsList","xcList","gunsList","carList"].forEach(id => { const el = $(id); if(el) el.innerHTML = "" });
+  $("videoPreview").innerHTML = "";
+  $("videoInput").value = "";
+  renderTariffs();
+  renderLinked();
+  renderCurrencies();
+  renderSteps();
+  addDyn("skinsList", "skin-input", "Masalan: M416 Glacier");
+  addDyn("gunsList", "gun-input", "Masalan: AKM Glacier");
+  go("pageCreate");
+}
+
+function renderSteps(){
+  $("steps").innerHTML = [1,2,3,4].map(i => `<div class="step ${i<=S.step?'active':''}"></div>`).join("");
+  document.querySelectorAll(".step-page").forEach(s => s.classList.toggle("active", +s.dataset.step === S.step));
+  $("btnBack").innerHTML = S.step === 1 ? `${svg("i-x")}Bekor` : `${svg("i-arrow-l")}Orqaga`;
+  $("btnNext").innerHTML = S.step === 4 ? `${svg("i-check")}Tasdiqlash` : `Davom etish${svg("i-chev-r")}`;
+}
+
+function validateStep(){
+  if(S.step === 1 && !S.tariff){ toast("Tarifni tanlang", "error"); return false }
+  if(S.step === 2 && !S.videoData){ toast("Video yuklang", "error"); return false }
+  if(S.step === 3){
+    for(const id of ["accLevel","accColl","accRP","accPrice"]){
+      if(!$(id).value.trim()){ toast("Majburiy maydonlarni to'ldiring", "error"); $(id).focus(); return false }
+    }
+    const coll = +$("accColl").value || 0;
+    if(coll > 101){ toast("Kolleksiya max 101", "error"); return false }
+    const phone = $("accPhone").value.trim();
+    const un = $("accUser").value.trim();
+    if(!phone && !un){ toast("Telefon yoki username kiriting", "error"); return false }
+    if(phone && !/^\d{9}$/.test(phone)){ toast("Telefon 9 xonali bo'lishi kerak", "error"); return false }
+  }
+  return true;
+}
+
+function nextStep(){
+  if(!validateStep()) return;
+  if(S.step === 4){ submitAd(); return }
+  S.step++;
+  if(S.step === 4) renderPreview();
+  renderSteps();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+function prevStep(){
+  if(S.step === 1){ go("pageDashboard"); return }
+  S.step--;
+  renderSteps();
+  window.scrollTo({top:0, behavior:"smooth"});
+}
+
+$("videoInput").addEventListener("change", e => {
+  const f = e.target.files[0];
+  if(!f) return;
+  if(!f.type.startsWith("video/")){ toast("Faqat video", "error"); return }
+  if(f.size > 200*1024*1024){ toast("Max 200 MB", "error"); return }
+  const v = document.createElement("video");
+  v.preload = "metadata";
+  v.onloadedmetadata = () => {
+    URL.revokeObjectURL(v.src);
+    if(v.duration/60 > 10){ toast("Video max 10 daqiqa", "error"); return }
+    const r = new FileReader();
+    r.onload = ev => {
+      S.videoData = ev.target.result;
+      $("videoPreview").innerHTML = `
+        <video class="preview-video" src="${ev.target.result}" controls playsinline></video>
+        <button class="btn btn-secondary btn-block mt-8" onclick="removeVideo()">${svg("i-trash")}Videoni o'chirish</button>
+      `;
+      toast("Video yuklandi", "success");
+    };
+    r.readAsDataURL(f);
+  };
+  v.onerror = () => toast("Video o'qilmadi", "error");
+  v.src = URL.createObjectURL(f);
+});
+
+function removeVideo(){
+  S.videoData = null;
+  $("videoPreview").innerHTML = "";
+  $("videoInput").value = "";
+}
+
+function collectAd(){
+  return {
+    level: $("accLevel").value.trim(),
+    collection: $("accColl").value.trim(),
+    rp: $("accRP").value.trim(),
+    mythic_clothes: $("accMythic").value.trim() || "0",
+    rare_skins: [...document.querySelectorAll(".skin-input")].map(i => i.value.trim()).filter(Boolean),
+    x_costume: [...document.querySelectorAll(".xc-input")].map(i => i.value.trim()).filter(Boolean),
+    guns: [...document.querySelectorAll(".gun-input")].map(i => i.value.trim()).filter(Boolean),
+    guns_count: $("gunsCount").value.trim() || "0",
+    supar_car: [...document.querySelectorAll(".car-input")].map(i => i.value.trim()).filter(Boolean),
+    linked: S.linked,
+    phone: $("accPhone").value.trim(),
+    username: $("accUser").value.trim(),
+  };
+}
+
+function renderPreview(){
+  const acc = collectAd();
+  const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
+  $("previewBox").innerHTML = `
+    <div class="card-box">
+      ${S.videoData ? `<video class="detail-video" src="${S.videoData}" controls playsinline></video>` : ""}
+      <h2 class="detail-title" style="font-size:18px;margin-top:8px">PUBG Mobile · ${esc(acc.level)} LVL</h2>
+      <div class="detail-price" style="font-size:22px">${fmtPrice(price, S.currency)}</div>
+      <div class="detail-info-row"><span class="k">${svg("i-target")}Kolleksiya</span><span class="v">${esc(acc.collection)}</span></div>
+      <div class="detail-info-row"><span class="k">${svg("i-award")}RP</span><span class="v">${esc(acc.rp)}</span></div>
+      <div class="detail-info-row"><span class="k">${svg("i-shirt")}Mifik</span><span class="v">${num(acc.mythic_clothes)} ta</span></div>
+      ${acc.rare_skins.length ? `<div class="detail-info-row"><span class="k">${svg("i-fire")}Skinlar</span><span class="v">${acc.rare_skins.length} ta</span></div>` : ""}
+      ${acc.x_costume.length ? `<div class="detail-info-row"><span class="k">${svg("i-gift")}X-KOSTYUM</span><span class="v">${acc.x_costume.length} ta</span></div>` : ""}
+      ${acc.guns.length ? `<div class="detail-info-row"><span class="k">${svg("i-target")}Qurollar</span><span class="v">${acc.guns_count||acc.guns.length} ta</span></div>` : ""}
+      ${acc.supar_car.length ? `<div class="detail-info-row"><span class="k">${svg("i-car")}SUPAR-CAR</span><span class="v">${acc.supar_car.length} ta</span></div>` : ""}
+      <div class="detail-info-row"><span class="k">${svg("i-map")}Manzil</span><span class="v">${esc($("accRegion").value)}</span></div>
+      ${acc.phone ? `<div class="detail-info-row"><span class="k">${svg("i-phone")}Telefon</span><span class="v">+998 ${esc(acc.phone)}</span></div>` : ""}
+      ${acc.username ? `<div class="detail-info-row"><span class="k">${svg("i-msg")}Telegram</span><span class="v">${esc(acc.username)}</span></div>` : ""}
+    </div>
+  `;
+}
+
+async function submitAd(){
+  const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
+  if(price <= 0){ toast("Narx noto'g'ri", "error"); return }
+  show();
+  try{
+    const acc = collectAd();
+    const adData = {
+      title: `PUBG Mobile - ${acc.level} LVL`,
+      video_url: S.videoData,
+      price: price,
+      currency: S.currency,
+      location: $("accRegion").value,
+      full_location: $("accFull").value.trim(),
+      tariff: S.tariff,
+      account_data: acc,
+    };
+    const r = await api("/api/create-ad", "POST", {
+      telegram_id: USER.telegram_id,
+      ad_data: adData,
+    });
+    S.balance -= r.paid;
+    updateTopbar();
+    toast("Reklama yuborildi! Admin tasdiqlashini kuting", "success");
+    await loadMyAds();
+    setTimeout(() => go("pageMyAds"), 500);
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+// =========================================================
+// MY ADS — video thumb ko'rsatilmaydi (WebView crash uchun)
+// =========================================================
+async function loadMyAds(){
+  if(!USER) return;
+  try{ S.myAds = await api(`/api/my-ads/${USER.telegram_id}`) }
+  catch(e){ S.myAds = [] }
+}
+
+function renderMyAds(){
+  const c = $("myAdsList");
+  if(!S.myAds.length){
+    c.innerHTML = `<div class="empty">
+      <div class="empty-icon">${svg("i-mega")}</div>
+      <h3>Reklama yo'q</h3>
+      <p>Birinchi reklamangizni joylang</p>
+      <button class="btn btn-primary mt-16" onclick="startCreate()">${svg("i-plus")}Reklama berish</button>
+    </div>`;
+    return;
+  }
+  c.innerHTML = S.myAds.map(a => {
+    const st = a.status === "ACTIVE" ? {c:"active", t:"Faol", i:"i-check-circle"} :
+               a.status === "PENDING" ? {c:"pending", t:"Tasdiqlanmoqda", i:"i-clock"} :
+               a.status === "REJECTED" ? {c:"rejected", t:"Rad etilgan", i:"i-x"} :
+               {c:"expired", t:"Tugagan", i:"i-clock"};
+    return `
+      <div class="my-ad">
+        <div class="my-ad-thumb">${svg("i-play")}</div>
+        <div class="my-ad-body">
+          <div class="my-ad-title">${esc(a.title)}</div>
+          <div class="my-ad-price">${fmtPrice(a.price, a.currency)}</div>
+          <div class="my-ad-meta">${svg("i-map")}${esc(a.location||"-")}</div>
+          <div class="my-ad-status ${st.c}">${svg(st.i)}${st.t}</div>
+          ${a.reject_reason ? `<div style="font-size:11px;color:#F87171;margin-top:4px">${svg("i-info")} ${esc(a.reject_reason)}</div>` : ""}
+        </div>
+      </div>
+    `;
+  }).join("");
+}
+
+// =========================================================
+// TOPUP
+// =========================================================
+function openTopup(){
+  $("topupStep1").classList.remove("hidden");
+  $("topupStep2").classList.add("hidden");
+  $("topupAmt").value = "";
+  document.querySelectorAll(".quick-amount").forEach(q => q.classList.remove("active"));
+  $("topupBtn").disabled = true;
+  go("pageTopup");
+}
+
+function closeTopup(){
+  if(S.topupTimer){ clearInterval(S.topupTimer); S.topupTimer = null }
+  if(S.topupPoll){ clearInterval(S.topupPoll); S.topupPoll = null }
+  go("pageDashboard");
+}
+
+async function topupSend(){
+  const amt = +($("topupAmt").value.replace(/\D/g,"")) || 0;
+  if(amt < 1000){ toast("Minimal 1 000 so'm", "error"); return }
+  show();
+  try{
+    const r = await api("/api/topup/request", "POST", {
+      telegram_id: USER.telegram_id, amount: amt
+    });
+    $("topupStep1").classList.add("hidden");
+    $("topupStep2").classList.remove("hidden");
+    const c = r.card_number;
+    $("payCard").innerText = c.length === 16
+      ? `${c.slice(0,4)} ${c.slice(4,8)} ${c.slice(8,12)} ${c.slice(12,16)}` : c;
+    $("payAmt").innerText = num(amt) + " so'm";
+    startTopupTimer(new Date(r.expires_at));
+    startTopupPoll();
+    window.scrollTo({top:0, behavior:"smooth"});
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+function startTopupTimer(expiresAt){
+  if(S.topupTimer) clearInterval(S.topupTimer);
+  const upd = () => {
+    const left = Math.max(0, Math.floor((expiresAt - new Date()) / 1000));
+    const m = String(Math.floor(left/60)).padStart(2,"0");
+    const s = String(left%60).padStart(2,"0");
+    $("payTimer").innerText = `${m}:${s}`;
+    if(left <= 0){
+      clearInterval(S.topupTimer); S.topupTimer = null;
+      if(S.topupPoll){ clearInterval(S.topupPoll); S.topupPoll = null }
+      toast("To'lov vaqti tugadi", "error");
+      setTimeout(closeTopup, 1500);
+    }
+  };
+  upd();
+  S.topupTimer = setInterval(upd, 1000);
+}
+
+function startTopupPoll(){
+  if(S.topupPoll) clearInterval(S.topupPoll);
+  const oldBal = S.balance;
+  let attempts = 0;
+  S.topupPoll = setInterval(async () => {
+    attempts++;
+    try{
+      const r = await api(`/api/topup/pending?telegram_id=${USER.telegram_id}`);
+      if(r.status !== "waiting"){
+        clearInterval(S.topupPoll); S.topupPoll = null;
+        if(S.topupTimer){ clearInterval(S.topupTimer); S.topupTimer = null }
+        S.balance = r.balance || S.balance;
+        updateTopbar();
+        if(S.balance > oldBal) toast(`✅ Hisob to'ldirildi: +${num(S.balance - oldBal)} so'm`, "success");
+        setTimeout(() => go("pageDashboard"), 800);
+        renderProfile();
+      }
+    }catch(e){ console.warn("Poll:", e) }
+    if(attempts > 100){ clearInterval(S.topupPoll); S.topupPoll = null }
+  }, 3000);
+}
+
+function copyPayCard(){
+  const n = $("payCard").innerText.replace(/\s/g, "");
+  if(!n || n === "----") return;
+  navigator.clipboard?.writeText(n).then(() => toast("Karta raqami nusxalandi", "success"))
+    .catch(() => toast("Nusxalash imkonsiz", "error"));
+}
+
+// =========================================================
+// ADMIN
+// =========================================================
+async function renderAdmin(){
+  if(!IS_ADMIN) return;
+  show();
+  try{
+    const [stats, pending, users, cards] = await Promise.all([
+      api("/api/stats", "GET", null, false),
+      api("/api/admin/pending-ads"),
+      api("/api/admin/users"),
+      api("/api/admin/cards"),
+    ]);
+    $("sAds").innerText = stats.ads || 0;
+    $("sUsers").innerText = stats.users || 0;
+    $("sPending").innerText = stats.pending || 0;
+    $("sCards").innerText = stats.cards || 0;
+
+    if(!pending.length){
+      $("atAds").innerHTML = `<div class="empty"><div class="empty-icon">${svg("i-check-circle")}</div><h3>Kutilayotgan e'lon yo'q</h3></div>`;
+    }else{
+      $("atAds").innerHTML = pending.map(a => `
+        <div class="mod-card">
+          <div class="mod-head">
+            <div class="mod-thumb">${svg("i-play")}</div>
+            <div class="mod-body">
+              <div class="mod-title">${esc(a.title)}</div>
+              <div class="mod-meta">${svg("i-wallet")}${fmtPrice(a.price, a.currency)}</div>
+              <div class="mod-meta">${svg("i-map")}${esc(a.location||"-")}</div>
+              <div class="mod-meta">${svg("i-crown")}Tarif ${a.tariff}</div>
+            </div>
+          </div>
+          <div class="mod-actions">
+            <button class="btn btn-success" onclick="adminApprove(${a.id})">${svg("i-check")}Tasdiq</button>
+            <button class="btn btn-danger" onclick="adminReject(${a.id})">${svg("i-x")}Rad</button>
+          </div>
+        </div>
+      `).join("");
+    }
+
+    $("atCards").innerHTML = `
+      <div class="card-box">
+        <div class="card-box-title"><div class="card-box-ic">${svg("i-credit")}</div>Kartalar</div>
+        <div class="input-group" style="margin-bottom:14px">
+          <input class="input" id="newCardNum" placeholder="16 xonali raqam" maxlength="19" inputmode="numeric">
+          <button class="btn btn-primary" onclick="adminAddCard()">${svg("i-plus")}</button>
+        </div>
+        ${cards.length ? cards.map(c => `
+          <div class="card-item">
+            <div class="user-av">${svg("i-credit")}</div>
+            <div style="flex:1;min-width:0">
+              <div class="card-num">${esc(c.number)}</div>
+              <div class="card-sum">💰 ${num(c.total_received)} so'm yig'ildi</div>
+            </div>
+            <button class="icon-btn small" onclick="adminDelCard(${c.id})">${svg("i-trash")}</button>
+          </div>
+        `).join("") : `<div style="color:var(--text-3);font-size:12.5px;text-align:center;padding:14px">Karta yo'q</div>`}
+      </div>
+    `;
+
+    $("atUsers").innerHTML = users.length ? users.map(u => `
+      <div class="user-row">
+        <div class="user-av">${u.avatar ? `<img src="${u.avatar}">` : (u.first_name||"U")[0]}</div>
+        <div class="user-info">
+          <div class="user-name">${esc(u.first_name||"")} ${esc(u.last_name||"")}</div>
+          <div class="user-meta">
+            <span>${svg("i-phone")}+998 ${esc(u.phone||"?")}</span>
+            <span>${svg("i-wallet")}${num(u.balance||0)}</span>
+          </div>
+        </div>
+        ${u.is_admin ? `<span style="color:#60A5FA;font-size:18px">${svg("i-shield")}</span>` :
+          u.is_blocked
+            ? `<button class="btn btn-success" style="padding:8px 12px;font-size:11px" onclick="adminUnblock(${u.telegram_id})">Ochish</button>`
+            : `<button class="btn btn-danger" style="padding:8px 12px;font-size:11px" onclick="adminBlock(${u.telegram_id})">Ban</button>`}
+      </div>
+    `).join("") : `<div class="empty"><h3>Foydalanuvchi yo'q</h3></div>`;
+
+    await loadFeedbacks();
+    if(!S.feedbacks.length){
+      $("atFeedbacks").innerHTML = `<div class="empty"><h3>Otziflar yo'q</h3></div>`;
+    }else{
+      $("atFeedbacks").innerHTML = S.feedbacks.map(fb => feedbackCard(fb, true)).join("");
+    }
+
+    await renderUserbotSection();
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+// =========================================================
+// USERBOT
+// =========================================================
+async function renderUserbotSection(){
+  const c = $("atUserbot");
+  if(!c) return;
+  try{
+    const s = await api("/api/admin/userbot/status");
+    let html = "";
+
+    if(s.has_session && s.connected){
+      html = `
+        <div class="card-box" style="border-color:rgba(16,185,129,.3)">
+          <div class="card-box-title">
+            <div class="card-box-ic" style="background:linear-gradient(135deg,rgba(16,185,129,.2),rgba(16,185,129,.1));color:#34D399">
+              ${svg("i-check-circle")}
+            </div>
+            Userbot aktiv ✅
+          </div>
+          <div class="detail-info-row"><span class="k">${svg("i-phone")}Telefon</span><span class="v">${esc(s.phone||"-")}</span></div>
+          ${s.me ? `<div class="detail-info-row"><span class="k">${svg("i-user")}Username</span><span class="v">@${esc(s.me.username||"-")}</span></div>` : ""}
+          ${s.me ? `<div class="detail-info-row"><span class="k">${svg("i-info")}Ism</span><span class="v">${esc(s.me.first_name||"-")}</span></div>` : ""}
+          <button class="btn btn-danger btn-block mt-16" onclick="userbotLogout()">
+            ${svg("i-ban")}
+            Userbotni o'chirish
+          </button>
+        </div>
+        <div class="pay-note">
+          ✅ Userbot @${USERBOT_BOT} dan kelgan to'lovlarni avtomatik kuzatadi
+        </div>
+      `;
+    } else {
+      html = `
+        <div class="card-box">
+          <div class="card-box-title">
+            <div class="card-box-ic">${svg("i-phone")}</div>
+            Userbot qo'shish
+          </div>
+          <div class="pay-note" style="text-align:left;margin-bottom:14px">
+            ℹ️ Userbot <b>@${USERBOT_BOT}</b> dan kelgan to'lov xabarlarini kuzatadi va avtomatik balansni to'ldiradi.
+          </div>
+
+          <div id="ub-step1">
+            <div class="field">
+              <label class="label">${svg("i-phone")}Telefon raqam</label>
+              <div class="input-group">
+                <div class="input-prefix">+998</div>
+                <input class="input" id="ubPhone" inputmode="numeric" maxlength="9" placeholder="901234567">
+              </div>
+            </div>
+            <button class="btn btn-primary btn-block" onclick="userbotSendCode()">
+              ${svg("i-send")}
+              Kod yuborish
+            </button>
+          </div>
+
+          <div id="ub-step2" class="hidden">
+            <div class="field">
+              <label class="label">${svg("i-msg")}Telegram dan kelgan kod</label>
+              <input class="input" id="ubCode" inputmode="numeric" maxlength="6" placeholder="12345" style="text-align:center;font-size:20px;letter-spacing:4px">
+            </div>
+            <button class="btn btn-primary btn-block" onclick="userbotVerifyCode()">
+              ${svg("i-check")}
+              Tasdiqlash
+            </button>
+            <button class="btn btn-secondary btn-block mt-8" onclick="userbotBack()">
+              ${svg("i-arrow-l")}
+              Orqaga
+            </button>
+          </div>
+
+          <div id="ub-step3" class="hidden">
+            <div class="field">
+              <label class="label">${svg("i-shield")}2FA parolingiz</label>
+              <input class="input" id="ubPassword" type="password" placeholder="••••••••">
+            </div>
+            <button class="btn btn-primary btn-block" onclick="userbotVerify2FA()">
+              ${svg("i-check")}
+              Tasdiqlash
+            </button>
+          </div>
+        </div>
+      `;
+    }
+
+    c.innerHTML = html;
+
+    const inp = $("ubPhone");
+    if(inp) inp.oninput = e => { e.target.value = e.target.value.replace(/\D/g,"").slice(0,9) };
+    const codeInp = $("ubCode");
+    if(codeInp) codeInp.oninput = e => { e.target.value = e.target.value.replace(/\D/g,"").slice(0,6) };
+  }catch(e){
+    c.innerHTML = `<div class="empty"><h3>Xatolik: ${esc(e.message)}</h3></div>`;
+  }
+}
+
+async function userbotSendCode(){
+  const phone = ($("ubPhone")?.value || "").replace(/\D/g,"");
+  if(phone.length !== 9){ toast("Telefon 9 xonali", "error"); return }
+  const fullPhone = "+998" + phone;
+  show();
+  try{
+    const r = await api("/api/admin/userbot/send-code", "POST", { phone: fullPhone });
+    if(r.ok){
+      UB_PHONE = fullPhone;
+      $("ub-step1").classList.add("hidden");
+      $("ub-step2").classList.remove("hidden");
+      toast("Kod yuborildi! Telegram dan tekshiring", "success");
+    } else {
+      toast(r.error || "Xatolik", "error");
+    }
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+async function userbotVerifyCode(){
+  const code = ($("ubCode")?.value || "").replace(/\D/g,"");
+  if(code.length < 5){ toast("Kodni kiriting", "error"); return }
+  show();
+  try{
+    const r = await api("/api/admin/userbot/verify-code", "POST", {
+      phone: UB_PHONE, code: code
+    });
+    if(r.ok && r.need_2fa){
+      $("ub-step2").classList.add("hidden");
+      $("ub-step3").classList.remove("hidden");
+      toast("2FA parolni kiriting", "info");
+    } else if(r.ok){
+      toast("✅ Userbot muvaffaqiyatli ulandi!", "success");
+      setTimeout(() => renderUserbotSection(), 500);
+    } else {
+      toast(r.error || "Kod xato", "error");
+    }
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+async function userbotVerify2FA(){
+  const password = $("ubPassword")?.value || "";
+  if(!password){ toast("Parolni kiriting", "error"); return }
+  show();
+  try{
+    const r = await api("/api/admin/userbot/verify-2fa", "POST", {
+      phone: UB_PHONE, password: password
+    });
+    if(r.ok){
+      toast("✅ Userbot muvaffaqiyatli ulandi!", "success");
+      setTimeout(() => renderUserbotSection(), 500);
+    } else {
+      toast(r.error || "Parol xato", "error");
+    }
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+async function userbotLogout(){
+  if(!confirm("Userbotni o'chirmoqchimisiz?")) return;
+  show();
+  try{
+    await api("/api/admin/userbot/logout", "POST", {});
+    toast("Userbot o'chirildi", "success");
+    UB_PHONE = null;
+    setTimeout(() => renderUserbotSection(), 500);
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+function userbotBack(){
+  $("ub-step2").classList.add("hidden");
+  $("ub-step1").classList.remove("hidden");
+  UB_PHONE = null;
+}
+
+async function adminApprove(id){
+  show();
+  try{ await api("/api/admin/approve-ad", "POST", {ad_id:id}); toast("Tasdiqlandi", "success"); await renderAdmin() }
+  catch(e){ toast(e.message, "error") }
+  hide();
+}
+async function adminReject(id){
+  const r = prompt("Rad etish sababi:");
+  if(!r) return;
+  show();
+  try{ await api("/api/admin/reject-ad", "POST", {ad_id:id, reason:r}); toast("Rad etildi", "success"); await renderAdmin() }
+  catch(e){ toast(e.message, "error") }
+  hide();
+}
+async function adminAddCard(){
+  const n = $("newCardNum").value.replace(/\D/g,"");
+  if(n.length !== 16){ toast("16 xonali raqam", "error"); return }
+  show();
+  try{ await api("/api/admin/card/add", "POST", {number:n}); toast("Qo'shildi", "success"); await renderAdmin() }
+  catch(e){ toast(e.message, "error") }
+  hide();
+}
+async function adminDelCard(id){
+  if(!confirm("Kartani o'chirish?")) return;
+  show();
+  try{ await api("/api/admin/card/del", "POST", {card_id:id}); toast("O'chirildi", "success"); await renderAdmin() }
+  catch(e){ toast(e.message, "error") }
+  hide();
+}
+async function adminBlock(tg){
+  if(!confirm("Bloklansinmi?")) return;
+  try{ await api("/api/admin/block", "POST", {telegram_id:tg}); toast("Bloklandi", "success"); renderAdmin() }
+  catch(e){ toast(e.message, "error") }
+}
+async function adminUnblock(tg){
+  try{ await api("/api/admin/unblock", "POST", {telegram_id:tg}); toast("Ochildi", "success"); renderAdmin() }
+  catch(e){ toast(e.message, "error") }
+}
+async function sendBroadcast(){
+  const t = $("bcastText").value.trim();
+  if(!t){ toast("Xabar bo'sh", "error"); return }
+  if(!confirm("Yuborilsinmi?")) return;
+  show();
+  try{
+    const r = await api("/api/admin/broadcast", "POST", {message:t});
+    toast(`${r.total} ta foydalanuvchiga yuborilmoqda`, "success");
+    $("bcastText").value = "";
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+function advertiseBot(){
+  if(tg) tg.openTelegramLink(BOT_LINK);
+  else window.open(BOT_LINK, "_blank");
+}
+
+// =========================================================
+// INIT
+// =========================================================
+async function init(){
+  $("accRegion").innerHTML = `<option value="">Viloyatni tanlang</option>` + REGIONS.map(r => `<option>${r}</option>`).join("");
+
+  await initAuth();
+
+  await Promise.all([loadAds(), loadMyAds(), loadSaved(), loadFeedbacks()]);
+
+  renderAds();
+  renderMyAds();
+  renderSaved();
+  renderProfile();
+  renderFeedbacks();
+
+  document.querySelectorAll(".nav-btn[data-nav]").forEach(b => {
+    b.onclick = () => go(b.dataset.nav);
+  });
+
+  document.querySelectorAll("#pageDashboard .cat").forEach(c => {
+    c.onclick = () => {
+      document.querySelectorAll("#pageDashboard .cat").forEach(x => x.classList.remove("active"));
+      c.classList.add("active");
+      S.category = c.dataset.cat;
+      renderAds();
+    };
+  });
+
+  document.querySelectorAll(".admin-tab").forEach(t => {
+    t.onclick = () => {
+      document.querySelectorAll(".admin-tab").forEach(x => x.classList.remove("active"));
+      t.classList.add("active");
+      const at = t.dataset.at;
+      ["ads","cards","users","feedbacks","userbot","broadcast"].forEach(k => {
+        const el = $("at" + k.charAt(0).toUpperCase() + k.slice(1));
+        if(el) el.classList.toggle("hidden", k !== at);
+      });
+      if(at === "userbot") renderUserbotSection();
+    };
+  });
+
+  $("topupAmt").oninput = e => {
+    e.target.value = e.target.value.replace(/\D/g,"").replace(/\B(?=(\d{3})+(?!\d))/g," ");
+    const v = +e.target.value.replace(/\D/g,"") || 0;
+    $("topupBtn").disabled = v < 1000;
+  };
+  document.querySelectorAll(".quick-amount").forEach(q => {
+    q.onclick = () => {
+      $("topupAmt").value = num(+q.dataset.q);
+      document.querySelectorAll(".quick-amount").forEach(x => x.classList.remove("active"));
+      q.classList.add("active");
+      $("topupBtn").disabled = false;
+    };
+  });
+
+  $("accPrice").oninput = e => {
+    e.target.value = e.target.value.replace(/\D/g,"").replace(/\B(?=(\d{3})+(?!\d))/g," ");
+    updatePricePreview();
+  };
+  ["accLevel","accColl","accMythic","gunsCount"].forEach(id => {
+    $(id).oninput = e => { e.target.value = e.target.value.replace(/\D/g,"") };
+  });
+  $("accColl").onblur = e => {
+    let v = +e.target.value || 0;
+    if(v > 101){ e.target.value = 101; toast("Kolleksiya max 101", "error") }
+  };
+  $("accPhone").oninput = e => { e.target.value = e.target.value.replace(/\D/g,"").slice(0,9) };
+
+  $("btnBack").onclick = prevStep;
+  $("btnNext").onclick = nextStep;
+
+  // Telegram close
+  if(tg && tg.onEvent){
+    tg.onEvent("viewportChanged", () => {});
+  }
+}
+
+document.addEventListener("DOMContentLoaded", init);
+
+window.addEventListener("beforeunload", () => {
+  if(S.topupTimer) clearInterval(S.topupTimer);
+  if(S.topupPoll) clearInterval(S.topupPoll);
+  if(_videoObserver){ try { _videoObserver.disconnect(); } catch(e){} }
+});
+</script>
+
+</body>
+</html>
