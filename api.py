@@ -1,5 +1,5 @@
 """
-Cardinal API v5.1
+
 - JWT (access 15min + refresh 7 kun)
 - Video upload → Telegram kanalga (@reklama_db)
 - Video streaming endpoint (/api/ad/{id}/video)
