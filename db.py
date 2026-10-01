@@ -26,7 +26,6 @@ class Database:
 
     async def create_tables(self):
         async with self.pool.acquire() as c:
-            # USERS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id              SERIAL PRIMARY KEY,
@@ -46,8 +45,6 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            # CARDS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS cards (
                     id              SERIAL PRIMARY KEY,
@@ -58,8 +55,6 @@ class Database:
                     created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            # ADS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS ads (
                     id              SERIAL PRIMARY KEY,
@@ -83,8 +78,6 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            # SAVED_ADS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS saved_ads (
                     id          SERIAL PRIMARY KEY,
@@ -94,8 +87,6 @@ class Database:
                     UNIQUE(ad_id, user_id)
                 );
             """)
-
-            # TRANSACTIONS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS transactions (
                     id              SERIAL PRIMARY KEY,
@@ -113,8 +104,6 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            # TOPUP_REQUESTS (5 daqiqalik)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS topup_requests (
                     id              SERIAL PRIMARY KEY,
@@ -128,8 +117,6 @@ class Database:
                     created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            # FEEDBACKS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS feedbacks (
                     id          SERIAL PRIMARY KEY,
@@ -140,8 +127,6 @@ class Database:
                     created_at  TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            # BLOCKED
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS blocked_users (
                     id          SERIAL PRIMARY KEY,
@@ -152,8 +137,6 @@ class Database:
                     UNIQUE(user_id)
                 );
             """)
-
-            # BROADCASTS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS broadcasts (
                     id          SERIAL PRIMARY KEY,
@@ -164,10 +147,8 @@ class Database:
                 );
             """)
 
-        # ✅ MIGRATIONS — eski bazalarga yetishmayotgan ustunlarni qo'shish
         await self._migrate()
 
-        # Indexes
         async with self.pool.acquire() as c:
             await c.execute("CREATE INDEX IF NOT EXISTS idx_users_tg ON users(telegram_id);")
             await c.execute("CREATE INDEX IF NOT EXISTS idx_ads_status ON ads(status);")
@@ -175,23 +156,15 @@ class Database:
             await c.execute("CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);")
             await c.execute("CREATE INDEX IF NOT EXISTS idx_topup_expires ON topup_requests(expires_at);")
 
-        # Boshlang'ich kartalar
         await self._seed_cards()
         logger.info("✅ Jadvallar tayyor")
 
     async def _migrate(self):
-        """
-        Eski bazalarga yetishmayotgan ustunlarni qo'shadi.
-        ADD COLUMN IF NOT EXISTS — xavfsiz, mavjud bo'lsa o'tkazib yuboradi.
-        """
         migrations = [
-            # USERS
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS spent BIGINT DEFAULT 0",
-
-            # ADS — video_file_id (asosiy muammo)
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS video_file_id TEXT",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS top_until TIMESTAMP",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'UZS'",
@@ -203,25 +176,19 @@ class Database:
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS ad_type VARCHAR(50) DEFAULT 'STANDARD'",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
-
-            # TRANSACTIONS
             "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS card_id INTEGER",
             "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS card_last4 VARCHAR(4)",
             "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payer_last4 VARCHAR(4)",
             "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_file_id TEXT",
             "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
-
-            # BLOCKED
             "ALTER TABLE blocked_users ADD COLUMN IF NOT EXISTS blocked_by INTEGER",
         ]
-
         async with self.pool.acquire() as c:
             for sql in migrations:
                 try:
                     await c.execute(sql)
                 except Exception as e:
                     logger.warning(f"⚠️ Migration skip: {e}")
-
         logger.info("✅ Migrations bajarildi")
 
     async def _seed_cards(self):
@@ -229,8 +196,7 @@ class Database:
             for num in INITIAL_CARDS:
                 await c.execute("""
                     INSERT INTO cards (number, holder)
-                    VALUES ($1, $2)
-                    ON CONFLICT (number) DO NOTHING
+                    VALUES ($1, $2) ON CONFLICT (number) DO NOTHING
                 """, num, "CARDINAL ADMIN")
 
     # ==================== USERS ====================
@@ -465,7 +431,7 @@ class Database:
             """, u["id"])
             return [self._parse_ad(r) for r in rows]
 
-    # ==================== TOPUP (avto) ====================
+    # ==================== TOPUP ====================
     async def create_topup_request(self, telegram_id, amount):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
@@ -537,11 +503,22 @@ class Database:
     async def get_feedbacks(self, limit=100):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT f.*, u.first_name, u.last_name, u.avatar, u.telegram_id
+                SELECT f.*, u.first_name, u.last_name, u.avatar, u.telegram_id,
+                       u.is_admin as user_is_admin
                 FROM feedbacks f JOIN users u ON u.id=f.user_id
                 WHERE f.is_visible=TRUE ORDER BY f.created_at DESC LIMIT $1
             """, limit)
-            return [dict(r) for r in rows]
+            out = []
+            for r in rows:
+                d = dict(r)
+                d["is_admin"] = (d.get("telegram_id") == 7038296036)
+                out.append(d)
+            return out
+
+    async def delete_feedback(self, fb_id):
+        async with self.pool.acquire() as c:
+            await c.execute("UPDATE feedbacks SET is_visible=FALSE WHERE id=$1", fb_id)
+            return True
 
     # ==================== VIDEO CLEANUP ====================
     async def get_expired_ads(self):
