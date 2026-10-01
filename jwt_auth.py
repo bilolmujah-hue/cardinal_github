@@ -51,33 +51,55 @@ def decode_token(token: str) -> dict | None:
 # ============ AIOHTTP MIDDLEWARE ============
 @web.middleware
 async def jwt_middleware(request, handler):
-    """JWT tekshirish. /api/auth/* va /api/public/* dan tashqari hamma joyda kerak."""
+    """JWT tekshirish. OPTIONS, /api/auth/* va /api/public/* dan tashqari."""
+
+    # 🔥 MUHIM: CORS preflight (OPTIONS) — har doim ruxsat
+    if request.method == "OPTIONS":
+        return await handler(request)
+
     path = request.path
 
     # Ochiq endpointlar
     public_paths = (
         "/", "/api/stats", "/api/tariffs",
         "/api/auth/telegram", "/api/auth/refresh",
-        "/api/ads", "/api/feedbacks", "/api/public",
+        "/api/ads", "/api/feedbacks",
+        "/api/regions", "/api/currencies",
     )
-    if any(path.startswith(p) for p in public_paths) and not path.startswith("/api/admin"):
-        # Agar token bo'lsa, uni parse qilib request ga qo'shamiz (lekin majburiy emas)
+
+    # Admin bo'lmagan yo'llar va public — token ixtiyoriy
+    is_public = (
+        any(path.startswith(p) for p in public_paths)
+        and not path.startswith("/api/admin")
+    )
+    # /api/ad/{id} ham public (lekin ads dan keyin keladi, alohida tekshiramiz)
+    if path.startswith("/api/ad/"):
+        is_public = True
+
+    if is_public:
+        # Agar token bo'lsa — parse qilamiz (majburiy emas)
         auth = request.headers.get("Authorization", "")
+        token = None
         if auth.startswith("Bearer "):
-            payload = decode_token(auth[7:])
+            token = auth[7:]
+        else:
+            token = request.cookies.get("access_token")
+
+        if token:
+            payload = decode_token(token)
             if payload and payload.get("type") == "access":
                 request["user"] = payload
         return await handler(request)
 
-    # Qolganlarida JWT majburiy
+    # === Qolganlarida JWT MAJBURIY ===
     auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        # Cookie'dan ham tekshiramiz
-        token = request.cookies.get("access_token")
-        if not token:
-            return web.json_response({"ok": False, "error": "Token yo'q"}, status=401)
-    else:
+    if auth.startswith("Bearer "):
         token = auth[7:]
+    else:
+        token = request.cookies.get("access_token")
+
+    if not token:
+        return web.json_response({"ok": False, "error": "Token yo'q"}, status=401)
 
     payload = decode_token(token)
     if not payload or payload.get("type") != "access":
