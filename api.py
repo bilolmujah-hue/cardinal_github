@@ -1,8 +1,8 @@
 """
-
+Cardinal API v5.1
 - JWT (access 15min + refresh 7 kun)
 - Video upload → Telegram kanalga (@reklama_db)
-- Video streaming endpoint (/api/ad/{id}/video)
+- Video streaming endpoint (/api/ad/{id}/video) — Range support bilan
 - Avto to'lov (userbot orqali)
 - Chat YO'Q, Like YO'Q, Ko'rishlar YO'Q
 """
@@ -191,16 +191,17 @@ class API:
         return jresp(ad)
 
     # ============================================================
-    # 🔥 VIDEO STREAMING — Telegram kanaldan proxy
+    # 🔥 VIDEO STREAMING — Telegram kanaldan proxy (Range support)
     # ============================================================
     async def stream_video(self, req):
         """
         Video stream endpoint.
         - Telegram bot.get_file orqali file_path oladi
         - Telegram CDN dan proxy stream qiladi
-        - Small (< 20 MB) fayllar uchun ishlaydi
-        - Katta fayllar uchun 502 qaytaradi (userbot orqali ham ishlatish mumkin)
+        - HTTP Range requests qo'llab-quvvatlanadi (video seek uchun)
+        - Client disconnect bo'lsa graceful tugatadi
         """
+        ad_id = None
         try:
             ad_id = int(req.match_info["ad_id"])
             ad = await self.db.get_ad(ad_id)
@@ -219,31 +220,79 @@ class API:
 
             telegram_url = f"https://api.telegram.org/file/bot{BOT.TOKEN}/{file_path}"
 
-            # 2. Proxy stream qilish
+            # 2. Client Range headerini uzatish
+            req_headers = {}
+            if "Range" in req.headers:
+                req_headers["Range"] = req.headers["Range"]
+
+            # 3. Proxy stream
             async with ClientSession() as sess:
-                async with sess.get(telegram_url) as upstream:
-                    if upstream.status != 200:
+                async with sess.get(telegram_url, headers=req_headers) as upstream:
+                    if upstream.status not in (200, 206):
                         logger.error(f"Telegram CDN {upstream.status} (ad #{ad_id})")
                         return web.Response(status=502, text="Video CDN xato")
 
-                    resp = web.StreamResponse()
-                    resp.headers["Content-Type"] = upstream.headers.get(
-                        "Content-Type", "video/mp4"
-                    )
+                    # Response tayyorlash
+                    resp = web.StreamResponse(status=upstream.status)
+                    resp.headers["Content-Type"] = upstream.headers.get("Content-Type", "video/mp4")
+
                     if "Content-Length" in upstream.headers:
                         resp.headers["Content-Length"] = upstream.headers["Content-Length"]
+                    if "Content-Range" in upstream.headers:
+                        resp.headers["Content-Range"] = upstream.headers["Content-Range"]
+
                     resp.headers["Accept-Ranges"] = "bytes"
                     resp.headers["Cache-Control"] = "public, max-age=3600"
                     resp.headers["Access-Control-Allow-Origin"] = "*"
 
-                    await resp.prepare(req)
-                    async for chunk in upstream.content.iter_chunked(64 * 1024):
-                        await resp.write(chunk)
-                    await resp.write_eof()
+                    try:
+                        await resp.prepare(req)
+                    except (ConnectionResetError, ConnectionAbortedError):
+                        logger.debug(f"Client disconnect (prepare) ad #{ad_id}")
+                        return resp
+
+                    # Chunk stream
+                    try:
+                        async for chunk in upstream.content.iter_chunked(64 * 1024):
+                            if not chunk:
+                                continue
+                            try:
+                                await resp.write(chunk)
+                            except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+                                logger.debug(f"Client stream to'xtatdi (ad #{ad_id})")
+                                return resp
+                            except Exception as e:
+                                err_name = type(e).__name__
+                                err_str = str(e)
+                                if "closing transport" in err_str or "ConnectionReset" in err_name:
+                                    logger.debug(f"Stream yopildi (ad #{ad_id}): {e}")
+                                    return resp
+                                raise
+
+                        try:
+                            await resp.write_eof()
+                        except Exception:
+                            pass
+                    except Exception as e:
+                        logger.debug(f"Upstream xato (ad #{ad_id}): {e}")
+
                     return resp
 
+        except asyncio.CancelledError:
+            logger.debug(f"Stream cancelled (ad #{ad_id})")
+            raise
         except Exception as e:
-            logger.error(f"stream_video: {e}", exc_info=True)
+            err_name = type(e).__name__
+            err_str = str(e)
+            if (
+                "ConnectionReset" in err_name
+                or "Cannot write to closing transport" in err_str
+                or "closing transport" in err_str
+                or isinstance(e, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError))
+            ):
+                logger.debug(f"stream_video (client disconnect): {e}")
+                return web.Response(status=499, text="Client closed")
+            logger.error(f"stream_video (ad #{ad_id}): {e}", exc_info=True)
             return web.Response(status=500, text="Server xatosi")
 
     async def get_feedbacks(self, req):
