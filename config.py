@@ -24,7 +24,7 @@ class BOT:
     ADMIN_USERNAME = "cardinal_admin"
     ADMIN_NAME = "CARDINAL ADMIN"
 
-    WEB_APP_URL = "https://ishbilol1230-dev.github.io/budilnik-app/uzbekcats.html"
+    WEB_APP_URL = "https://bilolmujah-hue.github.io/cardinal_github/"
 
     # E'lonlar kanali
     CHANNEL_USERNAME = "@tajriva2"
