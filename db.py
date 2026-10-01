@@ -26,6 +26,7 @@ class Database:
 
     async def create_tables(self):
         async with self.pool.acquire() as c:
+            # === USERS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id              SERIAL PRIMARY KEY,
@@ -45,6 +46,7 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # === CARDS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS cards (
                     id              SERIAL PRIMARY KEY,
@@ -55,6 +57,7 @@ class Database:
                     created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # === ADS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS ads (
                     id              SERIAL PRIMARY KEY,
@@ -78,6 +81,7 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # === SAVED ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS saved_ads (
                     id          SERIAL PRIMARY KEY,
@@ -87,6 +91,7 @@ class Database:
                     UNIQUE(ad_id, user_id)
                 );
             """)
+            # === TRANSACTIONS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS transactions (
                     id              SERIAL PRIMARY KEY,
@@ -104,6 +109,7 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # === TOPUP_REQUESTS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS topup_requests (
                     id              SERIAL PRIMARY KEY,
@@ -117,6 +123,7 @@ class Database:
                     created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # === FEEDBACKS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS feedbacks (
                     id          SERIAL PRIMARY KEY,
@@ -127,6 +134,7 @@ class Database:
                     created_at  TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # === BLOCKED ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS blocked_users (
                     id          SERIAL PRIMARY KEY,
@@ -137,6 +145,7 @@ class Database:
                     UNIQUE(user_id)
                 );
             """)
+            # === BROADCASTS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS broadcasts (
                     id          SERIAL PRIMARY KEY,
@@ -144,6 +153,17 @@ class Database:
                     message     TEXT,
                     sent_count  INTEGER DEFAULT 0,
                     created_at  TIMESTAMP DEFAULT NOW()
+                );
+            """)
+            # === 🔥 USERBOT_SESSIONS === (YANGI)
+            await c.execute("""
+                CREATE TABLE IF NOT EXISTS userbot_sessions (
+                    id              SERIAL PRIMARY KEY,
+                    phone           VARCHAR(20) NOT NULL,
+                    session_string  TEXT NOT NULL,
+                    is_active       BOOLEAN DEFAULT TRUE,
+                    created_at      TIMESTAMP DEFAULT NOW(),
+                    updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
 
@@ -198,6 +218,47 @@ class Database:
                     INSERT INTO cards (number, holder)
                     VALUES ($1, $2) ON CONFLICT (number) DO NOTHING
                 """, num, "CARDINAL ADMIN")
+
+    # ==================== 🔥 USERBOT SESSION ====================
+    async def save_userbot_session(self, phone: str, session_string: str):
+        """Userbot session ni DB ga saqlash (faqat 1 ta aktiv bo'ladi)."""
+        async with self.pool.acquire() as c:
+            async with c.transaction():
+                # Eskilarini o'chirish
+                await c.execute("DELETE FROM userbot_sessions")
+                # Yangisini qo'shish
+                await c.execute("""
+                    INSERT INTO userbot_sessions (phone, session_string, is_active)
+                    VALUES ($1, $2, TRUE)
+                """, phone, session_string)
+        return True
+
+    async def get_userbot_session(self) -> Optional[str]:
+        """Session stringni olish."""
+        async with self.pool.acquire() as c:
+            r = await c.fetchrow("""
+                SELECT session_string FROM userbot_sessions
+                WHERE is_active=TRUE
+                ORDER BY id DESC LIMIT 1
+            """)
+            return r["session_string"] if r else None
+
+    async def get_userbot_info(self) -> Optional[Dict]:
+        """Userbot haqida to'liq ma'lumot."""
+        async with self.pool.acquire() as c:
+            r = await c.fetchrow("""
+                SELECT id, phone, is_active, created_at, updated_at
+                FROM userbot_sessions
+                WHERE is_active=TRUE
+                ORDER BY id DESC LIMIT 1
+            """)
+            return dict(r) if r else None
+
+    async def delete_userbot_session(self):
+        """Sessiyani o'chirish."""
+        async with self.pool.acquire() as c:
+            await c.execute("DELETE FROM userbot_sessions")
+        return True
 
     # ==================== USERS ====================
     async def get_or_create_user(self, telegram_id, username=None, first_name=None, last_name=None):
@@ -503,8 +564,7 @@ class Database:
     async def get_feedbacks(self, limit=100):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT f.*, u.first_name, u.last_name, u.avatar, u.telegram_id,
-                       u.is_admin as user_is_admin
+                SELECT f.*, u.first_name, u.last_name, u.avatar, u.telegram_id
                 FROM feedbacks f JOIN users u ON u.id=f.user_id
                 WHERE f.is_visible=TRUE ORDER BY f.created_at DESC LIMIT $1
             """, limit)
@@ -551,6 +611,7 @@ class Database:
                 "total_balance": await c.fetchval("SELECT COALESCE(SUM(balance),0) FROM users"),
                 "cards": await c.fetchval("SELECT COUNT(*) FROM cards WHERE is_active=TRUE"),
                 "feedbacks": await c.fetchval("SELECT COUNT(*) FROM feedbacks WHERE is_visible=TRUE"),
+                "userbot": await c.fetchval("SELECT COUNT(*) FROM userbot_sessions WHERE is_active=TRUE"),
             }
 
     async def get_all_user_ids(self):
