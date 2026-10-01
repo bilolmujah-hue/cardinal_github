@@ -1,5 +1,5 @@
 """
-CARDINAL REKLAMA BOT v5.1
+CARDINAL REKLAMA 
 - Chat yo'q, faqat reklama
 - Avtomatik to'lov (userbot orqali)
 - Video 7 kunda o'chadi
