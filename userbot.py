@@ -9,6 +9,7 @@ from typing import Optional, Callable, Awaitable
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.network import ConnectionTcpAbridged
+from telethon.errors import AuthKeyNotFound, AuthKeyDuplicatedError, SessionRevokedError
 
 from config import USERBOT
 
@@ -27,14 +28,23 @@ class CardXabarWatcher:
             logger.warning("⚠️ USERBOT_SESSION yo'q — userbot ishga tushmaydi")
             return
 
+        # Session stringni tozalash (probel, yangi qator)
+        session_clean = USERBOT.SESSION_STRING.strip().replace("\n", "").replace(" ", "").replace("\r", "")
+
+        if len(session_clean) < 100:
+            logger.error("❌ USERBOT_SESSION juda qisqa — noto'g'ri paste qilingan")
+            return
+
+        logger.info(f"🔑 Session uzunligi: {len(session_clean)} belgi")
+
         self.client = TelegramClient(
-            StringSession(USERBOT.SESSION_STRING),
+            StringSession(session_clean),
             USERBOT.API_ID,
             USERBOT.API_HASH,
             device_model="Cardinal",
             system_version="1.0",
             app_version="5.1",
-            connection=ConnectionTcpAbridged,     # 🔥 MUHIM
+            connection=ConnectionTcpAbridged,
             use_ipv6=False,
             timeout=30,
             retry_delay=3,
@@ -75,17 +85,48 @@ class CardXabarWatcher:
             except Exception as e:
                 logger.error(f"❌ Handler xato: {e}", exc_info=True)
 
-        # 🔥 Retry loop bilan ulanish
-        while not self._stopped:
+        # 🔥 Retry loop — faqat tarmoq xatolari uchun
+        attempt = 0
+        max_attempts = 3
+
+        while not self._stopped and attempt < max_attempts:
+            attempt += 1
             try:
                 await self.client.start()
                 me = await self.client.get_me()
-                logger.info(f"✅ Userbot ishga tushdi: @{me.username or me.id}")
+                logger.info(f"✅ Userbot ishga tushdi: @{me.username or me.id} (ID: {me.id})")
                 break
+
+            except (AuthKeyNotFound, AuthKeyDuplicatedError, SessionRevokedError) as e:
+                # 🔥 BU DOIMIY XATO — qayta urinish befoyda
+                logger.error("")
+                logger.error("=" * 60)
+                logger.error("❌ USERBOT_SESSION YAROQSIZ!")
+                logger.error("=" * 60)
+                logger.error(f"Xato turi: {type(e).__name__}")
+                logger.error("")
+                logger.error("SABAB:")
+                logger.error("  1. Session string buzuq (paste xato)")
+                logger.error("  2. Session bekor qilingan (boshqa joyda ishlatilgan)")
+                logger.error("  3. API_ID yoki API_HASH noto'g'ri")
+                logger.error("")
+                logger.error("YECHIM:")
+                logger.error("  1. PyCharm ni BUTUNLAY yop")
+                logger.error("  2. python userbot.py — yangi session ol")
+                logger.error("  3. Railway → Variables → USERBOT_SESSION → yangi string")
+                logger.error("  4. Railway → Restart")
+                logger.error("=" * 60)
+                logger.error("")
+                return  # ⛔ To'xtatamiz — qayta urinish befoyda
+
             except Exception as e:
-                logger.error(f"❌ Userbot ulanish xatosi: {e}")
-                logger.info("⏳ 10 soniyadan keyin qayta urinib ko'riladi...")
-                await asyncio.sleep(10)
+                logger.error(f"❌ Userbot ulanish xatosi (urinish {attempt}/{max_attempts}): {e}")
+                if attempt < max_attempts:
+                    logger.info("⏳ 30 soniyadan keyin qayta urinib ko'riladi...")
+                    await asyncio.sleep(30)
+                else:
+                    logger.error("❌ Barcha urinishlar tugadi. Userbot ishga tushmadi.")
+                    return
 
         if self._stopped:
             return
@@ -107,7 +148,6 @@ class CardXabarWatcher:
 
         text_low = text.lower()
 
-        # Faqat kirim
         is_income = (
             "perevod na kartu" in text_low
             or "popolnenie" in text_low
@@ -118,7 +158,6 @@ class CardXabarWatcher:
         if not is_income:
             return None
 
-        # Amount
         amount = None
         m = re.search(r"[+\-]?\s*([\d]{1,3}(?:[\s,]\d{3})*(?:\.\d{1,2})?)\s*(UZS|so'm|сум)",
                       text, re.IGNORECASE)
@@ -132,7 +171,6 @@ class CardXabarWatcher:
         if amount is None or amount <= 0:
             return None
 
-        # Oxirgi 4 raqam
         last4 = None
         m2 = re.search(r"\*{2,}(\d{4})\b", text)
         if m2:
@@ -156,11 +194,21 @@ async def generate_session():
     from telethon.sessions import StringSession
 
     print("=== SESSION STRING GENERATOR ===")
+    print(f"API_ID: {USERBOT.API_ID}")
+    print(f"API_HASH: {USERBOT.API_HASH[:10]}...")
+    print("")
+    print("Telefon raqamingiz: +998XXXXXXXXX")
     async with TelegramClient(StringSession(), USERBOT.API_ID, USERBOT.API_HASH) as client:
         s = client.session.save()
-        print("\n✅ SESSION_STRING:")
+        print("")
+        print("✅ SESSION_STRING:")
+        print("=" * 60)
         print(s)
-        print("\nRailway da .env ga qo'ying: USERBOT_SESSION=<shu string>")
+        print("=" * 60)
+        print("")
+        print(f"Uzunligi: {len(s)} belgi")
+        print("")
+        print("Railway → Variables → USERBOT_SESSION → shu stringni paste qiling")
 
 
 if __name__ == "__main__":
