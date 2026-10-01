@@ -26,7 +26,6 @@ class Database:
 
     async def create_tables(self):
         async with self.pool.acquire() as c:
-            # === USERS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id              SERIAL PRIMARY KEY,
@@ -46,7 +45,6 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # === CARDS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS cards (
                     id              SERIAL PRIMARY KEY,
@@ -57,7 +55,6 @@ class Database:
                     created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # === ADS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS ads (
                     id              SERIAL PRIMARY KEY,
@@ -81,7 +78,6 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # === SAVED ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS saved_ads (
                     id          SERIAL PRIMARY KEY,
@@ -91,7 +87,6 @@ class Database:
                     UNIQUE(ad_id, user_id)
                 );
             """)
-            # === TRANSACTIONS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS transactions (
                     id              SERIAL PRIMARY KEY,
@@ -109,7 +104,6 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # === TOPUP_REQUESTS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS topup_requests (
                     id              SERIAL PRIMARY KEY,
@@ -123,7 +117,6 @@ class Database:
                     created_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # === FEEDBACKS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS feedbacks (
                     id          SERIAL PRIMARY KEY,
@@ -134,7 +127,6 @@ class Database:
                     created_at  TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # === BLOCKED ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS blocked_users (
                     id          SERIAL PRIMARY KEY,
@@ -145,7 +137,6 @@ class Database:
                     UNIQUE(user_id)
                 );
             """)
-            # === BROADCASTS ===
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS broadcasts (
                     id          SERIAL PRIMARY KEY,
@@ -155,7 +146,6 @@ class Database:
                     created_at  TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # === 🔥 USERBOT_SESSIONS === (YANGI)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS userbot_sessions (
                     id              SERIAL PRIMARY KEY,
@@ -177,6 +167,7 @@ class Database:
             await c.execute("CREATE INDEX IF NOT EXISTS idx_topup_expires ON topup_requests(expires_at);")
 
         await self._seed_cards()
+        await self._cleanup_base64_videos()   # 🔥 MUHIM
         logger.info("✅ Jadvallar tayyor")
 
     async def _migrate(self):
@@ -211,6 +202,45 @@ class Database:
                     logger.warning(f"⚠️ Migration skip: {e}")
         logger.info("✅ Migrations bajarildi")
 
+    async def _cleanup_base64_videos(self):
+        """
+        🔥 Eski base64 videolarni DB dan o'chirish.
+        Ular video_file_id da `data:video/...` formatida saqlangan.
+        Yangi format — Telegram file_id.
+        """
+        try:
+            async with self.pool.acquire() as c:
+                # base64 videolarni NULL ga o'zgartirish
+                result = await c.execute("""
+                    UPDATE ads
+                    SET video_file_id = NULL
+                    WHERE video_file_id LIKE 'data:%'
+                """)
+                logger.info(f"🧹 Base64 videolar tozalandi: {result}")
+
+                # MUHIM: my-ads va ads list da bu e'lonlarni status PENDING qoldiramiz
+                # (agar ACTIVE bo'lsa lekin video yo'q bo'lsa)
+                result2 = await c.execute("""
+                    UPDATE ads
+                    SET status = 'EXPIRED'
+                    WHERE video_file_id IS NULL
+                      AND status = 'ACTIVE'
+                      AND created_at < NOW() - INTERVAL '1 day'
+                """)
+                logger.info(f"🧹 Video yo'q e'lonlar EXPIRED: {result2}")
+
+                # account_data dan ham base64 ni tozalash (agar bo'lsa)
+                result3 = await c.execute("""
+                    UPDATE ads
+                    SET account_data = account_data - 'video_data' - 'video_base64' - 'video'
+                    WHERE account_data ? 'video_data'
+                       OR account_data ? 'video_base64'
+                       OR account_data ? 'video'
+                """)
+                logger.info(f"🧹 account_data tozalandi: {result3}")
+        except Exception as e:
+            logger.error(f"cleanup xato: {e}")
+
     async def _seed_cards(self):
         async with self.pool.acquire() as c:
             for num in INITIAL_CARDS:
@@ -219,14 +249,11 @@ class Database:
                     VALUES ($1, $2) ON CONFLICT (number) DO NOTHING
                 """, num, "CARDINAL ADMIN")
 
-    # ==================== 🔥 USERBOT SESSION ====================
+    # ==================== USERBOT SESSION ====================
     async def save_userbot_session(self, phone: str, session_string: str):
-        """Userbot session ni DB ga saqlash (faqat 1 ta aktiv bo'ladi)."""
         async with self.pool.acquire() as c:
             async with c.transaction():
-                # Eskilarini o'chirish
                 await c.execute("DELETE FROM userbot_sessions")
-                # Yangisini qo'shish
                 await c.execute("""
                     INSERT INTO userbot_sessions (phone, session_string, is_active)
                     VALUES ($1, $2, TRUE)
@@ -234,28 +261,22 @@ class Database:
         return True
 
     async def get_userbot_session(self) -> Optional[str]:
-        """Session stringni olish."""
         async with self.pool.acquire() as c:
             r = await c.fetchrow("""
                 SELECT session_string FROM userbot_sessions
-                WHERE is_active=TRUE
-                ORDER BY id DESC LIMIT 1
+                WHERE is_active=TRUE ORDER BY id DESC LIMIT 1
             """)
             return r["session_string"] if r else None
 
     async def get_userbot_info(self) -> Optional[Dict]:
-        """Userbot haqida to'liq ma'lumot."""
         async with self.pool.acquire() as c:
             r = await c.fetchrow("""
                 SELECT id, phone, is_active, created_at, updated_at
-                FROM userbot_sessions
-                WHERE is_active=TRUE
-                ORDER BY id DESC LIMIT 1
+                FROM userbot_sessions WHERE is_active=TRUE ORDER BY id DESC LIMIT 1
             """)
             return dict(r) if r else None
 
     async def delete_userbot_session(self):
-        """Sessiyani o'chirish."""
         async with self.pool.acquire() as c:
             await c.execute("DELETE FROM userbot_sessions")
         return True
@@ -399,18 +420,32 @@ class Database:
                 data.get("tariff"), data.get("expires_at"), data.get("top_until"))
 
     def _parse_ad(self, r):
+        """
+        Ad row → dict + video_file_id ni tozalash.
+        Agar eski base64 format bo'lsa — bo'sh qilamiz.
+        """
         d = dict(r)
         if isinstance(d.get("account_data"), str):
             try: d["account_data"] = json.loads(d["account_data"])
             except: d["account_data"] = {}
         elif d.get("account_data") is None:
             d["account_data"] = {}
+        # account_data dan base64 videoni olib tashlash
+        for k in ("video_data", "video_base64", "video"):
+            d["account_data"].pop(k, None)
+        # video_file_id: agar base64 bo'lsa — NULL qaytaramiz
+        vid = d.get("video_file_id")
+        if vid and isinstance(vid, str) and vid.startswith("data:"):
+            d["video_file_id"] = None
         return d
 
     async def get_active_ads(self, category=None):
         async with self.pool.acquire() as c:
             q = """
-                SELECT a.*, u.first_name, u.last_name, u.telegram_id as seller_tg
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
+                       a.currency, a.location, a.full_location, a.account_data, a.tariff,
+                       a.status, a.views, a.top_until, a.expires_at, a.created_at,
+                       u.first_name, u.last_name, u.telegram_id as seller_tg
                 FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE a.status='ACTIVE' AND (a.expires_at IS NULL OR a.expires_at > NOW())
             """
@@ -422,6 +457,7 @@ class Database:
                     WHEN a.ad_type='PREMIUM' THEN 2
                     WHEN a.ad_type='RARE' THEN 3
                     ELSE 4 END, a.created_at DESC
+                LIMIT 100
             """
             return [self._parse_ad(r) for r in await c.fetch(q)]
 
@@ -434,19 +470,28 @@ class Database:
             return self._parse_ad(r) if r else None
 
     async def get_user_ads(self, telegram_id):
+        """Faqat kerakli maydonlarni qaytaradi — base64 videolar yo'q."""
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT a.* FROM ads a JOIN users u ON u.id=a.user_id
-                WHERE u.telegram_id=$1 ORDER BY a.created_at DESC
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
+                       a.currency, a.location, a.full_location, a.account_data, a.tariff,
+                       a.status, a.views, a.reject_reason, a.top_until, a.expires_at,
+                       a.created_at, a.updated_at
+                FROM ads a JOIN users u ON u.id=a.user_id
+                WHERE u.telegram_id=$1
+                ORDER BY a.created_at DESC LIMIT 50
             """, telegram_id)
             return [self._parse_ad(r) for r in rows]
 
     async def get_pending_ads(self):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT a.*, u.telegram_id, u.first_name, u.last_name, u.phone
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
+                       a.currency, a.location, a.full_location, a.account_data, a.tariff,
+                       a.status, a.views, a.created_at,
+                       u.telegram_id, u.first_name, u.last_name, u.phone
                 FROM ads a JOIN users u ON u.id=a.user_id
-                WHERE a.status='PENDING' ORDER BY a.created_at DESC
+                WHERE a.status='PENDING' ORDER BY a.created_at DESC LIMIT 50
             """)
             return [self._parse_ad(r) for r in rows]
 
@@ -484,11 +529,14 @@ class Database:
             u = await self.get_user(telegram_id)
             if not u: return []
             rows = await c.fetch("""
-                SELECT a.* FROM saved_ads s
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
+                       a.currency, a.location, a.full_location, a.account_data, a.tariff,
+                       a.status, a.views, a.top_until, a.expires_at, a.created_at
+                FROM saved_ads s
                 JOIN ads a ON a.id=s.ad_id
                 WHERE s.user_id=$1 AND a.status='ACTIVE'
                   AND (a.expires_at IS NULL OR a.expires_at>NOW())
-                ORDER BY s.created_at DESC
+                ORDER BY s.created_at DESC LIMIT 50
             """, u["id"])
             return [self._parse_ad(r) for r in rows]
 
