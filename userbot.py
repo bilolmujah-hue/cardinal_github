@@ -1,13 +1,5 @@
 """
 @CardXabarBot dan keladigan to'lov xabarlarini o'qib, avtomatik balans qo'shadi.
-
-Xabar formati (rasmda):
-    Perevod na kartu
-    + 15 000.00 UZS
-    ***8143
-    CLICK P2P, UZ
-
-Biz bundan: amount = 15000, payer_last4 = "8143" ni ajratamiz.
 """
 import asyncio
 import logging
@@ -16,6 +8,7 @@ from typing import Optional, Callable, Awaitable
 
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
+from telethon.network import ConnectionTcpAbridged
 
 from config import USERBOT
 
@@ -24,12 +17,10 @@ logger = logging.getLogger("Userbot")
 
 class CardXabarWatcher:
     def __init__(self, on_payment: Callable[[int, str, str], Awaitable[dict]]):
-        """
-        on_payment(amount, payer_last4, raw_text) -> dict (natija)
-        """
         self.on_payment = on_payment
         self.client: Optional[TelegramClient] = None
         self._task: Optional[asyncio.Task] = None
+        self._stopped = False
 
     async def start(self):
         if not USERBOT.SESSION_STRING:
@@ -43,13 +34,20 @@ class CardXabarWatcher:
             device_model="Cardinal",
             system_version="1.0",
             app_version="5.1",
+            connection=ConnectionTcpAbridged,     # 🔥 MUHIM
+            use_ipv6=False,
+            timeout=30,
+            retry_delay=3,
+            auto_reconnect=True,
+            connection_retries=15,
+            request_retries=5,
+            flood_sleep_threshold=60,
+            sequential_updates=False,
         )
 
-        # Xabar handleri
         @self.client.on(events.NewMessage(incoming=True))
         async def handler(event):
             try:
-                # Faqat @CardXabarBot dan kelgan xabarlar
                 sender = await event.get_sender()
                 if not sender:
                     return
@@ -77,40 +75,53 @@ class CardXabarWatcher:
             except Exception as e:
                 logger.error(f"❌ Handler xato: {e}", exc_info=True)
 
-        await self.client.start()
-        me = await self.client.get_me()
-        logger.info(f"✅ Userbot ishga tushdi: @{me.username or me.id}")
+        # 🔥 Retry loop bilan ulanish
+        while not self._stopped:
+            try:
+                await self.client.start()
+                me = await self.client.get_me()
+                logger.info(f"✅ Userbot ishga tushdi: @{me.username or me.id}")
+                break
+            except Exception as e:
+                logger.error(f"❌ Userbot ulanish xatosi: {e}")
+                logger.info("⏳ 10 soniyadan keyin qayta urinib ko'riladi...")
+                await asyncio.sleep(10)
 
-        # Task sifatida ushlab turamiz
+        if self._stopped:
+            return
+
         self._task = asyncio.create_task(self.client.run_until_disconnected())
 
     async def stop(self):
+        self._stopped = True
         if self.client:
-            await self.client.disconnect()
+            try:
+                await self.client.disconnect()
+            except Exception:
+                pass
 
     @staticmethod
     def _parse(text: str) -> Optional[tuple]:
-        """
-        Matndan amount va oxirgi 4 raqamni ajratadi.
-        Qaytaradi: (amount: int, last4: str) yoki None
-        """
         if not text:
             return None
 
-        # Faqat kirim (Perevod na kartu / Popolnenie / + belgisi)
         text_low = text.lower()
+
+        # Faqat kirim
         is_income = (
             "perevod na kartu" in text_low
             or "popolnenie" in text_low
             or re.search(r"^\s*\+\s*[\d\s.,]+", text, re.MULTILINE)
         )
-        # Chiqim bo'lsa rad etamiz
         if "spisanie" in text_low or "снятие" in text_low:
             return None
+        if not is_income:
+            return None
 
-        # Amount: "+ 15 000.00 UZS" yoki "15 000.00 UZS"
+        # Amount
         amount = None
-        m = re.search(r"[+\-]?\s*([\d]{1,3}(?:[\s,]\d{3})*(?:\.\d{1,2})?)\s*(UZS|so'm|сум)", text, re.IGNORECASE)
+        m = re.search(r"[+\-]?\s*([\d]{1,3}(?:[\s,]\d{3})*(?:\.\d{1,2})?)\s*(UZS|so'm|сум)",
+                      text, re.IGNORECASE)
         if m:
             raw = m.group(1).replace(" ", "").replace(",", "")
             try:
@@ -121,13 +132,12 @@ class CardXabarWatcher:
         if amount is None or amount <= 0:
             return None
 
-        # Oxirgi 4 raqam: ***8143
+        # Oxirgi 4 raqam
         last4 = None
         m2 = re.search(r"\*{2,}(\d{4})\b", text)
         if m2:
             last4 = m2.group(1)
         else:
-            # "karta 8143" yoki "**** 8143"
             m3 = re.search(r"(?:karta|card|карта)[^\d]{0,10}(\d{4})\b", text, re.IGNORECASE)
             if m3:
                 last4 = m3.group(1)
@@ -139,15 +149,13 @@ class CardXabarWatcher:
 
 
 # ============================================================
-# SESSION STRING GENERATOR (bir marta ishga tushiriladi)
+# SESSION STRING GENERATOR
 # ============================================================
 async def generate_session():
-    """Terminalda bir marta ishga tushirib, SESSION_STRING ni olish uchun."""
     from telethon import TelegramClient
     from telethon.sessions import StringSession
 
     print("=== SESSION STRING GENERATOR ===")
-    print("Telefon raqamingiz: +998XXXXXXXXX")
     async with TelegramClient(StringSession(), USERBOT.API_ID, USERBOT.API_HASH) as client:
         s = client.session.save()
         print("\n✅ SESSION_STRING:")
