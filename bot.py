@@ -1,9 +1,9 @@
 """
-CARDINAL REKLAMA 
+CARDINAL REKLAMA BOT v5.2
+- Userbot DB orqali boshqariladi (admin panel)
 - Chat yo'q, faqat reklama
 - Avtomatik to'lov (userbot orqali)
 - Video 7 kunda o'chadi
-- Tariflar: 1=9000 (web), =19000 (kanal), 3=25000 (10% skidka), 4=29000 (VIP+TOP)
 """
 import asyncio
 import logging
@@ -16,7 +16,7 @@ from aiogram.filters import CommandStart, Command
 from aiogram.types import (
     Message, CallbackQuery, ReplyKeyboardMarkup, KeyboardButton,
     InlineKeyboardMarkup, InlineKeyboardButton, WebAppInfo,
-    BufferedInputFile, FSInputFile
+    BufferedInputFile
 )
 
 from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS, USERBOT
@@ -37,8 +37,11 @@ class CardinalBot:
         self.dp = Dispatcher()
         self.db = db
 
-        # Userbot (avtomatik to'lov)
-        self.userbot = CardXabarWatcher(on_payment=self._on_payment_received)
+        # 🔥 Userbot — DB bilan
+        self.userbot = CardXabarWatcher(
+            on_payment=self._on_payment_received,
+            db=db
+        )
 
         # Cleaner
         self.cleaner = VideoCleaner(db, self.bot)
@@ -47,18 +50,12 @@ class CardinalBot:
         self._register_callbacks()
 
     # ============================================================
-    # AVTOMATIK TO'LOV — userbot xabar kelganda
+    # AVTOMATIK TO'LOV
     # ============================================================
     async def _on_payment_received(self, amount: int, payer_last4: str, raw: str) -> dict:
-        """
-        Userbot @CardXabarBot dan xabar o'qib shu yerga yuboradi.
-        Biz DB dan kutayotgan topup_request ni topamiz va balans qo'shamiz.
-        """
         try:
             result = await self.db.match_payment(amount, payer_last4)
-
             if result and result.get("ok"):
-                # Foydalanuvchiga xabar
                 try:
                     await self.bot.send_message(
                         result["user_tg"],
@@ -87,7 +84,6 @@ class CardinalBot:
         self.dp.message.register(self.cmd_cards, Command("cards"))
         self.dp.message.register(self.cmd_addcard, Command("addcard"))
         self.dp.message.register(self.cmd_delcard, Command("delcard"))
-        self.dp.message.register(self.cmd_setsession, Command("setsession"))
         self.dp.message.register(self.handle_contact, F.contact)
         self.dp.message.register(self.handle_webapp_data, F.web_app_data)
         self.dp.message.register(self.handle_profile_btn, F.text == "👤 Profilim")
@@ -169,7 +165,6 @@ class CardinalBot:
         await message.answer(
             "👋 Assalomu alaykum!\n\n"
             "🎮 <b>CARDINAL REKLAMA</b> botiga xush kelibsiz!\n\n"
-            "PUBG Mobile akkauntlarini sotish va sotib olish platformasi.\n\n"
             "Ro'yxatdan o'tish uchun telefon raqamingizni yuboring.",
             parse_mode="HTML", reply_markup=kb
         )
@@ -186,6 +181,7 @@ class CardinalBot:
             f"⏳ Kutilmoqda: <b>{s['pending']}</b>\n"
             f"💳 Aktiv kartalar: <b>{s['cards']}</b>\n"
             f"⭐ Otziflar: <b>{s['feedbacks']}</b>\n"
+            f"🤖 Userbot: <b>{'✅' if s.get('userbot') else '❌'}</b>\n"
             f"💵 Umumiy balans: <b>{s['total_balance']:,} so'm</b>\n"
             f"📈 30 kunlik daromad: <b>{s['monthly_income']:,} so'm</b>",
             parse_mode="HTML"
@@ -240,17 +236,6 @@ class CardinalBot:
             await message.answer(f"✅ Karta #{cid} o'chirildi")
         except Exception as e:
             await message.answer(f"❌ Xato: {e}")
-
-    async def cmd_setsession(self, message: Message):
-        """Admin StringSession ni Railway env ga qo'yishi kerak (bir marta)."""
-        if message.from_user.id != BOT.ADMIN_CHAT_ID: return
-        await message.answer(
-            "ℹ️ Userbot session Railway env orqali o'rnatiladi.\n\n"
-            "1. Terminalda: <code>python userbot.py</code>\n"
-            "2. Chiqqan SESSION_STRING ni Railway → Variables → USERBOT_SESSION ga qo'ying\n"
-            "3. Serviceni redeploy qiling",
-            parse_mode="HTML"
-        )
 
     async def handle_contact(self, message: Message):
         c = message.contact
@@ -309,10 +294,10 @@ class CardinalBot:
             "ℹ️ <b>CARDINAL REKLAMA BOT</b>\n\n"
             "🎮 PUBG Mobile akkauntlarini sotish/sotib olish platformasi.\n\n"
             "📋 <b>Tariflar:</b>\n"
-            f"1️⃣ STANDART (faqat Web App) — {TARIFFS[1].price:,} so'm\n"
+            f"1️⃣ STANDART — {TARIFFS[1].price:,} so'm\n"
             f"2️⃣ KANAL + WEB APP — {TARIFFS[2].price:,} so'm\n"
             f"3️⃣ RARE (10% skidka) — {TARIFFS[3].price:,} so'm\n"
-            f"4️⃣ PREMIUM VIP (48 soat TOP) — {TARIFFS[4].price:,} so'm\n\n"
+            f"4️⃣ PREMIUM VIP — {TARIFFS[4].price:,} so'm\n\n"
             "💳 To'lov Web App orqali avtomatik."
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[[
@@ -393,7 +378,6 @@ class CardinalBot:
         if not ad:
             await cb.answer("❌ Topilmadi"); return
 
-        # TOP until hisoblash (tariff 4 uchun)
         top_until = None
         t = TARIFFS.get(ad["tariff"], TARIFFS[1])
         if getattr(t, "top_hours", 0) > 0:
@@ -404,11 +388,9 @@ class CardinalBot:
 
         await self.db.update_ad_status(ad_id, "ACTIVE")
 
-        # Kanalga joylash (faqat 2,3,4 tariflar)
         if t.channel and ad.get("video_file_id"):
             await self._post_to_channel(ad)
 
-        # Foydalanuvchiga xabar
         try:
             await self.bot.send_message(
                 ad["seller_tg"],
@@ -427,8 +409,7 @@ class CardinalBot:
             await cb.answer("❌ Topilmadi"); return
         await self.db.update_ad_status(ad_id, "REJECTED", "Admin rad etdi")
         t = TARIFFS.get(ad["tariff"], TARIFFS[1])
-        # Pulni qaytarish
-        await self.db.update_balance(ad["seller_tg"], t.price, "topup", "Rad etilgan reklama uchun qaytarildi")
+        await self.db.update_balance(ad["seller_tg"], t.price, "topup", "Rad etilgan reklama qaytarildi")
         try:
             await self.bot.send_message(
                 ad["seller_tg"],
@@ -440,17 +421,13 @@ class CardinalBot:
         await cb.answer("❌ Rad etildi")
 
     # ============================================================
-    # KANALGA JOYLASH (faqat 2, 3, 4)
+    # KANALGA JOYLASH
     # ============================================================
     async def _post_to_channel(self, ad: dict):
         try:
             acc = ad.get("account_data", {}) or {}
             cur = CURRENCIES.get(ad.get("currency", "UZS"), CURRENCIES["UZS"])
 
-            # Ketma-ketlik (user talab qildi):
-            # 1. LVL, 2. Kolleksiya, 3. RP, 4. Mifik kiyimlar,
-            # 5. Redkiy skinlar, 6. X-KOSTYUM, 7. Kuchaytirilgan qurollar,
-            # 8. SUPAR-CAR, 9. Ulangan, 10. Manzil + Narx
             lines = [
                 "🎮 <b>PUBG MOBILE AKKOUNT</b>",
                 "━━━━━━━━━━━━━━━━━━━━",
@@ -507,7 +484,6 @@ class CardinalBot:
                 )
             ]])
 
-            # Video kanaldan file_id orqali yuboramiz
             if ad.get("video_file_id"):
                 msg = await self.bot.send_video(
                     BOT.CHANNEL_ID,
@@ -527,7 +503,7 @@ class CardinalBot:
             logger.error(f"Kanalga joylash xato: {e}", exc_info=True)
 
     # ============================================================
-    # YORDAMCHI: Admin panelga yangi e'lon yuborish
+    # ADMIN NOTIFY
     # ============================================================
     async def notify_admin_new_ad(self, ad: dict):
         try:
@@ -558,12 +534,13 @@ class CardinalBot:
             logger.error(f"Admin notify xato: {e}")
 
     # ============================================================
-    # ISHGA TUSHIRISH
+    # START
     # ============================================================
     async def start(self):
-        logger.info("🚀 CardinalBot v5.1 ishga tushdi")
-        # Userbot + Cleaner ni background task sifatida
+        logger.info("🚀 CardinalBot v5.2 ishga tushdi")
+        # Userbot — DB dan yuklanadi
         await self.userbot.start()
+        # Cleaner
         await self.cleaner.start()
         # Polling
         await self.dp.start_polling(self.bot)
