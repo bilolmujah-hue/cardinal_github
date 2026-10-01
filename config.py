@@ -1,6 +1,12 @@
+"""
+Cardinal v5.1 — Sozlamalar
+"""
 import os
 
 
+# ============================================================
+# DATABASE
+# ============================================================
 class DB:
     HOST = os.getenv("PGHOST", "localhost")
     PORT = int(os.getenv("PGPORT", 5432))
@@ -9,6 +15,9 @@ class DB:
     PASSWORD = os.getenv("PGPASSWORD", "root")
 
 
+# ============================================================
+# BOT
+# ============================================================
 class BOT:
     TOKEN = os.getenv("BOT_TOKEN", "8894813624:AAFCo3nDE19T8A2Ql_-W2j4-XemU4G1QcxI")
     ADMIN_CHAT_ID = 7038296036
@@ -17,43 +26,63 @@ class BOT:
 
     WEB_APP_URL = "https://ishbilol1230-dev.github.io/budilnik-app/uzbekcats.html"
 
-    # Kanal (e'lonlar uchun)
+    # E'lonlar kanali
     CHANNEL_USERNAME = "@tajriva2"
     CHANNEL_ID = -1004390708511
 
-    # Video saqlash kanali (@reklama_db)
+    # Video saqlash kanali
     VIDEO_CHANNEL_ID = -1004401093865
 
-    # Majburiy obuna
+    # Majburiy obuna kanallari
     REQUIRED_CHANNELS = [
         {"username": "@tajriva2", "id": -1004390708511, "name": "Tajriva 2"},
-        {"username": "@tajriva", "id": -1004442636025, "name": "Tajriva"},
+        {"username": "@tajriva",  "id": -1004442636025, "name": "Tajriva"},
     ]
 
 
+# ============================================================
+# USERBOT (Telethon)
+# ============================================================
 class USERBOT:
-    App api_id: 30030023
-    App api_hash: a3a0b5d77ef12ec9ed208012844875c5
+    # my.telegram.org dan olingan
+    API_ID = 30030023
+    API_HASH = "a3a0b5d77ef12ec9ed208012844875c5"
+
+    # Telefon raqam (ixtiyoriy)
     PHONE = os.getenv("USERBOT_PHONE", "")
-    SESSION_STRING = os.getenv("USERBOT_SESSION", "")  # StringSession
-    # CardXabarBot ga kelgan xabarlarni kuzatish
+
+    # StringSession (Railway Variables dan)
+    SESSION_STRING = os.getenv("USERBOT_SESSION", "")
+
+    # CardXabarBot username
     WATCH_BOT_USERNAME = "CardXabarBot"
 
 
+# ============================================================
+# JWT
+# ============================================================
 class JWT:
-    SECRET = os.getenv("JWT_SECRET", "cardinal-super-secret-change-in-prod-2026-xR9k")
+    SECRET = os.getenv(
+        "JWT_SECRET",
+        "cardinal-super-secret-change-in-prod-2026-xR9k"
+    )
     ALGORITHM = "HS256"
     ACCESS_MINUTES = 15
     REFRESH_DAYS = 7
 
 
+# ============================================================
+# API
+# ============================================================
 class API:
     HOST = "0.0.0.0"
     PORT = int(os.getenv("PORT", 8080))
     MAX_SIZE = 200 * 1024 * 1024  # 200 MB
 
 
-# ============ TARIFLAR ============
+# ============================================================
+# TARIFLAR
+# ============================================================
 class T1:
     id = 1
     price = 9000
@@ -64,7 +93,6 @@ class T1:
     channel = False
     webapp = True
     top_hours = 0
-
 
 class T2:
     id = 2
@@ -77,7 +105,6 @@ class T2:
     webapp = True
     top_hours = 0
 
-
 class T3:
     id = 3
     price = 25000
@@ -88,7 +115,6 @@ class T3:
     channel = True
     webapp = True
     top_hours = 0
-
 
 class T4:
     id = 4
@@ -101,17 +127,22 @@ class T4:
     webapp = True
     top_hours = 48  # 2 kun TOP
 
-
 TARIFFS = {1: T1, 2: T2, 3: T3, 4: T4}
 
-# ============ VALYUTALAR ============
+
+# ============================================================
+# VALYUTALAR
+# ============================================================
 CURRENCIES = {
     "UZS": {"symbol": "so'm", "flag": "🇺🇿", "name": "So'm"},
-    "USD": {"symbol": "$", "flag": "🇺🇸", "name": "Dollar"},
-    "RUB": {"symbol": "₽", "flag": "🇷🇺", "name": "Rubl"},
+    "USD": {"symbol": "$",    "flag": "🇺🇸", "name": "Dollar"},
+    "RUB": {"symbol": "₽",    "flag": "🇷🇺", "name": "Rubl"},
 }
 
-# ============ VILOYATLAR ============
+
+# ============================================================
+# VILOYATLAR
+# ============================================================
 REGIONS = [
     "Toshkent", "Samarqand", "Buxoro", "Namangan", "Andijon",
     "Farg'ona", "Qashqadaryo", "Surxondaryo", "Xorazm", "Navoiy",
@@ -119,7 +150,9 @@ REGIONS = [
 ]
 
 
-# ============ LIMITLAR ============
+# ============================================================
+# LIMITLAR
+# ============================================================
 class LIMITS:
     VIDEO_MAX_MB = 200
     VIDEO_TTL_DAYS = 7
@@ -130,7 +163,9 @@ class LIMITS:
     MIN_TOPUP = 1000
 
 
-# ============ BOSHLANG'ICH KARTALAR ============
+# ============================================================
+# BOSHLANG'ICH KARTALAR
+# ============================================================
 INITIAL_CARDS = [
     "5614682110725894",
     "5614682513788143",
