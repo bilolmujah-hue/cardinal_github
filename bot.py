@@ -1,8 +1,8 @@
 """
-CARDINAL REKLAMA BOT v5.3 — Premium Design
-- Chiroyli tranzaksiyalar
-- Premium ko'rinishdagi xabarlar
-- Zamonaviy keyboard va emoji
+CARDINAL REKLAMA BOT v5.4
+- Userbot DB orqali boshqariladi
+- Yangi topup oqimi (10 daqiqa, chek, bekor qilish)
+- Premium dizayn
 """
 import asyncio
 import logging
@@ -31,10 +31,9 @@ logger = logging.getLogger("CardinalBot")
 
 
 # ============================================================
-# YORDAMCHI FUNKSIYALAR
+# HELPERS
 # ============================================================
 def num(n) -> str:
-    """Raqamni chiroyli formatlash: 400000 -> 400 000"""
     try:
         return f"{int(n):,}".replace(",", " ")
     except Exception:
@@ -42,63 +41,37 @@ def num(n) -> str:
 
 
 def fmt_price(amount, currency="UZS") -> str:
-    """Narxni valyutaga qarab formatlash"""
     cur = CURRENCIES.get(currency, CURRENCIES["UZS"])
     n = int(amount or 0)
-    if currency == "UZS":
-        return f"{num(n)} {cur['symbol']}"
-    if currency == "USD":
-        return f"${n}"
-    if currency == "RUB":
-        return f"{num(n)} {cur['symbol']}"
+    if currency == "UZS": return f"{num(n)} {cur['symbol']}"
+    if currency == "USD": return f"${n}"
+    if currency == "RUB": return f"{num(n)} {cur['symbol']}"
     return f"{num(n)} {cur['symbol']}"
 
 
 def fmt_date(date_obj, full=False) -> str:
-    """Sanani formatlash"""
-    if not date_obj:
-        return "-"
+    if not date_obj: return "-"
     try:
         if isinstance(date_obj, str):
             date_obj = datetime.fromisoformat(date_obj.replace("Z", ""))
-        if full:
-            return date_obj.strftime("%d.%m.%Y · %H:%M")
-        return date_obj.strftime("%d.%m.%Y")
+        return date_obj.strftime("%d.%m.%Y · %H:%M") if full else date_obj.strftime("%d.%m.%Y")
     except Exception:
         return str(date_obj)
 
 
 def status_emoji(status: str) -> str:
-    return {
-        "APPROVED": "✅",
-        "PENDING": "⏳",
-        "REJECTED": "❌",
-    }.get(status, "⚪")
+    return {"APPROVED": "✅", "PENDING": "⏳", "REJECTED": "❌"}.get(status, "⚪")
 
 
 def tx_type_emoji(tx_type: str) -> tuple:
-    """Qaytaradi: (emoji, label, sign)"""
-    if tx_type == "topup":
-        return "💰", "Hisob to'ldirish", "+"
-    if tx_type == "spend":
-        return "💸", "Reklama uchun", "−"
-    if tx_type == "remove":
-        return "⚠️", "Admin olib tashladi", "−"
+    if tx_type == "topup": return "💰", "Hisob to'ldirish", "+"
+    if tx_type == "spend": return "💸", "Reklama uchun", "−"
+    if tx_type == "remove": return "⚠️", "Admin olib tashladi", "−"
     return "💳", "Boshqa", ""
 
 
-def ad_status_text(status: str) -> tuple:
-    """Qaytaradi: (emoji, matn)"""
-    return {
-        "ACTIVE": ("🟢", "Faol"),
-        "PENDING": ("🟡", "Tasdiqlanmoqda"),
-        "REJECTED": ("🔴", "Rad etilgan"),
-        "EXPIRED": ("⚪", "Muddati o'tgan"),
-    }.get(status, ("⚪", status))
-
-
 # ============================================================
-# CARDINAL BOT
+# BOT
 # ============================================================
 class CardinalBot:
     def __init__(self, db: Database):
@@ -119,18 +92,23 @@ class CardinalBot:
     # AVTOMATIK TO'LOV
     # ============================================================
     async def _on_payment_received(self, amount: int, payer_last4: str, raw: str) -> dict:
+        """
+        Userbot xabar o'qidi. So'rovni MATCHED qiladi — LEKIN balans qo'shmaydi.
+        Balans faqat chek yuklanganda qo'shiladi.
+        """
         try:
             result = await self.db.match_payment(amount, payer_last4)
             if result and result.get("ok"):
+                logger.info(f"✅ To'lov aniqlandi: {amount} so'm (karta ***{payer_last4}) — chek kutilmoqda")
+                # Userga xabar: chekni yuklang
                 try:
                     await self.bot.send_message(
                         result["user_tg"],
-                        f"🎉 <b>TO'LOV QABUL QILINDI!</b>\n"
-                        f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                        "🔔 <b>To'lovingiz aniqlandi!</b>\n"
+                        "━━━━━━━━━━━━━━━━━━━━\n\n"
                         f"💰 Summa: <b>{num(amount)} so'm</b>\n"
                         f"💳 Karta: <code>**** {payer_last4}</code>\n\n"
-                        f"✅ Hisobingiz muvaffaqiyatli to'ldirildi\n"
-                        f"🚀 Endi reklama joylashingiz mumkin!",
+                        "📸 Endi <b>chekni</b> yuklang — hisobingiz to'ldiriladi!",
                         parse_mode="HTML"
                     )
                 except Exception as e:
@@ -201,7 +179,7 @@ class CardinalBot:
             await self._reject_ad(ad_id, cb)
 
     # ============================================================
-    # /start
+    # COMMANDS
     # ============================================================
     async def cmd_start(self, message: Message):
         u = message.from_user
@@ -248,9 +226,6 @@ class CardinalBot:
             parse_mode="HTML", reply_markup=kb
         )
 
-    # ============================================================
-    # MAIN MENU
-    # ============================================================
     async def _show_main_menu(self, message: Message):
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🌐 Web App ni ochish", web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
@@ -283,9 +258,6 @@ class CardinalBot:
             parse_mode="HTML", reply_markup=rkb
         )
 
-    # ============================================================
-    # COMMANDS
-    # ============================================================
     async def cmd_admin(self, message: Message):
         if message.from_user.id != BOT.ADMIN_CHAT_ID:
             return
@@ -308,13 +280,9 @@ class CardinalBot:
         )
 
     async def cmd_stats(self, message: Message):
-        if message.from_user.id != BOT.ADMIN_CHAT_ID:
-            return
+        if message.from_user.id != BOT.ADMIN_CHAT_ID: return
         s = await self.db.get_stats()
-        await message.answer(
-            f"<pre>{json.dumps(s, indent=2, ensure_ascii=False)}</pre>",
-            parse_mode="HTML"
-        )
+        await message.answer(f"<pre>{json.dumps(s, indent=2, ensure_ascii=False)}</pre>", parse_mode="HTML")
 
     async def cmd_channelid(self, message: Message):
         await message.answer(
@@ -373,9 +341,6 @@ class CardinalBot:
         except Exception as e:
             await message.answer(f"❌ Xato: {e}")
 
-    # ============================================================
-    # CONTACT
-    # ============================================================
     async def handle_contact(self, message: Message):
         c = message.contact
         phone = c.phone_number.replace("+", "").replace(" ", "")
@@ -406,7 +371,7 @@ class CardinalBot:
         await self._show_main_menu(message)
 
     # ============================================================
-    # PROFILE (premium)
+    # PROFILE
     # ============================================================
     async def handle_profile_btn(self, message: Message):
         u = await self.db.get_user(message.from_user.id)
@@ -417,7 +382,6 @@ class CardinalBot:
         status_emoji_ = "🟢" if not u.get("is_blocked") else "🔴"
         status_text = "Faol" if not u.get("is_blocked") else "Bloklangan"
 
-        # Reklamalar soni
         async with self.db.pool.acquire() as c:
             total_ads = await c.fetchval("SELECT COUNT(*) FROM ads WHERE user_id=$1", u["id"])
             active_ads = await c.fetchval("SELECT COUNT(*) FROM ads WHERE user_id=$1 AND status='ACTIVE'", u["id"])
@@ -451,7 +415,7 @@ class CardinalBot:
         await message.answer(text, parse_mode="HTML", reply_markup=kb)
 
     # ============================================================
-    # TRANZAKSIYALAR (premium dizayn)
+    # TRANZAKSIYALAR
     # ============================================================
     async def handle_tx_btn(self, message: Message):
         user_id = message.from_user.id
@@ -475,7 +439,6 @@ class CardinalBot:
             )
             return
 
-        # Header
         header = (
             f"╔══════════════════════════╗\n"
             f"  💳 <b>TRANZAKSIYALAR TARIXI</b>\n"
@@ -486,7 +449,6 @@ class CardinalBot:
             f"━━━━━━━━━━━━━━━━━━━━\n\n"
         )
 
-        # Har bir tranzaksiya
         lines = [header]
         for tx in txs:
             emoji, label, sign = tx_type_emoji(tx["type"])
@@ -495,10 +457,7 @@ class CardinalBot:
             date_str = fmt_date(tx["created_at"], full=True)
             desc = (tx.get("description") or "")[:40]
 
-            # Summa rangi
-            if sign == "+":
-                amount_str = f"<b>{sign}{num(amount)} so'm</b>"
-            elif sign == "−":
+            if sign in ("+", "−"):
                 amount_str = f"<b>{sign}{num(amount)} so'm</b>"
             else:
                 amount_str = f"<b>{num(amount)} so'm</b>"
@@ -511,7 +470,6 @@ class CardinalBot:
                 f"   ─────────────────\n"
             )
 
-        # Footer
         lines.append(
             "\n━━━━━━━━━━━━━━━━━━━━\n"
             "💡 <i>Har bir to'lov avtomatik tasdiqlanadi</i>"
@@ -519,7 +477,6 @@ class CardinalBot:
 
         text = "\n".join(lines)
 
-        # Telegram limit 4096 — bo'lib yuboramiz
         if len(text) > 4000:
             chunks = []
             current = ""
@@ -529,9 +486,7 @@ class CardinalBot:
                     current = line
                 else:
                     current += line
-            if current:
-                chunks.append(current)
-
+            if current: chunks.append(current)
             for chunk in chunks:
                 await message.answer(chunk, parse_mode="HTML")
                 await asyncio.sleep(0.3)
@@ -539,7 +494,7 @@ class CardinalBot:
             await message.answer(text, parse_mode="HTML")
 
     # ============================================================
-    # BOT HAQIDA (premium)
+    # BOT HAQIDA
     # ============================================================
     async def handle_about_btn(self, message: Message):
         text = (
@@ -560,25 +515,15 @@ class CardinalBot:
             "━━━━━━━━━━━━━━━━━━━━\n"
             "💎 <b>TARIFLAR:</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"1️⃣ STANDART\n"
-            f"    💰 {num(TARIFFS[1].price)} so'm · 7 kun\n"
-            f"    📍 Faqat Web App'da\n\n"
-            f"2️⃣ KANAL + WEB APP\n"
-            f"    💰 {num(TARIFFS[2].price)} so'm · 7 kun\n"
-            f"    📍 Kanal + Web App\n\n"
-            f"3️⃣ RARE 🔥\n"
-            f"    💰 {num(TARIFFS[3].price)} so'm · 7 kun\n"
-            f"    📍 Kanal + Web App\n"
-            f"    🎁 10% skidka keyingi reklamaga\n\n"
-            f"4️⃣ PREMIUM VIP 👑\n"
-            f"    💰 {num(TARIFFS[4].price)} so'm · 7 kun\n"
-            f"    📍 Kanal + Web App\n"
-            f"    ⚡ 48 soat TOP'da\n\n"
+            f"1️⃣ STANDART — {num(TARIFFS[1].price)} so'm\n"
+            f"2️⃣ KANAL + WEB APP — {num(TARIFFS[2].price)} so'm\n"
+            f"3️⃣ RARE (10% skidka) — {num(TARIFFS[3].price)} so'm\n"
+            f"4️⃣ PREMIUM VIP — {num(TARIFFS[4].price)} so'm\n\n"
             "━━━━━━━━━━━━━━━━━━━━\n"
             "💳 <b>TO'LOV:</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
             "🤖 Web App orqali avtomatik\n"
-            "⚡ 5 daqiqada hisobingizga tushadi\n\n"
+            "⚡ 10 daqiqada hisobingizga tushadi\n\n"
             f"📞 <b>Qo'llab-quvvatlash:</b>\n"
             f"👨‍💻 @{BOT.ADMIN_USERNAME}"
         )
@@ -819,7 +764,7 @@ class CardinalBot:
     # START
     # ============================================================
     async def start(self):
-        logger.info("🚀 CardinalBot v5.3 ishga tushdi")
+        logger.info("🚀 CardinalBot v5.4 ishga tushdi")
         await self.userbot.start()
         await self.cleaner.start()
         await self.dp.start_polling(self.bot)
