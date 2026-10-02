@@ -16,7 +16,8 @@ class Database:
         self.pool = await asyncpg.create_pool(
             host=DB.HOST, port=DB.PORT, database=DB.NAME,
             user=DB.USER, password=DB.PASSWORD,
-            min_size=2, max_size=20, command_timeout=60,
+            min_size=5, max_size=50,  # 🔥 10K user uchun
+            command_timeout=60,
         )
         logger.info("✅ PostgreSQL ulandi")
 
@@ -28,132 +29,91 @@ class Database:
         async with self.pool.acquire() as c:
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS users (
-                    id              SERIAL PRIMARY KEY,
-                    telegram_id     BIGINT UNIQUE NOT NULL,
-                    username        VARCHAR(255),
-                    first_name      VARCHAR(255),
-                    last_name       VARCHAR(255),
-                    phone           VARCHAR(20),
-                    password_hash   VARCHAR(255),
-                    balance         BIGINT DEFAULT 0,
-                    spent           BIGINT DEFAULT 0,
-                    avatar          TEXT,
-                    is_registered   BOOLEAN DEFAULT FALSE,
-                    is_admin        BOOLEAN DEFAULT FALSE,
-                    is_blocked      BOOLEAN DEFAULT FALSE,
-                    created_at      TIMESTAMP DEFAULT NOW(),
-                    updated_at      TIMESTAMP DEFAULT NOW()
+                    id SERIAL PRIMARY KEY, telegram_id BIGINT UNIQUE NOT NULL,
+                    username VARCHAR(255), first_name VARCHAR(255), last_name VARCHAR(255),
+                    phone VARCHAR(20), password_hash VARCHAR(255),
+                    balance BIGINT DEFAULT 0, spent BIGINT DEFAULT 0,
+                    avatar TEXT, is_registered BOOLEAN DEFAULT FALSE,
+                    is_admin BOOLEAN DEFAULT FALSE, is_blocked BOOLEAN DEFAULT FALSE,
+                    created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS cards (
-                    id              SERIAL PRIMARY KEY,
-                    number          VARCHAR(20) UNIQUE NOT NULL,
-                    holder          VARCHAR(100),
-                    is_active       BOOLEAN DEFAULT TRUE,
-                    total_received  BIGINT DEFAULT 0,
-                    created_at      TIMESTAMP DEFAULT NOW()
+                    id SERIAL PRIMARY KEY, number VARCHAR(20) UNIQUE NOT NULL,
+                    holder VARCHAR(100), is_active BOOLEAN DEFAULT TRUE,
+                    total_received BIGINT DEFAULT 0, created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS ads (
-                    id              SERIAL PRIMARY KEY,
-                    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    title           VARCHAR(255) NOT NULL,
-                    video_file_id   TEXT,
-                    ad_type         VARCHAR(50) DEFAULT 'STANDARD',
-                    price           BIGINT NOT NULL,
-                    currency        VARCHAR(10) DEFAULT 'UZS',
-                    location        VARCHAR(100),
-                    full_location   VARCHAR(255),
-                    account_data    JSONB DEFAULT '{}'::jsonb,
-                    tariff          INTEGER,
-                    status          VARCHAR(20) DEFAULT 'PENDING',
-                    views           INTEGER DEFAULT 0,
-                    reject_reason   TEXT,
-                    channel_msg_id  BIGINT,
-                    top_until       TIMESTAMP,
-                    expires_at      TIMESTAMP,
-                    created_at      TIMESTAMP DEFAULT NOW(),
-                    updated_at      TIMESTAMP DEFAULT NOW()
+                    id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    title VARCHAR(255) NOT NULL, video_file_id TEXT,
+                    ad_type VARCHAR(50) DEFAULT 'STANDARD', price BIGINT NOT NULL,
+                    currency VARCHAR(10) DEFAULT 'UZS', location VARCHAR(100),
+                    full_location VARCHAR(255), account_data JSONB DEFAULT '{}'::jsonb,
+                    tariff INTEGER, status VARCHAR(20) DEFAULT 'PENDING',
+                    views INTEGER DEFAULT 0, reject_reason TEXT, channel_msg_id BIGINT,
+                    top_until TIMESTAMP, expires_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS saved_ads (
-                    id          SERIAL PRIMARY KEY,
-                    ad_id       INTEGER REFERENCES ads(id) ON DELETE CASCADE,
-                    user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    created_at  TIMESTAMP DEFAULT NOW(),
-                    UNIQUE(ad_id, user_id)
+                    id SERIAL PRIMARY KEY, ad_id INTEGER REFERENCES ads(id) ON DELETE CASCADE,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    created_at TIMESTAMP DEFAULT NOW(), UNIQUE(ad_id, user_id)
                 );
             """)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS transactions (
-                    id              SERIAL PRIMARY KEY,
-                    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    amount          BIGINT NOT NULL,
-                    type            VARCHAR(20) NOT NULL,
-                    description     TEXT,
-                    status          VARCHAR(20) DEFAULT 'PENDING',
-                    card_id         INTEGER,
-                    card_last4      VARCHAR(4),
-                    payer_last4     VARCHAR(4),
-                    receipt_file_id TEXT,
-                    expires_at      TIMESTAMP,
-                    created_at      TIMESTAMP DEFAULT NOW(),
-                    updated_at      TIMESTAMP DEFAULT NOW()
+                    id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    amount BIGINT NOT NULL, type VARCHAR(20) NOT NULL,
+                    description TEXT, status VARCHAR(20) DEFAULT 'PENDING',
+                    card_id INTEGER, card_last4 VARCHAR(4), payer_last4 VARCHAR(4),
+                    receipt_file_id TEXT, expires_at TIMESTAMP,
+                    created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # 🔥 YANGI: topup_requests receipt_url ustuni
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS topup_requests (
-                    id              SERIAL PRIMARY KEY,
-                    user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    amount          BIGINT NOT NULL,
-                    card_id         INTEGER REFERENCES cards(id),
-                    card_number     VARCHAR(20),
-                    status          VARCHAR(20) DEFAULT 'WAITING',
-                    expires_at      TIMESTAMP NOT NULL,
-                    matched_tx_id   INTEGER,
-                    created_at      TIMESTAMP DEFAULT NOW()
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    amount BIGINT NOT NULL,
+                    card_id INTEGER REFERENCES cards(id),
+                    card_number VARCHAR(20),
+                    status VARCHAR(30) DEFAULT 'WAITING',
+                    expires_at TIMESTAMP NOT NULL,
+                    matched_tx_id INTEGER,
+                    receipt_url TEXT,
+                    created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS feedbacks (
-                    id          SERIAL PRIMARY KEY,
-                    user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    text        TEXT NOT NULL,
-                    rating      INTEGER DEFAULT 5,
-                    is_visible  BOOLEAN DEFAULT TRUE,
-                    created_at  TIMESTAMP DEFAULT NOW()
+                    id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    text TEXT NOT NULL, rating INTEGER DEFAULT 5,
+                    is_visible BOOLEAN DEFAULT TRUE, created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS blocked_users (
-                    id          SERIAL PRIMARY KEY,
-                    user_id     INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    reason      TEXT,
-                    blocked_by  INTEGER,
-                    created_at  TIMESTAMP DEFAULT NOW(),
-                    UNIQUE(user_id)
+                    id SERIAL PRIMARY KEY, user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    reason TEXT, blocked_by INTEGER, created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id)
                 );
             """)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS broadcasts (
-                    id          SERIAL PRIMARY KEY,
-                    admin_id    INTEGER REFERENCES users(id),
-                    message     TEXT,
-                    sent_count  INTEGER DEFAULT 0,
-                    created_at  TIMESTAMP DEFAULT NOW()
+                    id SERIAL PRIMARY KEY, admin_id INTEGER REFERENCES users(id),
+                    message TEXT, sent_count INTEGER DEFAULT 0, created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS userbot_sessions (
-                    id              SERIAL PRIMARY KEY,
-                    phone           VARCHAR(20) NOT NULL,
-                    session_string  TEXT NOT NULL,
-                    is_active       BOOLEAN DEFAULT TRUE,
-                    created_at      TIMESTAMP DEFAULT NOW(),
-                    updated_at      TIMESTAMP DEFAULT NOW()
+                    id SERIAL PRIMARY KEY, phone VARCHAR(20) NOT NULL,
+                    session_string TEXT NOT NULL, is_active BOOLEAN DEFAULT TRUE,
+                    created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
 
@@ -164,8 +124,8 @@ class Database:
             await c.execute("CREATE INDEX IF NOT EXISTS idx_ads_status ON ads(status);")
             await c.execute("CREATE INDEX IF NOT EXISTS idx_ads_expires ON ads(expires_at);")
             await c.execute("CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);")
-            await c.execute("CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at);")
-            await c.execute("CREATE INDEX IF NOT EXISTS idx_topup_expires ON topup_requests(expires_at);")
+            await c.execute("CREATE INDEX IF NOT EXISTS idx_topup_status ON topup_requests(status);")
+            await c.execute("CREATE INDEX IF NOT EXISTS idx_topup_amount_status ON topup_requests(amount, status);")
 
         await self._seed_cards()
         await self._cleanup_base64_videos()
@@ -173,7 +133,6 @@ class Database:
 
     async def _migrate(self):
         migrations = [
-            "ALTER TABLE users ADD COLUMN IF NOT EXISTS password_hash VARCHAR(255)",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS spent BIGINT DEFAULT 0",
@@ -181,92 +140,51 @@ class Database:
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS top_until TIMESTAMP",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'UZS'",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS account_data JSONB DEFAULT '{}'::jsonb",
-            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS tariff INTEGER",
-            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS reject_reason TEXT",
-            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS channel_msg_id BIGINT",
-            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS full_location VARCHAR(255)",
-            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS ad_type VARCHAR(50) DEFAULT 'STANDARD'",
-            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS views INTEGER DEFAULT 0",
-            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
-            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS card_id INTEGER",
-            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS card_last4 VARCHAR(4)",
-            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS payer_last4 VARCHAR(4)",
-            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS receipt_file_id TEXT",
-            "ALTER TABLE transactions ADD COLUMN IF NOT EXISTS expires_at TIMESTAMP",
-            "ALTER TABLE blocked_users ADD COLUMN IF NOT EXISTS blocked_by INTEGER",
+            "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS receipt_url TEXT",
         ]
         async with self.pool.acquire() as c:
             for sql in migrations:
                 try:
                     await c.execute(sql)
                 except Exception as e:
-                    logger.warning(f"⚠️ Migration skip: {e}")
-        logger.info("✅ Migrations bajarildi")
+                    logger.warning(f"Migration skip: {e}")
 
     async def _cleanup_base64_videos(self):
         try:
             async with self.pool.acquire() as c:
-                result = await c.execute("""
-                    UPDATE ads SET video_file_id = NULL
-                    WHERE video_file_id LIKE 'data:%'
-                """)
-                if result != "UPDATE 0":
-                    logger.info(f"🧹 Base64 videolar tozalandi: {result}")
-
-                result2 = await c.execute("""
-                    UPDATE ads SET status = 'EXPIRED'
-                    WHERE video_file_id IS NULL
-                      AND status = 'ACTIVE'
+                await c.execute("UPDATE ads SET video_file_id = NULL WHERE video_file_id LIKE 'data:%'")
+                await c.execute("""
+                    UPDATE ads SET status='EXPIRED'
+                    WHERE video_file_id IS NULL AND status='ACTIVE'
                       AND created_at < NOW() - INTERVAL '1 day'
                 """)
-                if result2 != "UPDATE 0":
-                    logger.info(f"🧹 Video yo'q e'lonlar EXPIRED: {result2}")
-
-                result3 = await c.execute("""
-                    UPDATE ads
-                    SET account_data = account_data - 'video_data' - 'video_base64' - 'video'
-                    WHERE account_data ? 'video_data'
-                       OR account_data ? 'video_base64'
-                       OR account_data ? 'video'
-                """)
-                if result3 != "UPDATE 0":
-                    logger.info(f"🧹 account_data tozalandi: {result3}")
         except Exception as e:
-            logger.error(f"cleanup xato: {e}")
+            logger.error(f"cleanup: {e}")
 
     async def _seed_cards(self):
         async with self.pool.acquire() as c:
             for num in INITIAL_CARDS:
                 await c.execute("""
-                    INSERT INTO cards (number, holder)
-                    VALUES ($1, $2) ON CONFLICT (number) DO NOTHING
+                    INSERT INTO cards (number, holder) VALUES ($1, $2)
+                    ON CONFLICT (number) DO NOTHING
                 """, num, "CARDINAL ADMIN")
 
-    # ==================== USERBOT SESSION ====================
-    async def save_userbot_session(self, phone: str, session_string: str):
+    # ============ USERBOT SESSION ============
+    async def save_userbot_session(self, phone, session_string):
         async with self.pool.acquire() as c:
             async with c.transaction():
                 await c.execute("DELETE FROM userbot_sessions")
-                await c.execute("""
-                    INSERT INTO userbot_sessions (phone, session_string, is_active)
-                    VALUES ($1, $2, TRUE)
-                """, phone, session_string)
+                await c.execute("INSERT INTO userbot_sessions (phone, session_string, is_active) VALUES ($1, $2, TRUE)", phone, session_string)
         return True
 
-    async def get_userbot_session(self) -> Optional[str]:
+    async def get_userbot_session(self):
         async with self.pool.acquire() as c:
-            r = await c.fetchrow("""
-                SELECT session_string FROM userbot_sessions
-                WHERE is_active=TRUE ORDER BY id DESC LIMIT 1
-            """)
+            r = await c.fetchrow("SELECT session_string FROM userbot_sessions WHERE is_active=TRUE ORDER BY id DESC LIMIT 1")
             return r["session_string"] if r else None
 
-    async def get_userbot_info(self) -> Optional[Dict]:
+    async def get_userbot_info(self):
         async with self.pool.acquire() as c:
-            r = await c.fetchrow("""
-                SELECT id, phone, is_active, created_at, updated_at
-                FROM userbot_sessions WHERE is_active=TRUE ORDER BY id DESC LIMIT 1
-            """)
+            r = await c.fetchrow("SELECT id, phone, is_active, created_at, updated_at FROM userbot_sessions WHERE is_active=TRUE ORDER BY id DESC LIMIT 1")
             return dict(r) if r else None
 
     async def delete_userbot_session(self):
@@ -274,7 +192,7 @@ class Database:
             await c.execute("DELETE FROM userbot_sessions")
         return True
 
-    # ==================== USERS ====================
+    # ============ USERS ============
     async def get_or_create_user(self, telegram_id, username=None, first_name=None, last_name=None):
         async with self.pool.acquire() as c:
             u = await c.fetchrow("SELECT * FROM users WHERE telegram_id=$1", telegram_id)
@@ -285,10 +203,8 @@ class Database:
                     VALUES ($1,$2,$3,$4,$5) RETURNING *
                 """, telegram_id, username, first_name, last_name, is_admin)
             else:
-                await c.execute("""
-                    UPDATE users SET username=$1, first_name=$2, last_name=$3, updated_at=NOW()
-                    WHERE telegram_id=$4
-                """, username, first_name, last_name, telegram_id)
+                await c.execute("UPDATE users SET username=$1, first_name=$2, last_name=$3, updated_at=NOW() WHERE telegram_id=$4",
+                                username, first_name, last_name, telegram_id)
             return dict(u)
 
     async def get_user(self, telegram_id):
@@ -301,45 +217,23 @@ class Database:
             u = await c.fetchrow("SELECT * FROM users WHERE id=$1", uid)
             return dict(u) if u else None
 
-    async def get_user_full(self, telegram_id: int) -> Optional[Dict]:
-        """To'liq user ma'lumot + reklamalar soni + admin flag."""
+    async def get_user_full(self, telegram_id):
         async with self.pool.acquire() as c:
             u = await c.fetchrow("SELECT * FROM users WHERE telegram_id=$1", telegram_id)
-            if not u:
-                return None
+            if not u: return None
             d = dict(u)
-            d["ads_count"] = await c.fetchval(
-                "SELECT COUNT(*) FROM ads WHERE user_id=$1", d["id"]
-            )
+            d["ads_count"] = await c.fetchval("SELECT COUNT(*) FROM ads WHERE user_id=$1", d["id"])
             d["is_admin"] = (telegram_id == 7038296036) or d.get("is_admin", False)
             return d
 
-    async def add_admin(self, telegram_id: int) -> bool:
-        """Foydalanuvchini admin qilish."""
+    async def add_admin(self, telegram_id):
         async with self.pool.acquire() as c:
-            r = await c.execute(
-                "UPDATE users SET is_admin=TRUE, updated_at=NOW() WHERE telegram_id=$1",
-                telegram_id
-            )
-            return r == "UPDATE 1"
-
-    async def remove_admin(self, telegram_id: int) -> bool:
-        """Adminlikdan olish (asosiy adminni olib tashlab bo'lmaydi)."""
-        if telegram_id == 7038296036:
-            return False
-        async with self.pool.acquire() as c:
-            r = await c.execute(
-                "UPDATE users SET is_admin=FALSE, updated_at=NOW() WHERE telegram_id=$1",
-                telegram_id
-            )
+            r = await c.execute("UPDATE users SET is_admin=TRUE, updated_at=NOW() WHERE telegram_id=$1", telegram_id)
             return r == "UPDATE 1"
 
     async def update_phone(self, telegram_id, phone):
         async with self.pool.acquire() as c:
-            await c.execute(
-                "UPDATE users SET phone=$1, is_registered=TRUE, updated_at=NOW() WHERE telegram_id=$2",
-                phone, telegram_id
-            )
+            await c.execute("UPDATE users SET phone=$1, is_registered=TRUE, updated_at=NOW() WHERE telegram_id=$2", phone, telegram_id)
 
     async def is_registered(self, telegram_id):
         async with self.pool.acquire() as c:
@@ -349,9 +243,8 @@ class Database:
     async def update_profile(self, telegram_id, first_name=None, last_name=None, avatar=None):
         async with self.pool.acquire() as c:
             await c.execute("""
-                UPDATE users SET first_name=COALESCE($1,first_name),
-                    last_name=COALESCE($2,last_name), avatar=COALESCE($3,avatar),
-                    updated_at=NOW() WHERE telegram_id=$4
+                UPDATE users SET first_name=COALESCE($1,first_name), last_name=COALESCE($2,last_name),
+                    avatar=COALESCE($3,avatar), updated_at=NOW() WHERE telegram_id=$4
             """, first_name, last_name, avatar, telegram_id)
 
     async def is_blocked(self, telegram_id):
@@ -381,20 +274,11 @@ class Database:
             rows = await c.fetch("SELECT * FROM users ORDER BY created_at DESC LIMIT $1", limit)
             return [dict(r) for r in rows]
 
-    async def get_blocked(self):
-        async with self.pool.acquire() as c:
-            rows = await c.fetch("""
-                SELECT u.*, b.reason FROM blocked_users b
-                JOIN users u ON u.id=b.user_id ORDER BY b.created_at DESC
-            """)
-            return [dict(r) for r in rows]
-
-    # ==================== CARDS ====================
+    # ============ CARDS ============
     async def get_cards(self, active_only=True):
         async with self.pool.acquire() as c:
             q = "SELECT * FROM cards"
-            if active_only:
-                q += " WHERE is_active=TRUE"
+            if active_only: q += " WHERE is_active=TRUE"
             q += " ORDER BY id"
             return [dict(r) for r in await c.fetch(q)]
 
@@ -403,70 +287,48 @@ class Database:
             try:
                 await c.execute("INSERT INTO cards (number, holder) VALUES ($1,$2)", number, holder)
                 return True
-            except Exception:
-                return False
+            except: return False
 
     async def remove_card(self, card_id):
         async with self.pool.acquire() as c:
             await c.execute("DELETE FROM cards WHERE id=$1", card_id)
 
-    async def card_received(self, card_id, amount):
-        async with self.pool.acquire() as c:
-            await c.execute("UPDATE cards SET total_received=total_received+$1 WHERE id=$2", amount, card_id)
-
-    async def get_card_by_number(self, number):
-        async with self.pool.acquire() as c:
-            r = await c.fetchrow("SELECT * FROM cards WHERE number=$1", number)
-            return dict(r) if r else None
-
-    # ==================== BALANCE ====================
+    # ============ BALANCE ============
     async def update_balance(self, telegram_id, amount, tx_type="topup", desc=None):
         async with self.pool.acquire() as c:
             async with c.transaction():
                 if tx_type == "topup":
-                    await c.execute(
-                        "UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE telegram_id=$2",
-                        amount, telegram_id
-                    )
+                    await c.execute("UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE telegram_id=$2", amount, telegram_id)
                 elif tx_type == "spend":
-                    await c.execute(
-                        "UPDATE users SET balance=balance-$1, spent=spent+$1, updated_at=NOW() WHERE telegram_id=$2",
-                        amount, telegram_id
-                    )
+                    await c.execute("UPDATE users SET balance=balance-$1, spent=spent+$1, updated_at=NOW() WHERE telegram_id=$2", amount, telegram_id)
                 u = await self.get_user(telegram_id)
                 if u:
                     await c.execute("""
                         INSERT INTO transactions (user_id, amount, type, description, status)
                         VALUES ($1,$2,$3,$4,'APPROVED')
-                    """, u["id"], amount, tx_type, desc or f"{tx_type}")
+                    """, u["id"], amount, tx_type, desc or tx_type)
 
-    async def remove_balance(self, telegram_id: int, amount: int) -> bool:
-        """Balansdan pul olib tashlash (admin). Balans 0 dan kam bo'lmaydi."""
+    async def remove_balance(self, telegram_id, amount):
         async with self.pool.acquire() as c:
             async with c.transaction():
-                await c.execute("""
-                    UPDATE users SET balance = GREATEST(balance - $1, 0), updated_at=NOW()
-                    WHERE telegram_id = $2
-                """, amount, telegram_id)
+                await c.execute("UPDATE users SET balance=GREATEST(balance-$1,0), updated_at=NOW() WHERE telegram_id=$2", amount, telegram_id)
                 u = await self.get_user(telegram_id)
                 if u:
                     await c.execute("""
                         INSERT INTO transactions (user_id, amount, type, description, status)
                         VALUES ($1,$2,'remove','Admin olib tashladi','APPROVED')
                     """, u["id"], amount)
-        return True
 
-    # ==================== ADS ====================
+    # ============ ADS ============
     async def create_ad(self, user_id, data):
         async with self.pool.acquire() as c:
             acc_json = json.dumps(data.get("account_data", {}) or {}, ensure_ascii=False)
             return await c.fetchval("""
                 INSERT INTO ads (user_id, title, video_file_id, ad_type, price, currency,
                     location, full_location, account_data, tariff, status, expires_at, top_until)
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'PENDING',$11,$12)
-                RETURNING id
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'PENDING',$11,$12) RETURNING id
             """, user_id, data["title"], data.get("video_file_id"),
-                data.get("ad_type", "STANDARD"), data["price"], data.get("currency", "UZS"),
+                data.get("ad_type","STANDARD"), data["price"], data.get("currency","UZS"),
                 data.get("location"), data.get("full_location"), acc_json,
                 data.get("tariff"), data.get("expires_at"), data.get("top_until"))
 
@@ -477,7 +339,7 @@ class Database:
             except: d["account_data"] = {}
         elif d.get("account_data") is None:
             d["account_data"] = {}
-        for k in ("video_data", "video_base64", "video"):
+        for k in ("video_data","video_base64","video"):
             d["account_data"].pop(k, None)
         vid = d.get("video_file_id")
         if vid and isinstance(vid, str) and vid.startswith("data:"):
@@ -493,12 +355,9 @@ class Database:
                        u.first_name, u.last_name, u.telegram_id as seller_tg
                 FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE a.status='ACTIVE' AND (a.expires_at IS NULL OR a.expires_at > NOW())
-                ORDER BY CASE
-                    WHEN a.top_until IS NOT NULL AND a.top_until > NOW() THEN 1
-                    WHEN a.ad_type='PREMIUM' THEN 2
-                    WHEN a.ad_type='RARE' THEN 3
-                    ELSE 4 END, a.created_at DESC
-                LIMIT 100
+                ORDER BY CASE WHEN a.top_until IS NOT NULL AND a.top_until > NOW() THEN 1
+                    WHEN a.ad_type='PREMIUM' THEN 2 WHEN a.ad_type='RARE' THEN 3 ELSE 4 END,
+                    a.created_at DESC LIMIT 100
             """
             return [self._parse_ad(r) for r in await c.fetch(q)]
 
@@ -518,8 +377,7 @@ class Database:
                        a.status, a.views, a.reject_reason, a.top_until, a.expires_at,
                        a.created_at, a.updated_at
                 FROM ads a JOIN users u ON u.id=a.user_id
-                WHERE u.telegram_id=$1
-                ORDER BY a.created_at DESC LIMIT 50
+                WHERE u.telegram_id=$1 ORDER BY a.created_at DESC LIMIT 50
             """, telegram_id)
             return [self._parse_ad(r) for r in rows]
 
@@ -538,15 +396,10 @@ class Database:
     async def update_ad_status(self, ad_id, status, reason=None, channel_msg_id=None):
         async with self.pool.acquire() as c:
             if channel_msg_id:
-                await c.execute("""
-                    UPDATE ads SET status=$1, reject_reason=$2, channel_msg_id=$3, updated_at=NOW()
-                    WHERE id=$4
-                """, status, reason, channel_msg_id, ad_id)
+                await c.execute("UPDATE ads SET status=$1, reject_reason=$2, channel_msg_id=$3, updated_at=NOW() WHERE id=$4",
+                                status, reason, channel_msg_id, ad_id)
             else:
-                await c.execute("""
-                    UPDATE ads SET status=$1, reject_reason=$2, updated_at=NOW()
-                    WHERE id=$3
-                """, status, reason, ad_id)
+                await c.execute("UPDATE ads SET status=$1, reject_reason=$2, updated_at=NOW() WHERE id=$3", status, reason, ad_id)
 
     async def delete_ad(self, ad_id):
         async with self.pool.acquire() as c:
@@ -556,7 +409,7 @@ class Database:
         async with self.pool.acquire() as c:
             await c.execute("UPDATE ads SET views=views+1 WHERE id=$1", ad_id)
 
-    # ==================== SAVED ====================
+    # ============ SAVED ============
     async def toggle_save(self, ad_id, telegram_id):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
@@ -576,95 +429,172 @@ class Database:
                 SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
                        a.currency, a.location, a.full_location, a.account_data, a.tariff,
                        a.status, a.views, a.top_until, a.expires_at, a.created_at
-                FROM saved_ads s
-                JOIN ads a ON a.id=s.ad_id
+                FROM saved_ads s JOIN ads a ON a.id=s.ad_id
                 WHERE s.user_id=$1 AND a.status='ACTIVE'
                   AND (a.expires_at IS NULL OR a.expires_at>NOW())
                 ORDER BY s.created_at DESC LIMIT 50
             """, u["id"])
             return [self._parse_ad(r) for r in rows]
 
-    # ==================== TOPUP ====================
+    # ============ TOPUP — YANGI ============
     async def create_topup_request(self, telegram_id, amount):
+        """10 daqiqalik so'rov yaratish. Bir xil summa uchun boshqa karta beriladi."""
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return None
-            card = await c.fetchrow("SELECT * FROM cards WHERE is_active=TRUE ORDER BY RANDOM() LIMIT 1")
+
+            # Foydalanuvchining eski kutayotgan so'rovlarini bekor qilish
+            await c.execute("""
+                UPDATE topup_requests SET status='CANCELLED'
+                WHERE user_id=$1 AND status IN ('WAITING','MATCHED')
+            """, u["id"])
+
+            # Bir xil summada boshqa user tomonidan band qilinmagan kartani topish
+            card = await c.fetchrow("""
+                SELECT * FROM cards
+                WHERE is_active=TRUE
+                  AND id NOT IN (
+                      SELECT card_id FROM topup_requests
+                      WHERE amount=$1 AND status IN ('WAITING','MATCHED') AND expires_at > NOW()
+                  )
+                ORDER BY RANDOM() LIMIT 1
+            """, amount)
+
+            if not card:
+                # Fallback: random karta (barcha band bo'lsa)
+                card = await c.fetchrow("SELECT * FROM cards WHERE is_active=TRUE ORDER BY RANDOM() LIMIT 1")
             if not card: return None
-            expires = datetime.now() + timedelta(minutes=LIMITS.PAYMENT_TIMEOUT_MIN)
+
+            expires = datetime.now() + timedelta(minutes=10)
             rid = await c.fetchval("""
-                INSERT INTO topup_requests (user_id, amount, card_id, card_number, expires_at)
-                VALUES ($1,$2,$3,$4,$5) RETURNING id
+                INSERT INTO topup_requests (user_id, amount, card_id, card_number, status, expires_at, receipt_url)
+                VALUES ($1,$2,$3,$4,'WAITING',$5,NULL) RETURNING id
             """, u["id"], amount, card["id"], card["number"], expires)
             return {"id": rid, "card_number": card["number"], "expires_at": expires}
 
     async def get_pending_topup(self, telegram_id):
+        """Faqat WAITING yoki MATCHED holatdagi so'rovni qaytaradi."""
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return None
             r = await c.fetchrow("""
                 SELECT * FROM topup_requests
-                WHERE user_id=$1 AND status='WAITING' AND expires_at > NOW()
+                WHERE user_id=$1 AND status IN ('WAITING','MATCHED') AND expires_at > NOW()
                 ORDER BY created_at DESC LIMIT 1
             """, u["id"])
             return dict(r) if r else None
 
     async def expire_old_topups(self):
         async with self.pool.acquire() as c:
-            await c.execute("""
-                UPDATE topup_requests SET status='EXPIRED'
-                WHERE status='WAITING' AND expires_at <= NOW()
-            """)
+            await c.execute("UPDATE topup_requests SET status='EXPIRED' WHERE status IN ('WAITING','MATCHED') AND expires_at <= NOW()")
 
     async def match_payment(self, amount, payer_last4):
+        """
+        Userbot xabar o'qidi. So'rovni MATCHED qilamiz — LEKIN balans qo'shmaymiz.
+        Balans faqat chek yuklanganda qo'shiladi.
+        """
         async with self.pool.acquire() as c:
-            async with c.transaction():
+            req = await c.fetchrow("""
+                SELECT * FROM topup_requests
+                WHERE amount=$1 AND status='WAITING' AND expires_at > NOW()
+                  AND RIGHT(card_number, 4) = $2
+                ORDER BY created_at ASC LIMIT 1
+            """, amount, payer_last4)
+
+            if not req:
+                # Faqat summa bo'yicha urinish
                 req = await c.fetchrow("""
                     SELECT * FROM topup_requests
                     WHERE amount=$1 AND status='WAITING' AND expires_at > NOW()
                     ORDER BY created_at ASC LIMIT 1
                 """, amount)
-                if not req:
-                    return {"ok": False, "reason": "no_request"}
 
-                await c.execute("UPDATE topup_requests SET status='PAID' WHERE id=$1", req["id"])
-                u = await self.get_user_by_id(req["user_id"])
-                if not u:
-                    return {"ok": False, "reason": "no_user"}
-                await c.execute(
-                    "UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE id=$2",
-                    amount, req["user_id"]
-                )
-                await c.execute("""
-                    INSERT INTO transactions (user_id, amount, type, description, status, card_last4, payer_last4)
-                    VALUES ($1,$2,'topup',$3,'APPROVED',$4,$5)
-                """, req["user_id"], amount, "Avto to'lov",
-                    req.get("card_number", "")[-4:], payer_last4)
-                await c.execute(
-                    "UPDATE cards SET total_received=total_received+$1 WHERE id=$2",
-                    amount, req["card_id"]
-                )
-                return {"ok": True, "user_tg": u["telegram_id"], "amount": amount}
+            if not req:
+                return {"ok": False, "reason": "no_request"}
 
-    # ==================== TRANSACTIONS ====================
+            await c.execute("UPDATE topup_requests SET status='MATCHED' WHERE id=$1", req["id"])
+            u = await self.get_user_by_id(req["user_id"])
+            return {
+                "ok": True,
+                "user_tg": u["telegram_id"] if u else 0,
+                "amount": amount,
+                "request_id": req["id"],
+            }
+
+    async def submit_receipt(self, telegram_id, receipt_url):
+        """
+        Foydalanuvchi chek yukladi.
+        - Agar status MATCHED bo'lsa: balans qo'shiladi + transaction yoziladi.
+        - Aks holda: RECEIPT_UPLOADED — adminga xabar (qo'lda tekshirish uchun).
+        """
+        async with self.pool.acquire() as c:
+            u = await self.get_user(telegram_id)
+            if not u: return {"ok": False, "reason": "no_user"}
+
+            req = await c.fetchrow("""
+                SELECT * FROM topup_requests
+                WHERE user_id=$1 AND status IN ('WAITING','MATCHED')
+                ORDER BY created_at DESC LIMIT 1
+            """, u["id"])
+            if not req:
+                return {"ok": False, "reason": "no_request"}
+
+            # Receiptni saqlash
+            await c.execute("UPDATE topup_requests SET receipt_url=$1 WHERE id=$2", receipt_url, req["id"])
+
+            user_info = {
+                "user_name": f"{u.get('first_name','')} {u.get('last_name','')}".strip(),
+                "phone": u.get("phone",""),
+                "telegram_id": u["telegram_id"],
+                "amount": req["amount"],
+                "request_id": req["id"],
+            }
+
+            if req["status"] == "MATCHED":
+                # ✅ To'lov aniqlandi → balans qo'shish
+                async with c.transaction():
+                    await c.execute("UPDATE topup_requests SET status='COMPLETED' WHERE id=$1", req["id"])
+                    await c.execute("UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE id=$2",
+                                    req["amount"], req["user_id"])
+                    await c.execute("""
+                        INSERT INTO transactions (user_id, amount, type, description, status, card_last4)
+                        VALUES ($1, $2, 'topup', 'Avto to''lov', 'APPROVED', $3)
+                    """, req["user_id"], req["amount"], req["card_number"][-4:])
+                    await c.execute("UPDATE cards SET total_received=total_received+$1 WHERE id=$2",
+                                    req["amount"], req["card_id"])
+                user_info["completed"] = True
+                return {"ok": True, **user_info}
+
+            else:
+                # ⏳ Userbot hali aniqlanmadi — adminga yuboramiz
+                await c.execute("UPDATE topup_requests SET status='RECEIPT_UPLOADED' WHERE id=$1", req["id"])
+                user_info["completed"] = False
+                return {"ok": True, **user_info}
+
+    async def cancel_topup(self, telegram_id):
+        async with self.pool.acquire() as c:
+            u = await self.get_user(telegram_id)
+            if not u: return False
+            await c.execute("""
+                UPDATE topup_requests SET status='CANCELLED'
+                WHERE user_id=$1 AND status IN ('WAITING','MATCHED','RECEIPT_UPLOADED')
+            """, u["id"])
+            return True
+
+    # ============ TRANSACTIONS ============
     async def get_user_txs(self, telegram_id, limit=50):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return []
-            rows = await c.fetch("""
-                SELECT * FROM transactions WHERE user_id=$1
-                ORDER BY created_at DESC LIMIT $2
-            """, u["id"], limit)
+            rows = await c.fetch("SELECT * FROM transactions WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2", u["id"], limit)
             return [dict(r) for r in rows]
 
-    # ==================== FEEDBACKS ====================
+    # ============ FEEDBACKS ============
     async def add_feedback(self, telegram_id, text, rating=5):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return None
-            return await c.fetchval("""
-                INSERT INTO feedbacks (user_id, text, rating) VALUES ($1,$2,$3) RETURNING id
-            """, u["id"], text, rating)
+            return await c.fetchval("INSERT INTO feedbacks (user_id, text, rating) VALUES ($1,$2,$3) RETURNING id", u["id"], text, rating)
 
     async def get_feedbacks(self, limit=100):
         async with self.pool.acquire() as c:
@@ -685,25 +615,20 @@ class Database:
             await c.execute("UPDATE feedbacks SET is_visible=FALSE WHERE id=$1", fb_id)
             return True
 
-    # ==================== VIDEO CLEANUP ====================
+    # ============ CLEANUP ============
     async def get_expired_ads(self):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT id, video_file_id, channel_msg_id, tariff
-                FROM ads
-                WHERE expires_at IS NOT NULL AND expires_at <= NOW()
-                  AND video_file_id IS NOT NULL
+                SELECT id, video_file_id, channel_msg_id, tariff FROM ads
+                WHERE expires_at IS NOT NULL AND expires_at <= NOW() AND video_file_id IS NOT NULL
             """)
             return [dict(r) for r in rows]
 
     async def expire_ad(self, ad_id):
         async with self.pool.acquire() as c:
-            await c.execute(
-                "UPDATE ads SET status='EXPIRED', video_file_id=NULL WHERE id=$1",
-                ad_id
-            )
+            await c.execute("UPDATE ads SET status='EXPIRED', video_file_id=NULL WHERE id=$1", ad_id)
 
-    # ==================== STATS ====================
+    # ============ STATS ============
     async def get_stats(self):
         async with self.pool.acquire() as c:
             return {
@@ -714,8 +639,7 @@ class Database:
                 "pending": await c.fetchval("SELECT COUNT(*) FROM ads WHERE status='PENDING'"),
                 "monthly_income": await c.fetchval("""
                     SELECT COALESCE(SUM(amount),0) FROM transactions
-                    WHERE type='spend' AND status='APPROVED'
-                      AND created_at > NOW() - INTERVAL '30 days'
+                    WHERE type='spend' AND status='APPROVED' AND created_at > NOW() - INTERVAL '30 days'
                 """),
                 "total_balance": await c.fetchval("SELECT COALESCE(SUM(balance),0) FROM users"),
                 "cards": await c.fetchval("SELECT COUNT(*) FROM cards WHERE is_active=TRUE"),
@@ -725,74 +649,38 @@ class Database:
 
     async def get_all_user_ids(self):
         async with self.pool.acquire() as c:
-            return [r["telegram_id"] for r in await c.fetch(
-                "SELECT telegram_id FROM users WHERE is_blocked=FALSE"
-            )]
+            return [r["telegram_id"] for r in await c.fetch("SELECT telegram_id FROM users WHERE is_blocked=FALSE")]
 
-    # ==================== STATISTIKA ====================
-    async def get_statistics(self) -> Dict:
-        """Harajatlar statistikasi (faqat spend type)."""
+    async def get_statistics(self):
         async with self.pool.acquire() as c:
-            today = await c.fetchval("""
-                SELECT COALESCE(SUM(amount),0) FROM transactions
-                WHERE type='spend' AND status='APPROVED'
-                  AND created_at >= CURRENT_DATE
-            """)
-            yesterday = await c.fetchval("""
-                SELECT COALESCE(SUM(amount),0) FROM transactions
-                WHERE type='spend' AND status='APPROVED'
-                  AND created_at >= CURRENT_DATE - INTERVAL '1 day'
-                  AND created_at < CURRENT_DATE
-            """)
-            week = await c.fetchval("""
-                SELECT COALESCE(SUM(amount),0) FROM transactions
-                WHERE type='spend' AND status='APPROVED'
-                  AND created_at >= NOW() - INTERVAL '7 days'
-            """)
-            month = await c.fetchval("""
-                SELECT COALESCE(SUM(amount),0) FROM transactions
-                WHERE type='spend' AND status='APPROVED'
-                  AND created_at >= NOW() - INTERVAL '30 days'
-            """)
-            year = await c.fetchval("""
-                SELECT COALESCE(SUM(amount),0) FROM transactions
-                WHERE type='spend' AND status='APPROVED'
-                  AND created_at >= NOW() - INTERVAL '1 year'
-            """)
-            total = await c.fetchval("""
-                SELECT COALESCE(SUM(amount),0) FROM transactions
-                WHERE type='spend' AND status='APPROVED'
-            """)
+            today = await c.fetchval("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type='spend' AND status='APPROVED' AND created_at >= CURRENT_DATE")
+            yesterday = await c.fetchval("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type='spend' AND status='APPROVED' AND created_at >= CURRENT_DATE - INTERVAL '1 day' AND created_at < CURRENT_DATE")
+            week = await c.fetchval("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type='spend' AND status='APPROVED' AND created_at >= NOW() - INTERVAL '7 days'")
+            month = await c.fetchval("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type='spend' AND status='APPROVED' AND created_at >= NOW() - INTERVAL '30 days'")
+            year = await c.fetchval("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type='spend' AND status='APPROVED' AND created_at >= NOW() - INTERVAL '1 year'")
+            total = await c.fetchval("SELECT COALESCE(SUM(amount),0) FROM transactions WHERE type='spend' AND status='APPROVED'")
 
-            # Oxirgi 7 kun chart
             rows = await c.fetch("""
-                SELECT DATE(created_at) as d, COALESCE(SUM(amount),0) as amt
-                FROM transactions
-                WHERE type='spend' AND status='APPROVED'
-                  AND created_at >= NOW() - INTERVAL '7 days'
+                SELECT DATE(created_at) as d, COALESCE(SUM(amount),0) as amt FROM transactions
+                WHERE type='spend' AND status='APPROVED' AND created_at >= NOW() - INTERVAL '7 days'
                 GROUP BY DATE(created_at) ORDER BY d
             """)
-            days_uz = ["Du", "Se", "Cho", "Pay", "Ju", "Sha", "Yak"]
+            days_uz = ["Du","Se","Cho","Pay","Ju","Sha","Yak"]
             chart = []
             for i in range(6, -1, -1):
-                target_date = date.today() - timedelta(days=i)
+                target = date.today() - timedelta(days=i)
                 amt = 0
                 for r in rows:
-                    if r["d"] == target_date:
-                        amt = r["amt"]
-                        break
-                chart.append({
-                    "date": str(target_date),
-                    "day": days_uz[target_date.weekday()],
-                    "amount": int(amt),
-                })
+                    if r["d"] == target: amt = r["amt"]; break
+                chart.append({"date": str(target), "day": days_uz[target.weekday()], "amount": int(amt)})
 
             return {
-                "today": int(today or 0),
-                "yesterday": int(yesterday or 0),
-                "week": int(week or 0),
-                "month": int(month or 0),
-                "year": int(year or 0),
-                "total": int(total or 0),
-                "chart": chart,
+                "today": int(today or 0), "yesterday": int(yesterday or 0),
+                "week": int(week or 0), "month": int(month or 0),
+                "year": int(year or 0), "total": int(total or 0), "chart": chart,
             }
+
+    async def get_blocked(self):
+        async with self.pool.acquire() as c:
+            rows = await c.fetch("SELECT u.*, b.reason FROM blocked_users b JOIN users u ON u.id=b.user_id ORDER BY b.created_at DESC")
+            return [dict(r) for r in rows]
