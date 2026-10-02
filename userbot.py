@@ -1,6 +1,9 @@
 """
 @CardXabarBot dan keladigan to'lov xabarlarini o'qib, avtomatik balans qo'shadi.
 Session DB dan yuklanadi — admin panel orqali boshqariladi.
+
+MUHIM: Faqat KIRIM (kelgan pul) xabarlarini o'qiydi.
+Chiqim (Platezh, Spisanie) xabarlarini o'tkazib yuboradi.
 """
 import asyncio
 import logging
@@ -55,7 +58,7 @@ class CardXabarWatcher:
                 USERBOT.API_HASH,
                 device_model="Cardinal",
                 system_version="1.0",
-                app_version="5.1",
+                app_version="5.4",
                 connection=ConnectionTcpAbridged,
                 use_ipv6=False,
                 timeout=30,
@@ -79,7 +82,6 @@ class CardXabarWatcher:
 
         except (AuthKeyNotFound, AuthKeyDuplicatedError, SessionRevokedError) as e:
             logger.error(f"❌ Sessiya yaroqsiz: {type(e).__name__}")
-            # DB dan o'chirish
             if self.db:
                 await self.db.delete_userbot_session()
             self.client = None
@@ -91,9 +93,7 @@ class CardXabarWatcher:
     # AUTH — admin panel orqali
     # ============================================================
     async def send_code(self, phone: str) -> dict:
-        """
-        1-qadam: Telefon raqamga kod yuborish.
-        """
+        """1-qadam: Telefon raqamga kod yuborish."""
         try:
             phone = phone.strip()
             if not phone.startswith("+"):
@@ -130,10 +130,7 @@ class CardXabarWatcher:
             return {"ok": False, "error": str(e)}
 
     async def verify_code(self, phone: str, code: str) -> dict:
-        """
-        2-qadam: Kodni tasdiqlash.
-        Agar 2FA bo'lsa, need_2fa=True qaytaradi.
-        """
+        """2-qadam: Kodni tasdiqlash. Agar 2FA bo'lsa, need_2fa=True qaytaradi."""
         try:
             phone = phone.strip()
             if not phone.startswith("+"):
@@ -166,9 +163,7 @@ class CardXabarWatcher:
             return {"ok": False, "error": str(e)}
 
     async def verify_2fa(self, phone: str, password: str) -> dict:
-        """
-        3-qadam (agar 2FA bo'lsa): Parolni tasdiqlash.
-        """
+        """3-qadam (agar 2FA bo'lsa): Parolni tasdiqlash."""
         try:
             phone = phone.strip()
             if not phone.startswith("+"):
@@ -250,12 +245,10 @@ class CardXabarWatcher:
     async def get_status(self) -> dict:
         """Hozirgi holatni qaytaradi."""
         try:
-            # DB dan ma'lumot
             info = None
             if self.db:
                 info = await self.db.get_userbot_info()
 
-            # Hozirgi client holati
             connected = False
             me_info = None
             if self.client:
@@ -298,44 +291,91 @@ class CardXabarWatcher:
                 return
 
             text = event.raw_text or ""
-            logger.info(f"📥 CardXabarBot: {text[:120]}")
+            if not text:
+                return
+
+            # Xabar boshlanishini log qilamiz (qisqartirib)
+            logger.info(f"📥 CardXabarBot: {text[:100].replace(chr(10), ' | ')}")
 
             parsed = self._parse(text)
             if not parsed:
-                logger.warning("⚠️ Parse qilinmadi")
+                logger.debug("⏭️ Chiqim yoki keraksiz xabar — o'tkazib yuborildi")
                 return
 
             amount, last4 = parsed
             result = await self.on_payment(amount, last4, text)
 
             if result and result.get("ok"):
-                logger.info(f"✅ Balans qo'shildi: {amount} so'm (karta ***{last4})")
+                logger.info(f"✅ To'lov aniqlandi: {amount} so'm (karta ***{last4})")
             else:
-                logger.info(f"ℹ️ Moslik yo'q: {amount} / ***{last4} → {result}")
+                reason = (result or {}).get("reason", "unknown")
+                logger.info(f"ℹ️ Moslik yo'q: {amount} / ***{last4} → {reason}")
 
         except Exception as e:
             logger.error(f"❌ Handler xato: {e}", exc_info=True)
 
+    # ============================================================
+    # PARSE — FAQAT KIRIM
+    # ============================================================
     @staticmethod
     def _parse(text: str) -> Optional[tuple]:
+        """
+        Matndan amount va oxirgi 4 raqamni ajratadi.
+        FAQAT KIRIM (kelgan pul) xabarlarini qaytaradi.
+        Chiqim xabarlarini (Platezh, Spisanie) — None qaytaradi.
+
+        Qaytaradi: (amount: int, last4: str) yoki None
+        """
         if not text:
             return None
 
         text_low = text.lower()
 
-        is_income = (
-            "perevod na kartu" in text_low
-            or "popolnenie" in text_low
-            or re.search(r"^\s*\+\s*[\d\s.,]+", text, re.MULTILINE)
-        )
-        if "spisanie" in text_low or "снятие" in text_low:
-            return None
-        if not is_income:
+        # ❌ 1. CHIQIM xabarlarini darhol rad etish
+        chiqim_keywords = [
+            "spisanie",       # Spisanie c karty
+            "platezh",        # Platezh
+            "снятие",         # Снятие
+            "списание",       # Списание
+            "платеж",         # Платеж
+            "perevod s kartu",# Perevod s kartu (chiqim)
+            "перевод с карты",
+        ]
+        for kw in chiqim_keywords:
+            if kw in text_low:
+                logger.debug(f"⏭️ Chiqim xabari (keyword: {kw})")
+                return None
+
+        # ❌ 2. Chiqim belgisi: ➖ (minus) yoki 🔴
+        if "➖" in text or "🔴" in text:
+            logger.debug("⏭️ Chiqim xabari (➖ yoki 🔴)")
             return None
 
+        # ✅ 3. KIRIM belgisi: ➕ (plus) yoki 🟢 yoki shu so'zlar
+        is_income = (
+            "➕" in text
+            or "➕" in text
+            or "🟢" in text
+            or "perevod na kartu" in text_low
+            or "перевод на карту" in text_low
+            or "popolnenie" in text_low
+            or "пополнение" in text_low
+        )
+
+        # 4. Agar hech qanday belgisi yo'q — regex bilan aniqlash
+        if not is_income:
+            # "+X XXX UZS" yoki "➕ X XXX UZS" ko'rinishini izlaymiz
+            if not re.search(r"[➕+]\s*[\d\s.,]+\s*(UZS|so'm|сум)", text, re.IGNORECASE):
+                logger.debug("⏭️ Kirim belgisi topilmadi")
+                return None
+
+        # ===== 5. AMOUNT =====
         amount = None
-        m = re.search(r"[+\-]?\s*([\d]{1,3}(?:[\s,]\d{3})*(?:\.\d{1,2})?)\s*(UZS|so'm|сум)",
-                      text, re.IGNORECASE)
+        # Variant A: "➕ 5 000.00 UZS"
+        m = re.search(
+            r"[➕+]?\s*([\d]{1,3}(?:[\s,]\d{3})*(?:\.\d{1,2})?)\s*(UZS|so'm|сум)",
+            text, re.IGNORECASE
+        )
         if m:
             raw = m.group(1).replace(" ", "").replace(",", "")
             try:
@@ -344,18 +384,26 @@ class CardXabarWatcher:
                 pass
 
         if amount is None or amount <= 0:
+            logger.debug("⏭️ Amount topilmadi")
             return None
 
+        # ===== 6. OXIRGI 4 RAQAM =====
         last4 = None
-        m2 = re.search(r"\*{2,}(\d{4})\b", text)
+        # Variant A: ***8143 yoki ****8143
+        m2 = re.search(r"\*{2,}\s*(\d{4})\b", text)
         if m2:
             last4 = m2.group(1)
         else:
-            m3 = re.search(r"(?:karta|card|карта)[^\d]{0,10}(\d{4})\b", text, re.IGNORECASE)
+            # Variant B: "karta ... 8143"
+            m3 = re.search(
+                r"(?:karta|card|карта)[^\d]{0,15}(\d{4})\b",
+                text, re.IGNORECASE
+            )
             if m3:
                 last4 = m3.group(1)
 
         if not last4:
+            logger.debug("⏭️ Oxirgi 4 raqam topilmadi")
             return None
 
         return amount, last4
