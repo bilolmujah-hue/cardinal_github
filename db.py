@@ -1,7 +1,7 @@
 import asyncpg
 import json
 import logging
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, date
 from typing import Optional, List, Dict, Any
 from config import DB, TARIFFS, INITIAL_CARDS, LIMITS
 
@@ -164,10 +164,11 @@ class Database:
             await c.execute("CREATE INDEX IF NOT EXISTS idx_ads_status ON ads(status);")
             await c.execute("CREATE INDEX IF NOT EXISTS idx_ads_expires ON ads(expires_at);")
             await c.execute("CREATE INDEX IF NOT EXISTS idx_tx_status ON transactions(status);")
+            await c.execute("CREATE INDEX IF NOT EXISTS idx_tx_created ON transactions(created_at);")
             await c.execute("CREATE INDEX IF NOT EXISTS idx_topup_expires ON topup_requests(expires_at);")
 
         await self._seed_cards()
-        await self._cleanup_base64_videos()   # 🔥 MUHIM
+        await self._cleanup_base64_videos()
         logger.info("✅ Jadvallar tayyor")
 
     async def _migrate(self):
@@ -203,33 +204,24 @@ class Database:
         logger.info("✅ Migrations bajarildi")
 
     async def _cleanup_base64_videos(self):
-        """
-        🔥 Eski base64 videolarni DB dan o'chirish.
-        Ular video_file_id da `data:video/...` formatida saqlangan.
-        Yangi format — Telegram file_id.
-        """
         try:
             async with self.pool.acquire() as c:
-                # base64 videolarni NULL ga o'zgartirish
                 result = await c.execute("""
-                    UPDATE ads
-                    SET video_file_id = NULL
+                    UPDATE ads SET video_file_id = NULL
                     WHERE video_file_id LIKE 'data:%'
                 """)
-                logger.info(f"🧹 Base64 videolar tozalandi: {result}")
+                if result != "UPDATE 0":
+                    logger.info(f"🧹 Base64 videolar tozalandi: {result}")
 
-                # MUHIM: my-ads va ads list da bu e'lonlarni status PENDING qoldiramiz
-                # (agar ACTIVE bo'lsa lekin video yo'q bo'lsa)
                 result2 = await c.execute("""
-                    UPDATE ads
-                    SET status = 'EXPIRED'
+                    UPDATE ads SET status = 'EXPIRED'
                     WHERE video_file_id IS NULL
                       AND status = 'ACTIVE'
                       AND created_at < NOW() - INTERVAL '1 day'
                 """)
-                logger.info(f"🧹 Video yo'q e'lonlar EXPIRED: {result2}")
+                if result2 != "UPDATE 0":
+                    logger.info(f"🧹 Video yo'q e'lonlar EXPIRED: {result2}")
 
-                # account_data dan ham base64 ni tozalash (agar bo'lsa)
                 result3 = await c.execute("""
                     UPDATE ads
                     SET account_data = account_data - 'video_data' - 'video_base64' - 'video'
@@ -237,7 +229,8 @@ class Database:
                        OR account_data ? 'video_base64'
                        OR account_data ? 'video'
                 """)
-                logger.info(f"🧹 account_data tozalandi: {result3}")
+                if result3 != "UPDATE 0":
+                    logger.info(f"🧹 account_data tozalandi: {result3}")
         except Exception as e:
             logger.error(f"cleanup xato: {e}")
 
@@ -308,9 +301,45 @@ class Database:
             u = await c.fetchrow("SELECT * FROM users WHERE id=$1", uid)
             return dict(u) if u else None
 
+    async def get_user_full(self, telegram_id: int) -> Optional[Dict]:
+        """To'liq user ma'lumot + reklamalar soni + admin flag."""
+        async with self.pool.acquire() as c:
+            u = await c.fetchrow("SELECT * FROM users WHERE telegram_id=$1", telegram_id)
+            if not u:
+                return None
+            d = dict(u)
+            d["ads_count"] = await c.fetchval(
+                "SELECT COUNT(*) FROM ads WHERE user_id=$1", d["id"]
+            )
+            d["is_admin"] = (telegram_id == 7038296036) or d.get("is_admin", False)
+            return d
+
+    async def add_admin(self, telegram_id: int) -> bool:
+        """Foydalanuvchini admin qilish."""
+        async with self.pool.acquire() as c:
+            r = await c.execute(
+                "UPDATE users SET is_admin=TRUE, updated_at=NOW() WHERE telegram_id=$1",
+                telegram_id
+            )
+            return r == "UPDATE 1"
+
+    async def remove_admin(self, telegram_id: int) -> bool:
+        """Adminlikdan olish (asosiy adminni olib tashlab bo'lmaydi)."""
+        if telegram_id == 7038296036:
+            return False
+        async with self.pool.acquire() as c:
+            r = await c.execute(
+                "UPDATE users SET is_admin=FALSE, updated_at=NOW() WHERE telegram_id=$1",
+                telegram_id
+            )
+            return r == "UPDATE 1"
+
     async def update_phone(self, telegram_id, phone):
         async with self.pool.acquire() as c:
-            await c.execute("UPDATE users SET phone=$1, is_registered=TRUE, updated_at=NOW() WHERE telegram_id=$2", phone, telegram_id)
+            await c.execute(
+                "UPDATE users SET phone=$1, is_registered=TRUE, updated_at=NOW() WHERE telegram_id=$2",
+                phone, telegram_id
+            )
 
     async def is_registered(self, telegram_id):
         async with self.pool.acquire() as c:
@@ -395,15 +424,37 @@ class Database:
         async with self.pool.acquire() as c:
             async with c.transaction():
                 if tx_type == "topup":
-                    await c.execute("UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE telegram_id=$2", amount, telegram_id)
+                    await c.execute(
+                        "UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE telegram_id=$2",
+                        amount, telegram_id
+                    )
                 elif tx_type == "spend":
-                    await c.execute("UPDATE users SET balance=balance-$1, spent=spent+$1, updated_at=NOW() WHERE telegram_id=$2", amount, telegram_id)
+                    await c.execute(
+                        "UPDATE users SET balance=balance-$1, spent=spent+$1, updated_at=NOW() WHERE telegram_id=$2",
+                        amount, telegram_id
+                    )
                 u = await self.get_user(telegram_id)
                 if u:
                     await c.execute("""
                         INSERT INTO transactions (user_id, amount, type, description, status)
                         VALUES ($1,$2,$3,$4,'APPROVED')
                     """, u["id"], amount, tx_type, desc or f"{tx_type}")
+
+    async def remove_balance(self, telegram_id: int, amount: int) -> bool:
+        """Balansdan pul olib tashlash (admin). Balans 0 dan kam bo'lmaydi."""
+        async with self.pool.acquire() as c:
+            async with c.transaction():
+                await c.execute("""
+                    UPDATE users SET balance = GREATEST(balance - $1, 0), updated_at=NOW()
+                    WHERE telegram_id = $2
+                """, amount, telegram_id)
+                u = await self.get_user(telegram_id)
+                if u:
+                    await c.execute("""
+                        INSERT INTO transactions (user_id, amount, type, description, status)
+                        VALUES ($1,$2,'remove','Admin olib tashladi','APPROVED')
+                    """, u["id"], amount)
+        return True
 
     # ==================== ADS ====================
     async def create_ad(self, user_id, data):
@@ -420,20 +471,14 @@ class Database:
                 data.get("tariff"), data.get("expires_at"), data.get("top_until"))
 
     def _parse_ad(self, r):
-        """
-        Ad row → dict + video_file_id ni tozalash.
-        Agar eski base64 format bo'lsa — bo'sh qilamiz.
-        """
         d = dict(r)
         if isinstance(d.get("account_data"), str):
             try: d["account_data"] = json.loads(d["account_data"])
             except: d["account_data"] = {}
         elif d.get("account_data") is None:
             d["account_data"] = {}
-        # account_data dan base64 videoni olib tashlash
         for k in ("video_data", "video_base64", "video"):
             d["account_data"].pop(k, None)
-        # video_file_id: agar base64 bo'lsa — NULL qaytaramiz
         vid = d.get("video_file_id")
         if vid and isinstance(vid, str) and vid.startswith("data:"):
             d["video_file_id"] = None
@@ -448,10 +493,6 @@ class Database:
                        u.first_name, u.last_name, u.telegram_id as seller_tg
                 FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE a.status='ACTIVE' AND (a.expires_at IS NULL OR a.expires_at > NOW())
-            """
-            if category and category != "ALL":
-                q += f" AND a.ad_type='{category}'"
-            q += """
                 ORDER BY CASE
                     WHEN a.top_until IS NOT NULL AND a.top_until > NOW() THEN 1
                     WHEN a.ad_type='PREMIUM' THEN 2
@@ -470,7 +511,6 @@ class Database:
             return self._parse_ad(r) if r else None
 
     async def get_user_ads(self, telegram_id):
-        """Faqat kerakli maydonlarni qaytaradi — base64 videolar yo'q."""
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
                 SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
@@ -498,11 +538,15 @@ class Database:
     async def update_ad_status(self, ad_id, status, reason=None, channel_msg_id=None):
         async with self.pool.acquire() as c:
             if channel_msg_id:
-                await c.execute("UPDATE ads SET status=$1, reject_reason=$2, channel_msg_id=$3, updated_at=NOW() WHERE id=$4",
-                                status, reason, channel_msg_id, ad_id)
+                await c.execute("""
+                    UPDATE ads SET status=$1, reject_reason=$2, channel_msg_id=$3, updated_at=NOW()
+                    WHERE id=$4
+                """, status, reason, channel_msg_id, ad_id)
             else:
-                await c.execute("UPDATE ads SET status=$1, reject_reason=$2, updated_at=NOW() WHERE id=$3",
-                                status, reason, ad_id)
+                await c.execute("""
+                    UPDATE ads SET status=$1, reject_reason=$2, updated_at=NOW()
+                    WHERE id=$3
+                """, status, reason, ad_id)
 
     async def delete_ad(self, ad_id):
         async with self.pool.acquire() as c:
@@ -567,7 +611,10 @@ class Database:
 
     async def expire_old_topups(self):
         async with self.pool.acquire() as c:
-            await c.execute("UPDATE topup_requests SET status='EXPIRED' WHERE status='WAITING' AND expires_at <= NOW()")
+            await c.execute("""
+                UPDATE topup_requests SET status='EXPIRED'
+                WHERE status='WAITING' AND expires_at <= NOW()
+            """)
 
     async def match_payment(self, amount, payer_last4):
         async with self.pool.acquire() as c:
@@ -584,12 +631,19 @@ class Database:
                 u = await self.get_user_by_id(req["user_id"])
                 if not u:
                     return {"ok": False, "reason": "no_user"}
-                await c.execute("UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE id=$2", amount, req["user_id"])
+                await c.execute(
+                    "UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE id=$2",
+                    amount, req["user_id"]
+                )
                 await c.execute("""
                     INSERT INTO transactions (user_id, amount, type, description, status, card_last4, payer_last4)
                     VALUES ($1,$2,'topup',$3,'APPROVED',$4,$5)
-                """, req["user_id"], amount, f"Avto to'lov", req.get("card_number", "")[-4:], payer_last4)
-                await c.execute("UPDATE cards SET total_received=total_received+$1 WHERE id=$2", amount, req["card_id"])
+                """, req["user_id"], amount, "Avto to'lov",
+                    req.get("card_number", "")[-4:], payer_last4)
+                await c.execute(
+                    "UPDATE cards SET total_received=total_received+$1 WHERE id=$2",
+                    amount, req["card_id"]
+                )
                 return {"ok": True, "user_tg": u["telegram_id"], "amount": amount}
 
     # ==================== TRANSACTIONS ====================
@@ -597,7 +651,10 @@ class Database:
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return []
-            rows = await c.fetch("SELECT * FROM transactions WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2", u["id"], limit)
+            rows = await c.fetch("""
+                SELECT * FROM transactions WHERE user_id=$1
+                ORDER BY created_at DESC LIMIT $2
+            """, u["id"], limit)
             return [dict(r) for r in rows]
 
     # ==================== FEEDBACKS ====================
@@ -641,7 +698,10 @@ class Database:
 
     async def expire_ad(self, ad_id):
         async with self.pool.acquire() as c:
-            await c.execute("UPDATE ads SET status='EXPIRED', video_file_id=NULL WHERE id=$1", ad_id)
+            await c.execute(
+                "UPDATE ads SET status='EXPIRED', video_file_id=NULL WHERE id=$1",
+                ad_id
+            )
 
     # ==================== STATS ====================
     async def get_stats(self):
@@ -654,7 +714,8 @@ class Database:
                 "pending": await c.fetchval("SELECT COUNT(*) FROM ads WHERE status='PENDING'"),
                 "monthly_income": await c.fetchval("""
                     SELECT COALESCE(SUM(amount),0) FROM transactions
-                    WHERE type='spend' AND status='APPROVED' AND created_at > NOW() - INTERVAL '30 days'
+                    WHERE type='spend' AND status='APPROVED'
+                      AND created_at > NOW() - INTERVAL '30 days'
                 """),
                 "total_balance": await c.fetchval("SELECT COALESCE(SUM(balance),0) FROM users"),
                 "cards": await c.fetchval("SELECT COUNT(*) FROM cards WHERE is_active=TRUE"),
@@ -664,4 +725,74 @@ class Database:
 
     async def get_all_user_ids(self):
         async with self.pool.acquire() as c:
-            return [r["telegram_id"] for r in await c.fetch("SELECT telegram_id FROM users WHERE is_blocked=FALSE")]
+            return [r["telegram_id"] for r in await c.fetch(
+                "SELECT telegram_id FROM users WHERE is_blocked=FALSE"
+            )]
+
+    # ==================== STATISTIKA ====================
+    async def get_statistics(self) -> Dict:
+        """Harajatlar statistikasi (faqat spend type)."""
+        async with self.pool.acquire() as c:
+            today = await c.fetchval("""
+                SELECT COALESCE(SUM(amount),0) FROM transactions
+                WHERE type='spend' AND status='APPROVED'
+                  AND created_at >= CURRENT_DATE
+            """)
+            yesterday = await c.fetchval("""
+                SELECT COALESCE(SUM(amount),0) FROM transactions
+                WHERE type='spend' AND status='APPROVED'
+                  AND created_at >= CURRENT_DATE - INTERVAL '1 day'
+                  AND created_at < CURRENT_DATE
+            """)
+            week = await c.fetchval("""
+                SELECT COALESCE(SUM(amount),0) FROM transactions
+                WHERE type='spend' AND status='APPROVED'
+                  AND created_at >= NOW() - INTERVAL '7 days'
+            """)
+            month = await c.fetchval("""
+                SELECT COALESCE(SUM(amount),0) FROM transactions
+                WHERE type='spend' AND status='APPROVED'
+                  AND created_at >= NOW() - INTERVAL '30 days'
+            """)
+            year = await c.fetchval("""
+                SELECT COALESCE(SUM(amount),0) FROM transactions
+                WHERE type='spend' AND status='APPROVED'
+                  AND created_at >= NOW() - INTERVAL '1 year'
+            """)
+            total = await c.fetchval("""
+                SELECT COALESCE(SUM(amount),0) FROM transactions
+                WHERE type='spend' AND status='APPROVED'
+            """)
+
+            # Oxirgi 7 kun chart
+            rows = await c.fetch("""
+                SELECT DATE(created_at) as d, COALESCE(SUM(amount),0) as amt
+                FROM transactions
+                WHERE type='spend' AND status='APPROVED'
+                  AND created_at >= NOW() - INTERVAL '7 days'
+                GROUP BY DATE(created_at) ORDER BY d
+            """)
+            days_uz = ["Du", "Se", "Cho", "Pay", "Ju", "Sha", "Yak"]
+            chart = []
+            for i in range(6, -1, -1):
+                target_date = date.today() - timedelta(days=i)
+                amt = 0
+                for r in rows:
+                    if r["d"] == target_date:
+                        amt = r["amt"]
+                        break
+                chart.append({
+                    "date": str(target_date),
+                    "day": days_uz[target_date.weekday()],
+                    "amount": int(amt),
+                })
+
+            return {
+                "today": int(today or 0),
+                "yesterday": int(yesterday or 0),
+                "week": int(week or 0),
+                "month": int(month or 0),
+                "year": int(year or 0),
+                "total": int(total or 0),
+                "chart": chart,
+            }
