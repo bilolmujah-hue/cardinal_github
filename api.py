@@ -1,10 +1,10 @@
 """
-Cardinal API v5.3
+Cardinal API v5.4
 - JWT (access 15min + refresh 7 kun)
-- Video upload → Telegram kanalga
+- Video upload → Telegram kanal
 - Video streaming — Range support
-- Userbot boshqaruvi (admin panel orqali)
-- Yangi: statistika, admin qo'shish, user detail, balans boshqaruvi
+- Userbot boshqaruvi
+- Yangi topup oqimi (10 daqiqa, chek yuklash, bekor qilish)
 """
 import asyncio
 import json
@@ -104,9 +104,11 @@ class API:
             ("GET",  "/api/user-transactions/{telegram_id}", self.user_txs),
             ("POST", "/api/feedbacks/add", self.add_feedback),
 
-            # Topup
+            # Topup — YANGI OQIM
             ("POST", "/api/topup/request", self.topup_request),
             ("GET",  "/api/topup/pending", self.topup_pending),
+            ("POST", "/api/topup/cancel",  self.topup_cancel),
+            ("POST", "/api/topup/receipt", self.topup_receipt),
 
             # Admin
             ("GET",  "/api/admin/pending-ads", self.admin_pending_ads),
@@ -146,7 +148,7 @@ class API:
     # ============================================================
     async def index(self, req):
         return jresp({
-            "app": "Cardinal API", "version": "5.3", "status": "running",
+            "app": "Cardinal API", "version": "5.4", "status": "running",
             "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
         })
 
@@ -297,7 +299,6 @@ class API:
             if user.get("is_blocked"):
                 return jresp({"ok": False, "error": "Siz bloklangansiz"}, 403)
 
-            # DB dan yangilangan holatni olish (is_admin o'zgargan bo'lishi mumkin)
             user = await self.db.get_user(tg_id)
             is_admin = (tg_id == BOT.ADMIN_CHAT_ID) or user.get("is_admin", False)
 
@@ -536,9 +537,10 @@ class API:
             return None
 
     # ============================================================
-    # TOPUP
+    # TOPUP — YANGI OQIM
     # ============================================================
     async def topup_request(self, req):
+        """10 daqiqalik so'rov yaratish."""
         try:
             data = await req.json()
             tg = int(data["telegram_id"])
@@ -546,49 +548,112 @@ class API:
             if amount < LIMITS.MIN_TOPUP:
                 return jresp({"ok": False, "error": f"Minimal {LIMITS.MIN_TOPUP} so'm"}, 400)
 
-            existing = await self.db.get_pending_topup(tg)
-            if existing:
-                return jresp({
-                    "ok": True, "request_id": existing["id"],
-                    "card_number": existing["card_number"],
-                    "amount": existing["amount"],
-                    "expires_at": existing["expires_at"].isoformat() + "Z",
-                    "note": "Avvalgi so'rov hali faol"
-                })
-
             r = await self.db.create_topup_request(tg, amount)
             if not r:
                 return jresp({"ok": False, "error": "Karta mavjud emas"}, 500)
 
             return jresp({
-                "ok": True, "request_id": r["id"],
+                "ok": True,
+                "request_id": r["id"],
                 "card_number": r["card_number"],
                 "amount": amount,
                 "expires_at": r["expires_at"].isoformat() + "Z",
-                "note": f"{LIMITS.PAYMENT_TIMEOUT_MIN} daqiqa ichida to'lang"
+                "timeout_minutes": 10,
             })
         except Exception as e:
             logger.error(f"topup_request: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def topup_pending(self, req):
+        """Frontend har 3 sekundda tekshiradi."""
         try:
             tg = int(req.query.get("telegram_id", 0))
             r = await self.db.get_pending_topup(tg)
             if not r:
-                user = await self.db.get_user(tg)
-                return jresp({
-                    "ok": True, "status": "paid_or_expired",
-                    "balance": user["balance"] if user else 0
-                })
+                return jresp({"ok": True, "status": "paid_or_expired"})
             return jresp({
-                "ok": True, "status": "waiting",
+                "ok": True,
+                "status": "waiting",
                 "request_id": r["id"],
                 "card_number": r["card_number"],
                 "amount": r["amount"],
                 "expires_at": r["expires_at"].isoformat() + "Z",
             })
         except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def topup_cancel(self, req):
+        """Foydalanuvchi bekor qildi."""
+        try:
+            data = await req.json()
+            tg = int(data["telegram_id"])
+            await self.db.cancel_topup(tg)
+            return jresp({"ok": True})
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def topup_receipt(self, req):
+        """
+        Foydalanuvchi chekni yukladi.
+        - Agar userbot allaqachon to'lovni aniqlagan (MATCHED) → balans qo'shiladi.
+        - Aks holda → adminga yuboriladi, qo'lda tekshiriladi.
+        """
+        try:
+            data = await req.json()
+            tg = int(data["telegram_id"])
+            receipt_url = data.get("receipt_url")
+            if not receipt_url:
+                return jresp({"ok": False, "error": "Chek yo'q"}, 400)
+
+            result = await self.db.submit_receipt(tg, receipt_url)
+            if not result.get("ok"):
+                return jresp({"ok": False, "error": "So'rov topilmadi"}, 400)
+
+            # Adminga rasmni yuborish
+            try:
+                from aiogram.types import BufferedInputFile
+                header, encoded = receipt_url.split(",", 1)
+                raw = base64.b64decode(encoded)
+                photo = BufferedInputFile(raw, filename="receipt.jpg")
+
+                if result.get("completed"):
+                    status_text = (
+                        "✅ <b>AVTOMATIK TASDIQLANDI</b>\n"
+                        "━━━━━━━━━━━━━━━━━━━━\n"
+                        "Userbot to'lovni aniqladi va balans qo'shildi"
+                    )
+                else:
+                    status_text = (
+                        "⏳ <b>TEKSHIRISH KERAK</b>\n"
+                        "━━━━━━━━━━━━━━━━━━━━\n"
+                        "Userbot hali to'lovni aniqlamadi.\n"
+                        "Iltimos, admin panelda tekshiring."
+                    )
+
+                caption = (
+                    f"🧾 <b>TO'LOV CHEKI</b>\n"
+                    f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                    f"👤 <b>Ism:</b> {result.get('user_name') or '-'}\n"
+                    f"📱 <b>Telefon:</b> +998 {result.get('phone') or '-'}\n"
+                    f"🆔 <b>ID:</b> <code>{result.get('telegram_id')}</code>\n"
+                    f"💰 <b>Summa:</b> {result.get('amount', 0):,} so'm\n"
+                    f"📋 <b>So'rov:</b> #{result.get('request_id')}\n\n"
+                    f"{status_text}"
+                )
+                await self.bot_app.bot.send_photo(
+                    BOT.ADMIN_CHAT_ID, photo,
+                    caption=caption, parse_mode="HTML"
+                )
+            except Exception as e:
+                logger.error(f"Admin receipt notify: {e}", exc_info=True)
+
+            return jresp({
+                "ok": True,
+                "completed": result.get("completed", False),
+                "amount": result.get("amount", 0),
+            })
+        except Exception as e:
+            logger.error(f"topup_receipt: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     # ============================================================
@@ -819,7 +884,7 @@ class API:
         try:
             data = await req.json()
             tg = int(data["telegram_id"])
-            amount = int(data["amount"])  # manfiy yoki musbat
+            amount = int(data["amount"])
             if amount < 0:
                 await self.db.remove_balance(tg, abs(amount))
                 msg = f"⚠️ Balansingizdan <b>{abs(amount):,} so'm</b> olib tashlandi"
