@@ -1,10 +1,10 @@
 """
-Cardinal API v5.2
+Cardinal API v5.3
 - JWT (access 15min + refresh 7 kun)
 - Video upload → Telegram kanalga
-- Video streaming (/api/ad/{id}/video) — Range support
+- Video streaming — Range support
 - Userbot boshqaruvi (admin panel orqali)
-- Avto to'lov (userbot orqali)
+- Yangi: statistika, admin qo'shish, user detail, balans boshqaruvi
 """
 import asyncio
 import json
@@ -115,6 +115,8 @@ class API:
             ("GET",  "/api/admin/blocked", self.admin_blocked),
             ("GET",  "/api/admin/cards", self.admin_cards),
             ("GET",  "/api/admin/topups", self.admin_topups),
+            ("GET",  "/api/admin/statistics", self.admin_statistics),
+            ("GET",  "/api/admin/user/{telegram_id}", self.admin_user_detail),
             ("POST", "/api/admin/card/add", self.admin_add_card),
             ("POST", "/api/admin/card/del", self.admin_del_card),
             ("POST", "/api/admin/approve-ad", self.admin_approve_ad),
@@ -125,8 +127,9 @@ class API:
             ("POST", "/api/admin/broadcast", self.admin_broadcast),
             ("POST", "/api/admin/add-balance", self.admin_add_balance),
             ("POST", "/api/admin/delete-feedback", self.admin_delete_feedback),
+            ("POST", "/api/admin/add-admin", self.admin_add_admin),
 
-            # Userbot management
+            # Userbot
             ("POST", "/api/admin/userbot/send-code", self.admin_userbot_send_code),
             ("POST", "/api/admin/userbot/verify-code", self.admin_userbot_verify_code),
             ("POST", "/api/admin/userbot/verify-2fa", self.admin_userbot_verify_2fa),
@@ -143,7 +146,7 @@ class API:
     # ============================================================
     async def index(self, req):
         return jresp({
-            "app": "Cardinal API", "version": "5.2", "status": "running",
+            "app": "Cardinal API", "version": "5.3", "status": "running",
             "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
         })
 
@@ -168,8 +171,7 @@ class API:
         return jresp(CURRENCIES)
 
     async def get_ads(self, req):
-        cat = req.query.get("category")
-        ads = await self.db.get_active_ads(cat)
+        ads = await self.db.get_active_ads()
         tg = req.query.get("telegram_id")
         if tg:
             try:
@@ -295,7 +297,11 @@ class API:
             if user.get("is_blocked"):
                 return jresp({"ok": False, "error": "Siz bloklangansiz"}, 403)
 
-            access = create_access_token(user["id"], tg_id, user.get("is_admin", False))
+            # DB dan yangilangan holatni olish (is_admin o'zgargan bo'lishi mumkin)
+            user = await self.db.get_user(tg_id)
+            is_admin = (tg_id == BOT.ADMIN_CHAT_ID) or user.get("is_admin", False)
+
+            access = create_access_token(user["id"], tg_id, is_admin)
             refresh = create_refresh_token(user["id"], tg_id)
 
             resp = jresp({
@@ -303,14 +309,15 @@ class API:
                 "access_token": access,
                 "refresh_token": refresh,
                 "user": {
-                    "id": user["id"], "telegram_id": tg_id,
+                    "id": user["id"],
+                    "telegram_id": tg_id,
                     "first_name": user.get("first_name"),
                     "last_name": user.get("last_name"),
                     "username": user.get("username"),
                     "balance": user.get("balance", 0),
                     "spent": user.get("spent", 0),
                     "avatar": user.get("avatar"),
-                    "is_admin": user.get("is_admin", False),
+                    "is_admin": is_admin,
                     "phone": user.get("phone"),
                 }
             })
@@ -355,7 +362,7 @@ class API:
         u = await self.db.get_user(tg)
         if not u:
             return jresp({"error": "Topilmadi"}, 404)
-        u["is_admin"] = (tg == BOT.ADMIN_CHAT_ID)
+        u["is_admin"] = (tg == BOT.ADMIN_CHAT_ID) or u.get("is_admin", False)
         return jresp(u)
 
     async def update_profile(self, req):
@@ -545,7 +552,7 @@ class API:
                     "ok": True, "request_id": existing["id"],
                     "card_number": existing["card_number"],
                     "amount": existing["amount"],
-                    "expires_at": existing["expires_at"].isoformat(),
+                    "expires_at": existing["expires_at"].isoformat() + "Z",
                     "note": "Avvalgi so'rov hali faol"
                 })
 
@@ -557,7 +564,7 @@ class API:
                 "ok": True, "request_id": r["id"],
                 "card_number": r["card_number"],
                 "amount": amount,
-                "expires_at": r["expires_at"].isoformat(),
+                "expires_at": r["expires_at"].isoformat() + "Z",
                 "note": f"{LIMITS.PAYMENT_TIMEOUT_MIN} daqiqa ichida to'lang"
             })
         except Exception as e:
@@ -570,14 +577,16 @@ class API:
             r = await self.db.get_pending_topup(tg)
             if not r:
                 user = await self.db.get_user(tg)
-                return jresp({"ok": True, "status": "paid_or_expired",
-                              "balance": user["balance"] if user else 0})
+                return jresp({
+                    "ok": True, "status": "paid_or_expired",
+                    "balance": user["balance"] if user else 0
+                })
             return jresp({
                 "ok": True, "status": "waiting",
                 "request_id": r["id"],
                 "card_number": r["card_number"],
                 "amount": r["amount"],
-                "expires_at": r["expires_at"].isoformat(),
+                "expires_at": r["expires_at"].isoformat() + "Z",
             })
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
@@ -601,7 +610,7 @@ class API:
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         users = await self.db.get_all_users()
         for u in users:
-            u["is_admin"] = (u["telegram_id"] == BOT.ADMIN_CHAT_ID)
+            u["is_admin"] = (u["telegram_id"] == BOT.ADMIN_CHAT_ID) or u.get("is_admin", False)
         return jresp(users)
 
     async def admin_blocked(self, req):
@@ -621,6 +630,50 @@ class API:
                 WHERE t.type='topup' ORDER BY t.created_at DESC LIMIT 100
             """)
             return jresp([dict(r) for r in rows])
+
+    async def admin_statistics(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            return jresp(await self.db.get_statistics())
+        except Exception as e:
+            logger.error(f"statistics: {e}", exc_info=True)
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_user_detail(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            tg = int(req.match_info["telegram_id"])
+            u = await self.db.get_user_full(tg)
+            if not u:
+                return jresp({"error": "Topilmadi"}, 404)
+            return jresp(u)
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_add_admin(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            tg = int(data.get("telegram_id", 0))
+            if not tg:
+                return jresp({"ok": False, "error": "Chat ID kerak"}, 400)
+            user = await self.db.get_user(tg)
+            if not user:
+                return jresp({"ok": False, "error": "Foydalanuvchi topilmadi"}, 404)
+            ok = await self.db.add_admin(tg)
+            if ok:
+                try:
+                    await self.bot_app.bot.send_message(
+                        tg,
+                        "🎉 <b>Siz endi adminsiz!</b>\n\n"
+                        "Web App ni qayta ochsangiz — admin panel ko'rinadi.",
+                        parse_mode="HTML"
+                    )
+                except Exception:
+                    pass
+            return jresp({"ok": ok})
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_add_card(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
@@ -766,12 +819,15 @@ class API:
         try:
             data = await req.json()
             tg = int(data["telegram_id"])
-            amount = int(data["amount"])
-            await self.db.update_balance(tg, amount, "topup", "Admin qo'shdi")
+            amount = int(data["amount"])  # manfiy yoki musbat
+            if amount < 0:
+                await self.db.remove_balance(tg, abs(amount))
+                msg = f"⚠️ Balansingizdan <b>{abs(amount):,} so'm</b> olib tashlandi"
+            else:
+                await self.db.update_balance(tg, amount, "topup", "Admin qo'shdi")
+                msg = f"✅ Balansingiz <b>{amount:,} so'm</b>ga to'ldirildi!"
             try:
-                await self.bot_app.bot.send_message(
-                    tg, f"✅ Balansingiz {amount:,} so'mga to'ldirildi!"
-                )
+                await self.bot_app.bot.send_message(tg, msg, parse_mode="HTML")
             except Exception:
                 pass
             return jresp({"ok": True})
@@ -788,7 +844,7 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     # ============================================================
-    # 🔥 USERBOT MANAGEMENT
+    # USERBOT
     # ============================================================
     async def admin_userbot_send_code(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
@@ -834,16 +890,14 @@ class API:
     async def admin_userbot_status(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
-            result = await self.bot_app.userbot.get_status()
-            return jresp(result)
+            return jresp(await self.bot_app.userbot.get_status())
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_userbot_logout(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
-            result = await self.bot_app.userbot.logout()
-            return jresp(result)
+            return jresp(await self.bot_app.userbot.logout())
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
 
