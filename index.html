@@ -294,7 +294,6 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .contact-btn.message{background:linear-gradient(135deg,#3B82F6,#2563EB)}
 .contact-phone{text-align:center;font-family:'Space Grotesk',monospace;font-size:15px;font-weight:700;letter-spacing:1px;color:#10B981;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:10px;margin-bottom:10px}
 
-/* TOPUP NEW */
 .amount-wrap{position:relative;margin-bottom:14px}
 .amount-input{width:100%;padding:22px 66px 22px 22px;background:var(--surface);border:2px solid var(--border-2);border-radius:18px;font-size:24px;font-weight:800;text-align:center;color:var(--text);font-family:'Space Grotesk',sans-serif}
 .amount-input:focus{border-color:#3B82F6;box-shadow:0 0 0 5px rgba(59,130,246,.1)}
@@ -432,6 +431,82 @@ body.dark .load{background:rgba(7,10,18,.85)}
 .hidden{display:none !important}
 .mt-8{margin-top:8px}.mt-16{margin-top:16px}.mt-24{margin-top:24px}
 .mb-16{margin-bottom:16px}
+
+/* ====== TOPUP CONFIRMING ANIMATION ====== */
+.confirm-card{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:32px 24px;text-align:center;margin-top:16px;position:relative;overflow:hidden}
+.confirm-card::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at top,rgba(59,130,246,.10),transparent 60%);pointer-events:none}
+.confirm-anim{width:110px;height:110px;margin:0 auto 22px;position:relative;display:flex;align-items:center;justify-content:center}
+.confirm-ring{position:absolute;inset:0;border-radius:50%;border:3px solid transparent;border-top-color:#3B82F6;border-right-color:#06B6D4;animation:spin 1.2s linear infinite}
+.confirm-ring:nth-child(2){inset:12px;border-top-color:#06B6D4;border-right-color:#8B5CF6;animation-duration:1.8s;animation-direction:reverse}
+.confirm-ring:nth-child(3){inset:24px;border-top-color:#10B981;border-right-color:#3B82F6;animation-duration:2.4s}
+.confirm-icon{width:60px;height:60px;border-radius:50%;background:linear-gradient(135deg,#3B82F6,#06B6D4);display:flex;align-items:center;justify-content:center;color:#fff;font-size:28px;box-shadow:0 8px 28px rgba(59,130,246,.5);z-index:1;animation:pulseSoft 2s ease-in-out infinite}
+.confirm-icon svg{width:28px;height:28px;stroke-width:3}
+@keyframes pulseSoft{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
+.confirm-card h3{font-size:18px;font-weight:700;margin-bottom:10px;color:var(--text);position:relative}
+.confirm-amount{font-size:26px;font-weight:800;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px}
+.confirm-timer-wrap{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;margin-bottom:16px}
+.confirm-timer-wrap svg{width:16px;height:16px;color:var(--blue)}
+.confirm-timer{font-size:16px;font-weight:800;color:var(--text);font-family:'Space Grotesk',sans-serif;letter-spacing:.5px}
+.confirm-status{display:flex;align-items:center;justify-content:center;gap:4px;font-size:14px;font-weight:700;color:var(--blue);background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(6,182,212,.06));border:1px solid rgba(59,130,246,.25);border-radius:14px;padding:14px;position:relative}
+.confirm-dots{display:inline-flex;margin-left:2px}
+.confirm-dots span{animation:dots 1.4s infinite}
+.confirm-dots span:nth-child(2){animation-delay:.2s}
+.confirm-dots span:nth-child(3){animation-delay:.4s}
+@keyframes dots{0%,60%,100%{opacity:.2}30%{opacity:1}}
+.confirm-hint{margin-top:14px;font-size:12px;color:var(--text-3);line-height:1.5;font-weight:500}
+
+.result-card{padding:32px 24px;border-radius:22px;text-align:center;margin-top:16px;position:relative;overflow:hidden}
+.result-card.success{background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(5,150,105,.05));border:1.5px solid rgba(16,185,129,.3)}
+.result-card.error{background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(220,38,38,.05));border:1.5px solid rgba(239,68,68,.3)}
+.result-ic{width:80px;height:80px;margin:0 auto 20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff;animation:pop .5s cubic-bezier(.34,1.56,.64,1)}
+.result-ic svg{width:40px;height:40px;stroke-width:3}
+.result-card.success .result-ic{background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 12px 32px rgba(16,185,129,.4)}
+.result-card.error .result-ic{background:linear-gradient(135deg,#EF4444,#DC2626);box-shadow:0 12px 32px rgba(239,68,68,.4)}
+@keyframes pop{0%{transform:scale(0)}60%{transform:scale(1.15)}100%{transform:scale(1)}}
+.result-card h3{font-size:19px;font-weight:800;margin-bottom:10px;color:var(--text);font-family:'Space Grotesk',sans-serif}
+.result-card p{font-size:13.5px;color:var(--text-2);line-height:1.6;margin-bottom:18px}
+.result-card .result-amount{font-size:28px;font-weight:800;font-family:'Space Grotesk',sans-serif;color:#10B981;margin:12px 0 4px}
+.result-card.error .result-amount{color:#EF4444}
+
+.modal.confirm-pop{align-items:center;justify-content:center;padding:20px}
+.confirm-modal-in{max-width:380px;width:100%;background:var(--bg-2);border-radius:24px;padding:26px 22px 20px;text-align:center;animation:popIn .32s cubic-bezier(.34,1.56,.64,1)}
+@keyframes popIn{0%{transform:scale(.85);opacity:0}100%{transform:scale(1);opacity:1}}
+.confirm-modal-ic{width:64px;height:64px;margin:0 auto 16px;border-radius:20px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(220,38,38,.06));border:1px solid rgba(239,68,68,.25);display:flex;align-items:center;justify-content:center;color:#EF4444}
+.confirm-modal-ic svg{width:30px;height:30px;stroke-width:2.4}
+.confirm-modal-in h3{font-size:17px;font-weight:800;margin-bottom:8px;color:var(--text);font-family:'Space Grotesk',sans-serif}
+.confirm-modal-in p{font-size:13.5px;color:var(--text-2);line-height:1.55;margin-bottom:20px}
+.confirm-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.confirm-modal-actions .btn{padding:13px;font-size:13px}
+
+/* ====== ADMIN CONTACT CARDS ====== */
+.ac-card{display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:10px;transition:all .2s}
+.ac-card:active{transform:scale(.98)}
+.ac-av{width:56px;height:56px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#3B82F6,#06B6D4);padding:2.5px;position:relative}
+.ac-av-in{width:100%;height:100%;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:var(--blue);font-family:'Space Grotesk',sans-serif}
+.ac-online{position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#10B981;border:2.5px solid var(--surface)}
+.ac-body{flex:1;min-width:0}
+.ac-name{font-size:14px;font-weight:800;color:var(--text);display:flex;align-items:center;gap:6px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-name svg{width:14px;height:14px;color:#3B82F6;flex-shrink:0}
+.ac-info{font-size:11.5px;color:var(--text-3);margin-top:3px;font-weight:500;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;line-height:1.4}
+.ac-actions{display:flex;flex-direction:column;gap:6px;flex-shrink:0}
+.ac-btn{width:40px;height:40px;border-radius:12px;display:flex;align-items:center;justify-content:center;color:#fff;transition:all .2s}
+.ac-btn:active{transform:scale(.9)}
+.ac-btn.msg{background:linear-gradient(135deg,#3B82F6,#2563EB);box-shadow:0 6px 18px rgba(59,130,246,.35)}
+.ac-btn.tg{background:linear-gradient(135deg,#06B6D4,#0EA5E9);box-shadow:0 6px 18px rgba(6,182,212,.3)}
+.ac-btn svg{width:18px;height:18px;stroke-width:2.2}
+.ac-list .ac-card:last-child{margin-bottom:0}
+.ac-empty{text-align:center;padding:40px 20px;color:var(--text-3)}
+
+.ac-admin-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:14px;margin-bottom:8px}
+.ac-admin-row .ac-mini-av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3B82F6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
+.ac-admin-row .ac-admin-body{flex:1;min-width:0}
+.ac-admin-row .ac-admin-name{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ac-admin-row .ac-admin-meta{font-size:11px;color:var(--text-3);margin-top:2px;font-family:monospace}
+.ac-admin-actions{display:flex;gap:6px;flex-shrink:0}
+.ac-admin-actions button{width:34px;height:34px;border-radius:10px;display:flex;align-items:center;justify-content:center;background:var(--surface);border:1px solid var(--border-2);color:var(--text-2)}
+.ac-admin-actions button.danger{color:#F87171;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
+.ac-admin-actions button.active{color:#10B981;border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08)}
+.ac-admin-actions svg{width:15px;height:15px}
 </style>
 </head>
 <body>
@@ -763,6 +838,11 @@ body.dark .load{background:rgba(7,10,18,.85)}
           <div class="menu-txt"><strong>Hisobni to'ldirish</strong><span>Avtomatik to'lov</span></div>
           <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
         </button>
+        <button class="menu-item" onclick="go('pageAdminContacts')">
+          <div class="menu-ic green"><svg><use href="#i-msg"/></svg></div>
+          <div class="menu-txt"><strong>Admin bilan bog'lanish</strong><span>Savol va yordam</span></div>
+          <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
+        </button>
         <button class="menu-item" onclick="toggleTheme()">
           <div class="menu-ic"><svg id="themeIconSvg"><use href="#i-sun"/></svg></div>
           <div class="menu-txt"><strong id="themeLabel">Tungi rejim</strong><span>Ko'rinishni o'zgartirish</span></div>
@@ -779,6 +859,19 @@ body.dark .load{background:rgba(7,10,18,.85)}
           <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
         </button>
       </div>
+    </div>
+  </section>
+
+  <section class="page" id="pageAdminContacts">
+    <div class="container">
+      <div class="page-head">
+        <button class="icon-btn" onclick="go('pageProfile')"><svg><use href="#i-arrow-l"/></svg></button>
+        <div class="page-head-txt">
+          <h1><svg><use href="#i-msg"/></svg>Admin bilan bog'lanish</h1>
+          <p>Savol va yordam uchun</p>
+        </div>
+      </div>
+      <div class="ac-list mt-16" id="adminContactsList"></div>
     </div>
   </section>
 
@@ -805,6 +898,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
         <button class="admin-tab" data-at="feedbacks"><svg><use href="#i-star"/></svg>Otziflar</button>
         <button class="admin-tab" data-at="userbot"><svg><use href="#i-phone"/></svg>Userbot</button>
         <button class="admin-tab" data-at="addadmin"><svg><use href="#i-shield"/></svg>Admin qo'shish</button>
+        <button class="admin-tab" data-at="admins"><svg><use href="#i-users"/></svg>Adminlar</button>
         <button class="admin-tab" data-at="broadcast"><svg><use href="#i-send"/></svg>Xabar</button>
       </div>
       <div id="atAds"></div>
@@ -814,6 +908,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
       <div id="atFeedbacks" class="hidden"></div>
       <div id="atUserbot" class="hidden"></div>
       <div id="atAddadmin" class="hidden"></div>
+      <div id="atAdmins" class="hidden"></div>
       <div id="atBroadcast" class="hidden">
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-send"/></svg></div>Barchaga xabar</div>
@@ -824,7 +919,6 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
-  <!-- TOPUP - YANGI OQIM -->
   <section class="page" id="pageTopup">
     <div class="container">
       <div class="page-head">
@@ -835,7 +929,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
         </div>
       </div>
 
-      <!-- QADAM 1: Summa kiritish -->
+      <!-- QADAM 1 -->
       <div id="topupStep1" class="mt-16">
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-wallet"/></svg></div>Summani kiriting</div>
@@ -858,7 +952,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
         <button class="btn btn-primary btn-block mt-16" id="topupBtn" onclick="topupSend()" disabled><svg><use href="#i-chev-r"/></svg>Davom etish</button>
       </div>
 
-      <!-- QADAM 2: Karta + Timer + Chek yuklash -->
+      <!-- QADAM 2 -->
       <div id="topupStep2" class="hidden">
         <div class="pay-card">
           <div class="pay-card-lbl"><svg><use href="#i-credit"/></svg>To'lov uchun karta</div>
@@ -866,23 +960,18 @@ body.dark .load{background:rgba(7,10,18,.85)}
           <div class="pay-card-amt">Summa: <b id="payAmt">0</b></div>
         </div>
         <button class="btn btn-secondary btn-block mt-16" onclick="copyPayCard()"><svg><use href="#i-copy"/></svg>Karta raqamini nusxalash</button>
-
         <div class="pay-timer" id="payTimer">10:00</div>
-
         <div class="pay-note"><svg><use href="#i-info"/></svg>Pulni o'tkazing va <b style="margin:0 4px">chekni</b> yuklang</div>
 
-        <!-- Chek yuklash -->
         <div class="mt-16">
           <div class="card-box" style="margin-bottom:0">
             <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-image"/></svg></div>To'lov chekini yuklang</div>
-
             <label class="receipt-upload" for="receiptInput" id="receiptUploadLabel">
               <svg><use href="#i-camera"/></svg>
               <strong>Chek rasmini tanlang</strong>
               <span>Karta raqami va summa ko'rinishi shart</span>
             </label>
             <input type="file" id="receiptInput" accept="image/*" hidden>
-
             <div id="receiptPreviewWrap" class="hidden">
               <div class="receipt-preview">
                 <img id="receiptPreviewImg" src="" alt="">
@@ -894,6 +983,60 @@ body.dark .load{background:rgba(7,10,18,.85)}
 
         <button class="btn btn-success btn-block mt-16" id="submitReceiptBtn" onclick="submitReceipt()" disabled><svg><use href="#i-check"/></svg>Yuborish</button>
         <button class="btn btn-secondary btn-block mt-8" onclick="cancelTopup()"><svg><use href="#i-x"/></svg>Bekor qilish</button>
+      </div>
+
+      <!-- QADAM 3: TASDIQLANMOQDA -->
+      <div id="topupStep3" class="hidden">
+        <div class="confirm-card">
+          <div class="confirm-anim">
+            <div class="confirm-ring"></div>
+            <div class="confirm-ring"></div>
+            <div class="confirm-ring"></div>
+            <div class="confirm-icon"><svg><use href="#i-check"/></svg></div>
+          </div>
+          <h3>Chek yuklandi</h3>
+          <div class="confirm-amount" id="cf3Amount">0 so'm</div>
+          <div class="confirm-timer-wrap">
+            <svg><use href="#i-clock"/></svg>
+            <div class="confirm-timer" id="cf3Timer">09:59</div>
+          </div>
+          <div class="confirm-status">
+            <span>Tasdiqlanmoqda</span>
+            <span class="confirm-dots"><span>.</span><span>.</span><span>.</span></span>
+          </div>
+          <div class="confirm-hint">To'lov tasdiqlanishi bilan hisobingizga avtomatik qo'shiladi</div>
+        </div>
+        <button class="btn btn-secondary btn-block mt-16" onclick="closeTopup()">
+          <svg><use href="#i-arrow-l"/></svg>Keyinroq qaytish
+        </button>
+      </div>
+
+      <!-- NATIJA: RAD ETILDI -->
+      <div id="topupRejected" class="hidden">
+        <div class="result-card error">
+          <div class="result-ic"><svg><use href="#i-x"/></svg></div>
+          <h3>To'lov rad etildi</h3>
+          <p id="cfRejReason">Belgilangan vaqt ichida to'lov tasdiqlanmadi. Iltimos, admin bilan bog'laning.</p>
+          <button class="btn btn-primary btn-block" onclick="go('pageAdminContacts')">
+            <svg><use href="#i-msg"/></svg>Admin bilan bog'lanish
+          </button>
+          <button class="btn btn-secondary btn-block mt-8" onclick="resetTopup()">
+            <svg><use href="#i-arrow-l"/></svg>Yopish
+          </button>
+        </div>
+      </div>
+
+      <!-- NATIJA: MUVAFFAQIYAT -->
+      <div id="topupSuccess" class="hidden">
+        <div class="result-card success">
+          <div class="result-ic"><svg><use href="#i-check"/></svg></div>
+          <h3>To'lov tasdiqlandi!</h3>
+          <div class="result-amount" id="cfOkAmount">0 so'm</div>
+          <p>Hisobingiz muvaffaqiyatli to'ldirildi 🎉</p>
+          <button class="btn btn-success btn-block" onclick="closeTopup()">
+            <svg><use href="#i-check"/></svg>Yopish
+          </button>
+        </div>
       </div>
     </div>
   </section>
@@ -909,7 +1052,6 @@ body.dark .load{background:rgba(7,10,18,.85)}
   </nav>
 </div>
 
-<!-- MODALS -->
 <div class="modal" id="mAd">
   <div class="modal-in">
     <div class="modal-handle"></div>
@@ -955,6 +1097,18 @@ body.dark .load{background:rgba(7,10,18,.85)}
   </div>
 </div>
 
+<div class="modal confirm-pop" id="mConfirm">
+  <div class="confirm-modal-in">
+    <div class="confirm-modal-ic" id="cfIconWrap"><svg id="cfIconSvg"><use href="#i-alert"/></svg></div>
+    <h3 id="cfTitle">Tasdiqlash</h3>
+    <p id="cfMsg"></p>
+    <div class="confirm-modal-actions">
+      <button class="btn btn-secondary" id="cfNo">Bekor qilish</button>
+      <button class="btn btn-danger" id="cfYes">Ha, davom etish</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="load" id="loadOverlay"><div class="spin"></div></div>
 
@@ -980,7 +1134,7 @@ let S = {
   category:"ALL",
   step:1, tariff:null, videoData:null,
   linked:[], currency:"UZS",
-  topupTimer:null, topupPoll:null, topupExpires:null,
+  topupTimer:null, topupPoll:null,
   pendingReceipt:null,
   fbRating:5,
 };
@@ -1012,6 +1166,30 @@ function toast(msg, type="info"){
 function openModal(id){ $(id).classList.add("active"); document.body.style.overflow = "hidden" }
 function closeModal(id){ $(id).classList.remove("active"); document.body.style.overflow = "" }
 
+function customConfirm(title, msg, opts={}){
+  return new Promise(resolve => {
+    $("cfTitle").innerText = title;
+    $("cfMsg").innerText = msg;
+    const wrap = $("cfIconWrap");
+    const svg = $("cfIconSvg");
+    const danger = opts.danger !== false;
+    svg.innerHTML = `<use href="#i-${opts.icon || (danger ? "alert" : "info")}"/>`;
+    wrap.style.background = danger
+      ? "linear-gradient(135deg,rgba(239,68,68,.15),rgba(220,38,38,.06))"
+      : "linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.06))";
+    wrap.style.borderColor = danger ? "rgba(239,68,68,.25)" : "rgba(59,130,246,.25)";
+    wrap.style.color = danger ? "#EF4444" : "#3B82F6";
+    const yes = $("cfYes"), no = $("cfNo");
+    yes.innerText = opts.yesText || "Ha";
+    yes.className = "btn " + (opts.yesClass || (danger ? "btn-danger" : "btn-primary"));
+    no.innerText = opts.noText || "Bekor qilish";
+    const done = (v) => { closeModal("mConfirm"); yes.onclick = null; no.onclick = null; resolve(v); };
+    yes.onclick = () => done(true);
+    no.onclick = () => done(false);
+    openModal("mConfirm");
+  });
+}
+
 async function api(path, method="GET", body=null, auth=true){
   const h = {"Content-Type":"application/json"};
   if(auth && TOKEN) h["Authorization"] = "Bearer " + TOKEN;
@@ -1028,7 +1206,6 @@ const CURRENCIES = [
   {code:"USD", flag:"🇺🇸", name:"Dollar", sym:"$", label:"Akkauntiz narxini yozing", placeholder:"80"},
   {code:"RUB", flag:"🇷🇺", name:"Rubl", sym:"₽", label:"Akkauntiz narxini yozing", placeholder:"7 500"},
 ];
-
 function getCur(code){ return CURRENCIES.find(c => c.code === code) || CURRENCIES[0] }
 
 function fmtPrice(price, cur="UZS"){
@@ -1066,6 +1243,7 @@ function go(pageId){
   if(pageId === "pageProfile") renderProfile();
   if(pageId === "pageAdmin") renderAdmin();
   if(pageId === "pageFeedbacks") renderFeedbacks();
+  if(pageId === "pageAdminContacts") loadAdminContacts();
 }
 
 function formatTime(dateStr){
@@ -1094,7 +1272,6 @@ function applyTheme(isDark){
   const meta = document.querySelector('meta[name="theme-color"]');
   if(meta) meta.setAttribute("content", isDark ? "#070A12" : "#F5F7FB");
 }
-
 function toggleTheme(){
   const isDark = !document.body.classList.contains("dark");
   applyTheme(isDark);
@@ -1119,7 +1296,6 @@ function setupVideoObserver(){
       } else { try { v.pause(); } catch(e){} }
     });
   }, { threshold: 0.3, rootMargin: "50px" });
-
   document.querySelectorAll(".ad-media video").forEach(v => {
     if(!v.dataset.loaded) v.dataset.loaded = "0";
     _videoObserver.observe(v);
@@ -1192,8 +1368,6 @@ function adCard(a){
   const isSaved = a.is_saved === true;
   const isTop = a.top_until && parseUTCDate(a.top_until) > new Date();
   const adminDel = IS_ADMIN ? `<button class="ad-admin-del" onclick="event.stopPropagation();adminDeleteAd(${a.id})">${ico("trash")}</button>` : "";
-
-  // Yangi: Kolleksiya, Manzil, Telefon
   const phone = acc.phone || "";
   const coll = acc.collection || "-";
 
@@ -1221,7 +1395,8 @@ function adCard(a){
 
 async function adminDeleteAd(adId){
   if(!IS_ADMIN) return;
-  if(!confirm("E'lonni o'chirmoqchimisiz?")) return;
+  const ok = await customConfirm("E'lonni o'chirish", "E'lon butunlay o'chiriladi. Davom etilsinmi?", {yesText:"Ha, o'chirish"});
+  if(!ok) return;
   show();
   try{
     await api("/api/admin/delete-ad", "POST", { ad_id: adId });
@@ -1241,7 +1416,6 @@ async function openAd(id){
     const a = await api(`/api/ad/${id}${USER ? "?telegram_id="+USER.telegram_id : ""}`, "GET", null, false);
     const acc = a.account_data || {};
     const cur = a.currency || "UZS";
-    const isSaved = a.is_saved === true;
 
     const linked = Array.isArray(acc.linked) ? acc.linked : [];
     const linkNames = {google:"Google", facebook:"Facebook", twitter:"Twitter/X", vk:"VKontakte", email:"Email", phone:"Telefon", apple:"Apple ID", discord:"Discord"};
@@ -1331,12 +1505,6 @@ function callSeller(phone){ window.location.href = "tel:" + phone }
 function messageSeller(username){
   if(tg) tg.openTelegramLink("https://t.me/" + username);
   else window.open("https://t.me/" + username, "_blank");
-}
-
-function toggleSaveDetail(id){
-  const btn = $("detailHeart");
-  if(!btn) return;
-  toggleSave(id, btn, true);
 }
 
 async function toggleSave(adId, btn){
@@ -1508,7 +1676,8 @@ async function submitFeedback(){
 }
 
 async function deleteFeedback(id){
-  if(!confirm("Otzifni o'chirish?")) return;
+  const ok = await customConfirm("Otzifni o'chirish", "Fikr butunlay o'chiriladi. Davom etilsinmi?", {yesText:"Ha, o'chirish"});
+  if(!ok) return;
   show();
   try{
     await api("/api/admin/delete-feedback", "POST", { feedback_id: id });
@@ -1822,11 +1991,17 @@ function renderMyAds(){
 }
 
 // =========================================================
-// TOPUP — YANGI OQIM
+// TOPUP
 // =========================================================
+function showTopupStep(step){
+  ["topupStep1","topupStep2","topupStep3","topupRejected","topupSuccess"].forEach(id => {
+    const el = $(id); if(el) el.classList.add("hidden");
+  });
+  if(step) $(step).classList.remove("hidden");
+}
+
 function openTopup(){
-  $("topupStep1").classList.remove("hidden");
-  $("topupStep2").classList.add("hidden");
+  showTopupStep("topupStep1");
   $("topupAmt").value = "";
   document.querySelectorAll(".quick-amount").forEach(q => q.classList.remove("active"));
   $("topupBtn").disabled = true;
@@ -1835,33 +2010,85 @@ function openTopup(){
   $("receiptUploadLabel").classList.remove("hidden");
   $("receiptInput").value = "";
   $("submitReceiptBtn").disabled = true;
-
-  // Eski pendingni tekshirish
-  checkExistingTopup();
-
   go("pageTopup");
+  setTimeout(checkExistingTopup, 200);
 }
 
 async function checkExistingTopup(){
   if(!USER) return;
   try{
-    const r = await api(`/api/topup/pending?telegram_id=${USER.telegram_id}`);
-    if(r.status === "waiting" && r.expires_at){
-      // Avvalgi so'rovni tiklash
-      $("topupStep1").classList.add("hidden");
-      $("topupStep2").classList.remove("hidden");
-      const c = r.card_number;
-      $("payCard").innerText = c.length === 16
-        ? `${c.slice(0,4)} ${c.slice(4,8)} ${c.slice(8,12)} ${c.slice(12,16)}` : c;
-      $("payAmt").innerText = num(r.amount) + " so'm";
-      startTopupTimer(parseUTCDate(r.expires_at));
-      startTopupPoll();
-    }
+    const r = await api(`/api/topup/status?telegram_id=${USER.telegram_id}`);
+    handleTopupStatus(r, true);
   }catch(e){ /* ignore */ }
 }
 
+function handleTopupStatus(r, silent=false){
+  const st = r.status;
+  if(st === "none" || !st){
+    stopTopupTimers();
+    if(!silent) showTopupStep("topupStep1");
+    return;
+  }
+  if(st === "completed"){
+    stopTopupTimers();
+    showTopupSuccess(r.amount || 0, r.balance || 0);
+    return;
+  }
+  if(st === "expired" || st === "rejected" || st === "cancelled"){
+    stopTopupTimers();
+    if(st === "rejected" || st === "expired") showTopupRejected(r.reject_reason);
+    else showTopupStep("topupStep1");
+    return;
+  }
+  if(st === "receipt_uploaded"){
+    showTopupConfirming(r);
+    if(r.expires_at) startTopupTimer(r.expires_at, "cf3Timer");
+    startTopupPoll();
+    return;
+  }
+  // waiting / matched
+  showTopupStep("topupStep2");
+  const c = r.card_number || "----";
+  $("payCard").innerText = c.length === 16
+    ? `${c.slice(0,4)} ${c.slice(4,8)} ${c.slice(8,12)} ${c.slice(12,16)}` : c;
+  $("payAmt").innerText = num(r.amount) + " so'm";
+  if(r.expires_at) startTopupTimer(r.expires_at, "payTimer");
+  startTopupPoll();
+}
+
+function showTopupConfirming(r){
+  showTopupStep("topupStep3");
+  $("cf3Amount").innerText = num(r.amount || 0) + " so'm";
+}
+
+function showTopupRejected(reason){
+  showTopupStep("topupRejected");
+  if(reason) $("cfRejReason").innerText = reason;
+}
+
+function showTopupSuccess(amount, newBalance){
+  showTopupStep("topupSuccess");
+  $("cfOkAmount").innerText = num(amount) + " so'm";
+  if(newBalance) S.balance = newBalance;
+  else S.balance += amount;
+  updateTopbar();
+  renderProfile();
+  toast(`Hisobingiz ${num(amount)} so'mga to'ldirildi`, "success");
+}
+
+function resetTopup(){
+  stopTopupTimers();
+  showTopupStep("topupStep1");
+  $("topupAmt").value = "";
+  $("topupBtn").disabled = true;
+}
+
+function stopTopupTimers(){
+  if(S.topupTimer){ clearInterval(S.topupTimer); S.topupTimer = null }
+  if(S.topupPoll){ clearInterval(S.topupPoll); S.topupPoll = null }
+}
+
 function closeTopup(){
-  // Timer davom etadi (bekor qilinmaydi)
   go("pageDashboard");
 }
 
@@ -1871,35 +2098,31 @@ async function topupSend(){
   show();
   try{
     const r = await api("/api/topup/request", "POST", { telegram_id: USER.telegram_id, amount: amt });
-    $("topupStep1").classList.add("hidden");
-    $("topupStep2").classList.remove("hidden");
+    showTopupStep("topupStep2");
     const c = r.card_number;
     $("payCard").innerText = c.length === 16
       ? `${c.slice(0,4)} ${c.slice(4,8)} ${c.slice(8,12)} ${c.slice(12,16)}` : c;
     $("payAmt").innerText = num(amt) + " so'm";
-    startTopupTimer(parseUTCDate(r.expires_at));
+    if(r.expires_at) startTopupTimer(r.expires_at, "payTimer");
     startTopupPoll();
     window.scrollTo({top:0, behavior:"smooth"});
   }catch(e){ toast(e.message, "error") }
   hide();
 }
 
-function startTopupTimer(expiresAt){
+function startTopupTimer(expiresAt, elId){
   if(S.topupTimer) clearInterval(S.topupTimer);
   if(!(expiresAt instanceof Date)) expiresAt = parseUTCDate(expiresAt);
+  const target = $(elId);
   const upd = () => {
-    const now = new Date();
-    const left = Math.max(0, Math.floor((expiresAt.getTime() - now.getTime()) / 1000));
+    const left = Math.max(0, Math.floor((expiresAt.getTime() - Date.now())/1000));
     const m = String(Math.floor(left/60)).padStart(2,"0");
     const s = String(left%60).padStart(2,"0");
-    const t = $("payTimer");
-    t.innerText = `${m}:${s}`;
-    t.classList.toggle("warn", left <= 60);
+    if(target) target.innerText = `${m}:${s}`;
+    if(elId === "payTimer" && target) target.classList.toggle("warn", left <= 60);
     if(left <= 0){
       clearInterval(S.topupTimer); S.topupTimer = null;
-      if(S.topupPoll){ clearInterval(S.topupPoll); S.topupPoll = null }
-      toast("To'lov vaqti tugadi", "error");
-      setTimeout(() => go("pageDashboard"), 1200);
+      setTimeout(topupPoll, 500);
     }
   };
   upd();
@@ -1908,42 +2131,43 @@ function startTopupTimer(expiresAt){
 
 function startTopupPoll(){
   if(S.topupPoll) clearInterval(S.topupPoll);
-  let attempts = 0;
-  S.topupPoll = setInterval(async () => {
-    attempts++;
-    try{
-      const r = await api(`/api/topup/pending?telegram_id=${USER.telegram_id}`);
-      if(r.status !== "waiting"){
-        // To'langan yoki muddati o'tgan
-        clearInterval(S.topupPoll); S.topupPoll = null;
-        if(S.topupTimer){ clearInterval(S.topupTimer); S.topupTimer = null }
-        if(r.status === "matched"){
-          toast("To'lov aniqlandi! Chekni yuklang", "success");
-        } else if(r.status === "paid_or_expired"){
-          toast("Sessiya tugadi", "info");
-          go("pageDashboard");
-        }
-      }
-    }catch(e){ console.warn("Poll:", e) }
-    if(attempts > 200){ clearInterval(S.topupPoll); S.topupPoll = null }
-  }, 3000);
+  S.topupPoll = setInterval(topupPoll, 3000);
+}
+
+async function topupPoll(){
+  if(!USER) return;
+  try{
+    const r = await api(`/api/topup/status?telegram_id=${USER.telegram_id}`);
+    const st = r.status;
+    if(st === "completed"){ stopTopupTimers(); showTopupSuccess(r.amount||0, r.balance||0); return }
+    if(st === "expired" || st === "rejected" || st === "cancelled"){
+      stopTopupTimers();
+      if(st === "rejected") showTopupRejected(r.reject_reason);
+      else showTopupRejected("Belgilangan vaqt ichida to'lov tasdiqlanmadi. Admin bilan bog'laning.");
+      return;
+    }
+    if(st === "receipt_uploaded"){
+      $("cf3Amount").innerText = num(r.amount||0) + " so'm";
+      if(r.expires_at && !S.topupTimer) startTopupTimer(r.expires_at, "cf3Timer");
+    }
+    if(st === "none"){
+      stopTopupTimers();
+    }
+  }catch(e){ console.warn("Poll:", e) }
 }
 
 function copyPayCard(){
-  const n = $("payCard").innerText.replace(/\s/g, "");
+  const n = $("payCard").innerText.replace(/\s/g,"");
   if(!n || n === "----") return;
-  navigator.clipboard?.writeText(n).then(() => toast("Karta raqami nusxalandi", "success"))
-    .catch(() => toast("Nusxalash imkonsiz", "error"));
+  navigator.clipboard?.writeText(n).then(() => toast("Karta raqami nusxalandi","success"))
+    .catch(() => toast("Nusxalash imkonsiz","error"));
 }
 
-// =========================================================
-// RECEIPT UPLOAD
-// =========================================================
 $("receiptInput").addEventListener("change", e => {
   const f = e.target.files[0];
   if(!f) return;
-  if(!f.type.startsWith("image/")){ toast("Faqat rasm", "error"); return }
-  if(f.size > 5 * 1024 * 1024){ toast("Rasm 5 MB dan kichik", "error"); return }
+  if(!f.type.startsWith("image/")){ toast("Faqat rasm","error"); return }
+  if(f.size > 5*1024*1024){ toast("Rasm 5 MB dan kichik","error"); return }
   const r = new FileReader();
   r.onload = ev => {
     S.pendingReceipt = ev.target.result;
@@ -1964,7 +2188,7 @@ function removeReceipt(){
 }
 
 async function submitReceipt(){
-  if(!S.pendingReceipt){ toast("Chekni yuklang", "error"); return }
+  if(!S.pendingReceipt){ toast("Chekni yuklang","error"); return }
   show();
   try{
     const r = await api("/api/topup/receipt", "POST", {
@@ -1973,36 +2197,194 @@ async function submitReceipt(){
     });
     if(r.ok){
       if(r.completed){
-        toast(`To'lov qabul qilindi: ${num(r.amount)} so'm`, "success");
-        S.balance += r.amount;
-        updateTopbar();
-        renderProfile();
-        // Poll to'xtatish
-        if(S.topupPoll){ clearInterval(S.topupPoll); S.topupPoll = null }
-        if(S.topupTimer){ clearInterval(S.topupTimer); S.topupTimer = null }
-        setTimeout(() => go("pageDashboard"), 1200);
+        stopTopupTimers();
+        showTopupSuccess(r.amount||0, null);
       } else {
-        toast("Chek yuborildi. Tekshirilmoqda...", "success");
-        setTimeout(() => go("pageDashboard"), 1200);
+        const status = await api(`/api/topup/status?telegram_id=${USER.telegram_id}`).catch(()=>null);
+        const amt = (status && status.amount) || r.amount || 0;
+        const exp = (status && status.expires_at) || null;
+        showTopupStep("topupStep3");
+        $("cf3Amount").innerText = num(amt) + " so'm";
+        if(exp) startTopupTimer(exp, "cf3Timer");
+        startTopupPoll();
+        toast("Chek qabul qilindi. Tasdiqlanmoqda...", "success");
       }
     } else {
-      toast(r.error || "Xatolik", "error");
+      toast(r.error || "Xatolik","error");
     }
-  }catch(e){ toast(e.message, "error") }
+  }catch(e){ toast(e.message,"error") }
   hide();
 }
 
 async function cancelTopup(){
-  if(!confirm("To'lovni bekor qilmoqchimisiz?")) return;
+  const ok = await customConfirm(
+    "To'lovni bekor qilish",
+    "Hozirgi to'lov sessiyasi bekor qilinadi. Davom etilsinmi?",
+    { icon:"alert", yesText:"Ha, bekor qilish" }
+  );
+  if(!ok) return;
   show();
   try{
     await api("/api/topup/cancel", "POST", { telegram_id: USER.telegram_id });
-    if(S.topupTimer){ clearInterval(S.topupTimer); S.topupTimer = null }
-    if(S.topupPoll){ clearInterval(S.topupPoll); S.topupPoll = null }
-    $("payTimer").innerText = "00:00";
-    toast("Bekor qilindi");
-    setTimeout(() => go("pageDashboard"), 400);
-  }catch(e){ toast(e.message, "error") }
+    stopTopupTimers();
+    resetTopup();
+    toast("To'lov bekor qilindi", "info");
+    setTimeout(() => go("pageDashboard"), 500);
+  }catch(e){ toast(e.message,"error") }
+  hide();
+}
+
+// =========================================================
+// ADMIN CONTACTS — foydalanuvchi
+// =========================================================
+async function loadAdminContacts(){
+  const c = $("adminContactsList");
+  if(c) c.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-3)">Yuklanmoqda...</div>`;
+  try{
+    const list = await api("/api/admin-contacts","GET",null,false);
+    renderAdminContacts(list || []);
+  }catch(e){
+    renderAdminContacts([]);
+  }
+}
+
+function renderAdminContacts(list){
+  const c = $("adminContactsList");
+  if(!c) return;
+  if(!list.length){
+    c.innerHTML = `<div class="ac-empty">
+      <div class="empty-icon" style="margin:0 auto 16px">${ico("users","ico-lg")}</div>
+      <h3 style="font-size:15px;font-weight:700;color:var(--text)">Adminlar hali qo'shilmagan</h3>
+      <p style="font-size:12.5px;margin-top:6px">Tez orada adminlar ro'yxati chiqadi</p>
+    </div>`;
+    return;
+  }
+  c.innerHTML = list.map(a => {
+    const initials = ((a.first_name||"A")[0] + (a.last_name||"")[0] || "").toUpperCase();
+    const fullName = `${esc(a.first_name||"")} ${esc(a.last_name||"")}`.trim() || "Admin";
+    const info = a.info || "Savol va yordam uchun yozing";
+    const uname = (a.username||"").replace("@","");
+    return `<div class="ac-card" onclick="openAdminContact(${a.chat_id})">
+      <div class="ac-av">
+        <div class="ac-av-in">${initials || "A"}</div>
+        <div class="ac-online"></div>
+      </div>
+      <div class="ac-body">
+        <div class="ac-name">${fullName} ${ico("check-circle","ico-sm")}</div>
+        <div class="ac-info">${esc(info)}</div>
+      </div>
+      <div class="ac-actions">
+        ${uname ? `<button class="ac-btn msg" onclick="event.stopPropagation();messageSeller('${esc(uname)}')">${ico("msg")}</button>` : ""}
+        <button class="ac-btn tg" onclick="event.stopPropagation();tgOpenUser(${a.chat_id})">${ico("user")}</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+
+function tgOpenUser(chatId){
+  const url = `tg://user?id=${chatId}`;
+  if(tg && tg.openTelegramLink) tg.openTelegramLink(url);
+  else window.open(url, "_blank");
+}
+function openAdminContact(chatId){ tgOpenUser(chatId) }
+
+// =========================================================
+// ADMIN CONTACTS — admin panel
+// =========================================================
+async function renderAdminContactsAdmin(){
+  const c = $("atAdmins");
+  if(!c) return;
+  c.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-3)">Yuklanmoqda...</div>`;
+  try{
+    const list = await api("/api/admin/contacts");
+    c.innerHTML = `
+      <div class="card-box">
+        <div class="card-box-title"><div class="card-box-ic">${ico("plus-circle")}</div>Yangi admin qo'shish</div>
+        <div class="field">
+          <label class="label">${ico("user")}Telegram Chat ID</label>
+          <input class="input" id="acChatId" inputmode="numeric" placeholder="Masalan: 7038296036" style="font-family:monospace">
+        </div>
+        <div class="field">
+          <label class="label">${ico("msg")}Username</label>
+          <input class="input" id="acUsername" placeholder="@username (ixtiyoriy)">
+        </div>
+        <div class="field">
+          <label class="label">${ico("user")}Ism</label>
+          <input class="input" id="acFirst" placeholder="Ism">
+        </div>
+        <div class="field">
+          <label class="label">${ico("user")}Familiya</label>
+          <input class="input" id="acLast" placeholder="Familiya">
+        </div>
+        <div class="field">
+          <label class="label">${ico("info")}Qisqacha ma'lumot</label>
+          <textarea class="textarea" id="acInfo" placeholder="Masalan: Savol va yordam uchun"></textarea>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="adminAddContact()">${ico("plus")}Qo'shish</button>
+      </div>
+
+      <div class="card-box">
+        <div class="card-box-title"><div class="card-box-ic">${ico("users")}</div>Adminlar ro'yxati (${list.length})</div>
+        ${list.length ? list.map(a => `
+          <div class="ac-admin-row">
+            <div class="ac-mini-av">${((a.first_name||"A")[0]||"A").toUpperCase()}</div>
+            <div class="ac-admin-body">
+              <div class="ac-admin-name">${esc(a.first_name||"")} ${esc(a.last_name||"")} ${a.is_active ? "" : '<span style="color:#F87171;font-size:10px">(o\'chiq)</span>'}</div>
+              <div class="ac-admin-meta">${a.username ? "@"+esc(a.username)+" · " : ""}${a.chat_id}</div>
+            </div>
+            <div class="ac-admin-actions">
+              <button class="${a.is_active?'active':''}" onclick="adminToggleContact(${a.id})">${ico(a.is_active?"check-circle":"x")}</button>
+              <button class="danger" onclick="adminDeleteContact(${a.id})">${ico("trash")}</button>
+            </div>
+          </div>
+        `).join("") : `<div style="text-align:center;color:var(--text-3);padding:20px;font-size:12.5px">Hali admin qo'shilmagan</div>`}
+      </div>
+    `;
+  }catch(e){
+    c.innerHTML = `<div class="empty"><h3>Xatolik: ${esc(e.message)}</h3></div>`;
+  }
+}
+
+async function adminAddContact(){
+  const chat_id = ($("acChatId").value||"").replace(/\D/g,"");
+  if(!chat_id || chat_id.length < 6){ toast("Chat ID kiriting","error"); return }
+  const body = {
+    chat_id: parseInt(chat_id),
+    username: ($("acUsername").value||"").replace("@","").trim() || null,
+    first_name: ($("acFirst").value||"").trim() || null,
+    last_name: ($("acLast").value||"").trim() || null,
+    info: ($("acInfo").value||"").trim() || "",
+  };
+  show();
+  try{
+    const r = await api("/api/admin/contacts/add","POST",body);
+    if(r.ok){
+      toast("Admin qo'shildi","success");
+      await renderAdminContactsAdmin();
+    } else toast(r.error||"Xatolik","error");
+  }catch(e){ toast(e.message,"error") }
+  hide();
+}
+
+async function adminDeleteContact(id){
+  const ok = await customConfirm("Adminni o'chirish","Bu admin ro'yxatdan o'chiriladi. Davom etilsinmi?", {yesText:"Ha, o'chirish"});
+  if(!ok) return;
+  show();
+  try{
+    await api("/api/admin/contacts/delete","POST",{contact_id:id});
+    toast("O'chirildi","success");
+    await renderAdminContactsAdmin();
+  }catch(e){ toast(e.message,"error") }
+  hide();
+}
+
+async function adminToggleContact(id){
+  show();
+  try{
+    const r = await api("/api/admin/contacts/toggle","POST",{contact_id:id});
+    toast(r.is_active ? "Faollashtirildi" : "O'chirildi", "success");
+    await renderAdminContactsAdmin();
+  }catch(e){ toast(e.message,"error") }
   hide();
 }
 
@@ -2165,7 +2547,8 @@ async function loadStatistics(){
 async function addNewAdmin(){
   const tgId = ($("newAdminId")?.value || "").replace(/\D/g,"");
   if(!tgId || tgId.length < 6){ toast("Chat ID kiriting", "error"); return }
-  if(!confirm("Foydalanuvchini admin qilmoqchimisiz?")) return;
+  const ok = await customConfirm("Admin qilish", "Foydalanuvchini admin qilmoqchimisiz?", {icon:"shield", danger:false, yesText:"Ha, admin qilish"});
+  if(!ok) return;
   show();
   try{
     const r = await api("/api/admin/add-admin", "POST", { telegram_id: parseInt(tgId) });
@@ -2234,7 +2617,12 @@ function openBalanceEditor(){ $("balanceEditor").classList.toggle("hidden") }
 async function changeBalance(tgId, sign){
   const amt = +($("balAmt").value.replace(/\D/g,"")) || 0;
   if(amt <= 0){ toast("Summani kiriting", "error"); return }
-  if(!confirm(`${sign > 0 ? "Qo'shish" : "Olib tashlash"}: ${num(amt)} so'm?`)) return;
+  const ok = await customConfirm(
+    sign > 0 ? "Balans qo'shish" : "Balansdan olib tashlash",
+    `${num(amt)} so'm ${sign > 0 ? "qo'shiladi" : "olib tashlanadi"}. Davom etilsinmi?`,
+    { icon:"wallet", danger: sign < 0, yesText:"Ha, davom etish" }
+  );
+  if(!ok) return;
   show();
   try{
     await api("/api/admin/add-balance", "POST", { telegram_id: tgId, amount: amt * sign });
@@ -2246,7 +2634,12 @@ async function changeBalance(tgId, sign){
 }
 
 async function toggleUserBlock(tgId, isBlocked){
-  if(!confirm(isBlocked ? "Blokdan chiqarish?" : "Bloklash?")) return;
+  const ok = await customConfirm(
+    isBlocked ? "Blokdan chiqarish" : "Bloklash",
+    isBlocked ? "Foydalanuvchi blokdan chiqariladi." : "Foydalanuvchi bloklanadi. Davom etilsinmi?",
+    {icon: isBlocked ? "unlock" : "lock", yesText: isBlocked ? "Ha, chiqarish" : "Ha, bloklash"}
+  );
+  if(!ok) return;
   show();
   try{
     if(isBlocked) await api("/api/admin/unblock", "POST", { telegram_id: tgId });
@@ -2266,7 +2659,9 @@ async function adminApprove(id){
 }
 
 async function adminReject(id){
-  const r = prompt("Rad etish sababi:");
+  const ok = await customConfirm("Rad etish", "E'lonni rad etmoqchimisiz? Foydalanuvchiga pul qaytariladi.", {yesText:"Ha, rad etish"});
+  if(!ok) return;
+  const r = prompt("Rad etish sababi:", "Sifatsiz e'lon");
   if(!r) return;
   show();
   try{ await api("/api/admin/reject-ad", "POST", {ad_id:id, reason:r}); toast("Rad etildi", "success"); await renderAdmin() }
@@ -2284,7 +2679,8 @@ async function adminAddCard(){
 }
 
 async function adminDelCard(id){
-  if(!confirm("Kartani o'chirish?")) return;
+  const ok = await customConfirm("Kartani o'chirish", "Karta ro'yxatdan olib tashlanadi.", {yesText:"Ha, o'chirish"});
+  if(!ok) return;
   show();
   try{ await api("/api/admin/card/del", "POST", {card_id:id}); toast("O'chirildi", "success"); await renderAdmin() }
   catch(e){ toast(e.message, "error") }
@@ -2294,7 +2690,8 @@ async function adminDelCard(id){
 async function sendBroadcast(){
   const t = $("bcastText").value.trim();
   if(!t){ toast("Xabar bo'sh", "error"); return }
-  if(!confirm("Yuborilsinmi?")) return;
+  const ok = await customConfirm("Xabar yuborish", "Barcha foydalanuvchilarga yuborilsinmi?", {icon:"send", danger:false, yesText:"Ha, yuborish"});
+  if(!ok) return;
   show();
   try{
     const r = await api("/api/admin/broadcast", "POST", {message:t});
@@ -2422,7 +2819,8 @@ async function userbotVerify2FA(){
 }
 
 async function userbotLogout(){
-  if(!confirm("Userbotni o'chirmoqchimisiz?")) return;
+  const ok = await customConfirm("Userbotni o'chirish", "Userbot sessiyasi o'chiriladi. Davom etilsinmi?", {yesText:"Ha, o'chirish"});
+  if(!ok) return;
   show();
   try{
     await api("/api/admin/userbot/logout", "POST", {});
@@ -2448,7 +2846,6 @@ function advertiseBot(){
 // INIT
 // =========================================================
 async function init(){
-  // Theme — default LIGHT
   const saved = localStorage.getItem("cardinal_theme");
   applyTheme(saved === "dark");
 
@@ -2475,12 +2872,13 @@ async function init(){
       document.querySelectorAll(".admin-tab").forEach(x => x.classList.remove("active"));
       t.classList.add("active");
       const at = t.dataset.at;
-      ["ads","stats","cards","users","feedbacks","userbot","addadmin","broadcast"].forEach(k => {
+      ["ads","stats","cards","users","feedbacks","userbot","addadmin","admins","broadcast"].forEach(k => {
         const el = $("at" + k.charAt(0).toUpperCase() + k.slice(1));
         if(el) el.classList.toggle("hidden", k !== at);
       });
       if(at === "userbot") renderUserbotSection();
       if(at === "stats") loadStatistics();
+      if(at === "admins") renderAdminContactsAdmin();
     };
   });
 
@@ -2489,6 +2887,9 @@ async function init(){
     const v = +e.target.value.replace(/\D/g,"") || 0;
     $("topupBtn").disabled = v < 1000;
   };
+  $("topupAmt").addEventListener("keydown", e => {
+    if(e.key === "Enter" && !$("topupBtn").disabled) topupSend();
+  });
   document.querySelectorAll(".quick-amount").forEach(q => {
     q.onclick = () => {
       $("topupAmt").value = num(+q.dataset.q);
@@ -2518,8 +2919,7 @@ async function init(){
 document.addEventListener("DOMContentLoaded", init);
 
 window.addEventListener("beforeunload", () => {
-  if(S.topupTimer) clearInterval(S.topupTimer);
-  if(S.topupPoll) clearInterval(S.topupPoll);
+  stopTopupTimers();
   if(_videoObserver){ try { _videoObserver.disconnect(); } catch(e){} }
 });
 </script>
