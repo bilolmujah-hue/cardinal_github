@@ -1,11 +1,9 @@
 """
-Cardinal API v5.5
-- JWT (access 15min + refresh 7 kun)
-- Video upload → Telegram kanal
-- Video streaming — Range support
-- Userbot boshqaruvi
-- Topup oqimi: 10 daqiqa, chek yuklash, status polling
-- Admin Contacts
+Cardinal API v5.6
+- Karta holder qaytariladi
+- topup_request / topup_status yangilandi
+- admin_add_card holder talab qiladi
+- admin_delete_ad ADS_CHANNEL_ID ishlatadi
 """
 import asyncio
 import json
@@ -106,7 +104,7 @@ class API:
             ("GET",  "/api/user-transactions/{telegram_id}", self.user_txs),
             ("POST", "/api/feedbacks/add", self.add_feedback),
 
-            # Topup — YANGI OQIM
+            # Topup
             ("POST", "/api/topup/request", self.topup_request),
             ("GET",  "/api/topup/status",  self.topup_status),
             ("POST", "/api/topup/cancel",  self.topup_cancel),
@@ -156,7 +154,7 @@ class API:
     # ============================================================
     async def index(self, req):
         return jresp({
-            "app": "Cardinal API", "version": "5.5", "status": "running",
+            "app": "Cardinal API", "version": "5.6", "status": "running",
             "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
         })
 
@@ -257,7 +255,8 @@ class API:
 
                     try:
                         async for chunk in upstream.content.iter_chunked(64 * 1024):
-                            if not chunk: continue
+                            if not chunk:
+                                continue
                             try:
                                 await resp.write(chunk)
                             except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
@@ -483,12 +482,14 @@ class API:
                 return jresp({"ok": False, "error": "Telefon yoki username kiriting"}, 400)
             if phone:
                 digits = re.sub(r"\D", "", phone)
-                if digits.startswith("998"): digits = digits[3:]
+                if digits.startswith("998"):
+                    digits = digits[3:]
                 if len(digits) != 9:
                     return jresp({"ok": False, "error": "Telefon formati +998XXXXXXXXX"}, 400)
                 acc["phone"] = digits
             if username:
-                if not username.startswith("@"): username = "@" + username
+                if not username.startswith("@"):
+                    username = "@" + username
                 acc["username"] = username[:64]
 
             cur_code = ad_data.get("currency", "UZS")
@@ -530,7 +531,7 @@ class API:
             logger.error(f"create_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
-    async def _upload_video_to_channel(self, data_url: str) -> str | None:
+    async def _upload_video_to_channel(self, data_url: str):
         try:
             header, encoded = data_url.split(",", 1)
             raw = base64.b64decode(encoded)
@@ -545,10 +546,10 @@ class API:
             return None
 
     # ============================================================
-    # TOPUP — YANGI OQIM
+    # TOPUP
     # ============================================================
     async def topup_request(self, req):
-        """10 daqiqalik so'rov yaratish."""
+        """10 daqiqalik so'rov yaratish — holder bilan."""
         try:
             data = await req.json()
             tg = int(data["telegram_id"])
@@ -564,24 +565,22 @@ class API:
                 "ok": True,
                 "request_id": r["id"],
                 "card_number": r["card_number"],
+                "card_holder": r.get("card_holder") or "CARDINAL ADMIN",
                 "amount": amount,
                 "expires_at": r["expires_at"].isoformat() + "Z",
-                "timeout_minutes": 10,
+                "timeout_minutes": LIMITS.PAYMENT_TIMEOUT_MIN,
             })
         except Exception as e:
             logger.error(f"topup_request: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def topup_status(self, req):
-        """
-        Hozirgi topup status + vaqt + chek + status.
-        Frontend har 3 sekundda chaqiradi.
-        """
+        """Hozirgi topup status + karta egasi."""
         try:
             tg = int(req.query.get("telegram_id", 0))
             r = await self.db.get_pending_topup(tg)
+
             if not r:
-                # Oxirgi so'rovni olish
                 async with self.db.pool.acquire() as c:
                     u = await self.db.get_user(tg)
                     if u:
@@ -590,7 +589,6 @@ class API:
                             ORDER BY created_at DESC LIMIT 1
                         """, u["id"])
                         if last and last["status"] in ("COMPLETED", "CANCELLED", "EXPIRED", "REJECTED"):
-                            # Balansni yangilash
                             fresh_user = await self.db.get_user(tg)
                             return jresp({
                                 "ok": True,
@@ -601,7 +599,6 @@ class API:
                             })
                 return jresp({"ok": True, "status": "none"})
 
-            # Sekundlar qolgan
             left_sec = max(0, int((r["expires_at"] - datetime.now()).total_seconds()))
 
             status_map = {
@@ -614,6 +611,7 @@ class API:
                 "status": status_map.get(r["status"], "waiting"),
                 "request_id": r["id"],
                 "card_number": r["card_number"],
+                "card_holder": r.get("card_holder") or "CARDINAL ADMIN",
                 "amount": r["amount"],
                 "expires_at": r["expires_at"].isoformat() + "Z",
                 "left_seconds": left_sec,
@@ -624,7 +622,6 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def topup_cancel(self, req):
-        """Foydalanuvchi bekor qildi."""
         try:
             data = await req.json()
             tg = int(data["telegram_id"])
@@ -634,11 +631,6 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def topup_receipt(self, req):
-        """
-        Foydalanuvchi chekni yukladi.
-        - Agar userbot allaqachon to'lovni aniqlagan (MATCHED) → balans qo'shiladi.
-        - Aks holda → adminga yuboriladi, qo'lda tekshiriladi.
-        """
         try:
             data = await req.json()
             tg = int(data["telegram_id"])
@@ -650,7 +642,6 @@ class API:
             if not result.get("ok"):
                 return jresp({"ok": False, "error": "So'rov topilmadi"}, 400)
 
-            # Adminga rasmni yuborish
             try:
                 await self.bot_app.send_receipt_to_admin(
                     receipt_url,
@@ -760,14 +751,24 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_add_card(self, req):
+        """Karta qo'shish — holder majburiy."""
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
             data = await req.json()
             num_str = re.sub(r"\D", "", data.get("number", ""))
             if len(num_str) != 16:
-                return jresp({"ok": False, "error": "16 xonali raqam"}, 400)
-            ok = await self.db.add_card(num_str, data.get("holder", "CARDINAL ADMIN"))
-            return jresp({"ok": ok})
+                return jresp({"ok": False, "error": "16 xonali raqam kiriting"}, 400)
+
+            holder = (data.get("holder") or "").strip()
+            if not holder:
+                return jresp({"ok": False, "error": "Karta egasining ism-familiyasini kiriting"}, 400)
+            if len(holder) > 100:
+                holder = holder[:100]
+
+            ok = await self.db.add_card(num_str, holder.upper())
+            if not ok:
+                return jresp({"ok": False, "error": "Karta qo'shilmadi"}, 500)
+            return jresp({"ok": True})
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
 
@@ -786,7 +787,8 @@ class API:
             data = await req.json()
             ad_id = int(data["ad_id"])
             ad = await self.db.get_ad(ad_id)
-            if not ad: return jresp({"error": "Topilmadi"}, 404)
+            if not ad:
+                return jresp({"error": "Topilmadi"}, 404)
 
             t = TARIFFS.get(ad["tariff"], TARIFFS[1])
             top_until = None
@@ -819,7 +821,8 @@ class API:
             ad_id = int(data["ad_id"])
             reason = data.get("reason", "Admin rad etdi")
             ad = await self.db.get_ad(ad_id)
-            if not ad: return jresp({"error": "Topilmadi"}, 404)
+            if not ad:
+                return jresp({"error": "Topilmadi"}, 404)
 
             await self.db.update_ad_status(ad_id, "REJECTED", reason)
             t = TARIFFS.get(ad["tariff"], TARIFFS[1])
@@ -842,7 +845,9 @@ class API:
             ad = await self.db.get_ad(ad_id)
             if ad and ad.get("channel_msg_id"):
                 try:
-                    await self.bot_app.bot.delete_message(BOT.CHANNEL_ID, ad["channel_msg_id"])
+                    await self.bot_app.bot.delete_message(
+                        BOT.ADS_CHANNEL_ID, ad["channel_msg_id"]
+                    )
                 except Exception:
                     pass
             await self.db.delete_ad(ad_id)
@@ -884,7 +889,8 @@ class API:
             async def run():
                 sent = 0
                 for uid in ids:
-                    if uid == BOT.ADMIN_CHAT_ID: continue
+                    if uid == BOT.ADMIN_CHAT_ID:
+                        continue
                     try:
                         await self.bot_app.bot.send_message(uid, text, parse_mode="HTML")
                         sent += 1
