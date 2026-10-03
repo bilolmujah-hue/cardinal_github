@@ -1,5 +1,8 @@
 """
-Cardinal v5.1 — Sozlamalar
+Cardinal v5.6 — Sozlamalar
+- Yangi bot token
+- Yangi 2 kanal (private + public)
+- Reklama faqat 1-kanalga chiqadi
 """
 import os
 
@@ -19,24 +22,45 @@ class DB:
 # BOT
 # ============================================================
 class BOT:
-    TOKEN = os.getenv("BOT_TOKEN", "8894813624:AAFCo3nDE19T8A2Ql_-W2j4-XemU4G1QcxI")
+    # Bot
+    TOKEN = os.getenv("BOT_TOKEN", "8981969442:AAELaMVuxJA9_pPAAbf6KIRFwinKrAN3GMY")
+    USERNAME = "cardinal_akkaunt_bot"
+
+    # Admin
     ADMIN_CHAT_ID = 7038296036
     ADMIN_USERNAME = "cardinal_admin"
     ADMIN_NAME = "CARDINAL ADMIN"
 
+    # Web App URL
     WEB_APP_URL = "https://bilolmujah-hue.github.io/cardinal_github/"
 
-    # E'lonlar kanali
-    CHANNEL_USERNAME = "@tajriva2"
-    CHANNEL_ID = -1004390708511
+    # 🔥 REKLAMA KANALI — faqat shu yerga post qilinadi (private)
+    ADS_CHANNEL_ID = -1001723379807
+    ADS_CHANNEL_INVITE = "https://t.me/+5XuKi8Nxoz5iODky"
+    ADS_CHANNEL_NAME = "Cardinal Chat"
+
+    # 📢 PUBLIC KANAL — faqat obuna uchun, post qilinmaydi
+    PUBLIC_CHANNEL_USERNAME = "@Cardinal_PUBG"
+    PUBLIC_CHANNEL_ID = -1001365422917
+    PUBLIC_CHANNEL_NAME = "Cardinal PUBG"
 
     # Video saqlash kanali
     VIDEO_CHANNEL_ID = -1004401093865
 
-    # Majburiy obuna kanallari
+    # Majburiy obuna kanallari (2 ta)
     REQUIRED_CHANNELS = [
-        {"username": "@tajriva2", "id": -1004390708511, "name": "Tajriva 2"},
-        {"username": "@tajriva",  "id": -1004442636025, "name": "Tajriva"},
+        {
+            "type": "invite",
+            "invite": "https://t.me/+5XuKi8Nxoz5iODky",
+            "id": -1001723379807,
+            "name": "Cardinal Chat",
+        },
+        {
+            "type": "username",
+            "username": "@Cardinal_PUBG",
+            "id": -1001365422917,
+            "name": "Cardinal PUBG",
+        },
     ]
 
 
@@ -44,17 +68,10 @@ class BOT:
 # USERBOT (Telethon)
 # ============================================================
 class USERBOT:
-    # my.telegram.org dan olingan
     API_ID = 30030023
     API_HASH = "a3a0b5d77ef12ec9ed208012844875c5"
-
-    # Telefon raqam (ixtiyoriy)
     PHONE = os.getenv("USERBOT_PHONE", "")
-
-    # StringSession (Railway Variables dan)
     SESSION_STRING = os.getenv("USERBOT_SESSION", "")
-
-    # CardXabarBot username
     WATCH_BOT_USERNAME = "CardXabarBot"
 
 
@@ -77,7 +94,7 @@ class JWT:
 class API:
     HOST = "0.0.0.0"
     PORT = int(os.getenv("PORT", 8080))
-    MAX_SIZE = 200 * 1024 * 1024  # 200 MB
+    MAX_SIZE = 200 * 1024 * 1024
 
 
 # ============================================================
@@ -125,7 +142,7 @@ class T4:
     badge = "👑 VIP"
     channel = True
     webapp = True
-    top_hours = 48  # 2 kun TOP
+    top_hours = 48
 
 TARIFFS = {1: T1, 2: T2, 3: T3, 4: T4}
 
@@ -159,7 +176,7 @@ class LIMITS:
     COLLECTION_MAX = 101
     RP_MAX_CHARS = 50
     ADD_LIST_MAX = 25
-    PAYMENT_TIMEOUT_MIN = 5
+    PAYMENT_TIMEOUT_MIN = 10      # ← 10 daqiqa
     MIN_TOPUP = 1000
 
 
