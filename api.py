@@ -1,10 +1,11 @@
 """
-Cardinal API v5.4
+Cardinal API v5.5
 - JWT (access 15min + refresh 7 kun)
 - Video upload → Telegram kanal
 - Video streaming — Range support
 - Userbot boshqaruvi
-- Yangi topup oqimi (10 daqiqa, chek yuklash, bekor qilish)
+- Topup oqimi: 10 daqiqa, chek yuklash, status polling
+- Admin Contacts
 """
 import asyncio
 import json
@@ -84,6 +85,7 @@ class API:
             ("GET",  "/api/currencies", self.currencies),
             ("GET",  "/api/ads", self.get_ads),
             ("GET",  "/api/feedbacks", self.get_feedbacks),
+            ("GET",  "/api/admin-contacts", self.public_admin_contacts),
 
             # Video streaming
             ("GET",  "/api/ad/{ad_id}/video", self.stream_video),
@@ -106,7 +108,7 @@ class API:
 
             # Topup — YANGI OQIM
             ("POST", "/api/topup/request", self.topup_request),
-            ("GET",  "/api/topup/pending", self.topup_pending),
+            ("GET",  "/api/topup/status",  self.topup_status),
             ("POST", "/api/topup/cancel",  self.topup_cancel),
             ("POST", "/api/topup/receipt", self.topup_receipt),
 
@@ -131,6 +133,12 @@ class API:
             ("POST", "/api/admin/delete-feedback", self.admin_delete_feedback),
             ("POST", "/api/admin/add-admin", self.admin_add_admin),
 
+            # Admin Contacts
+            ("GET",  "/api/admin/contacts", self.admin_list_contacts),
+            ("POST", "/api/admin/contacts/add", self.admin_add_contact),
+            ("POST", "/api/admin/contacts/delete", self.admin_delete_contact),
+            ("POST", "/api/admin/contacts/toggle", self.admin_toggle_contact),
+
             # Userbot
             ("POST", "/api/admin/userbot/send-code", self.admin_userbot_send_code),
             ("POST", "/api/admin/userbot/verify-code", self.admin_userbot_verify_code),
@@ -148,7 +156,7 @@ class API:
     # ============================================================
     async def index(self, req):
         return jresp({
-            "app": "Cardinal API", "version": "5.4", "status": "running",
+            "app": "Cardinal API", "version": "5.5", "status": "running",
             "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
         })
 
@@ -564,22 +572,55 @@ class API:
             logger.error(f"topup_request: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
-    async def topup_pending(self, req):
-        """Frontend har 3 sekundda tekshiradi."""
+    async def topup_status(self, req):
+        """
+        Hozirgi topup status + vaqt + chek + status.
+        Frontend har 3 sekundda chaqiradi.
+        """
         try:
             tg = int(req.query.get("telegram_id", 0))
             r = await self.db.get_pending_topup(tg)
             if not r:
-                return jresp({"ok": True, "status": "paid_or_expired"})
+                # Oxirgi so'rovni olish
+                async with self.db.pool.acquire() as c:
+                    u = await self.db.get_user(tg)
+                    if u:
+                        last = await c.fetchrow("""
+                            SELECT * FROM topup_requests WHERE user_id=$1
+                            ORDER BY created_at DESC LIMIT 1
+                        """, u["id"])
+                        if last and last["status"] in ("COMPLETED", "CANCELLED", "EXPIRED", "REJECTED"):
+                            # Balansni yangilash
+                            fresh_user = await self.db.get_user(tg)
+                            return jresp({
+                                "ok": True,
+                                "status": last["status"].lower(),
+                                "amount": last["amount"],
+                                "reject_reason": last.get("reject_reason"),
+                                "balance": fresh_user["balance"] if fresh_user else 0,
+                            })
+                return jresp({"ok": True, "status": "none"})
+
+            # Sekundlar qolgan
+            left_sec = max(0, int((r["expires_at"] - datetime.now()).total_seconds()))
+
+            status_map = {
+                "WAITING": "waiting",
+                "MATCHED": "matched",
+                "RECEIPT_UPLOADED": "receipt_uploaded",
+            }
             return jresp({
                 "ok": True,
-                "status": "waiting",
+                "status": status_map.get(r["status"], "waiting"),
                 "request_id": r["id"],
                 "card_number": r["card_number"],
                 "amount": r["amount"],
                 "expires_at": r["expires_at"].isoformat() + "Z",
+                "left_seconds": left_sec,
+                "has_receipt": bool(r.get("receipt_url")),
             })
         except Exception as e:
+            logger.error(f"topup_status: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def topup_cancel(self, req):
@@ -611,38 +652,16 @@ class API:
 
             # Adminga rasmni yuborish
             try:
-                from aiogram.types import BufferedInputFile
-                header, encoded = receipt_url.split(",", 1)
-                raw = base64.b64decode(encoded)
-                photo = BufferedInputFile(raw, filename="receipt.jpg")
-
-                if result.get("completed"):
-                    status_text = (
-                        "✅ <b>AVTOMATIK TASDIQLANDI</b>\n"
-                        "━━━━━━━━━━━━━━━━━━━━\n"
-                        "Userbot to'lovni aniqladi va balans qo'shildi"
-                    )
-                else:
-                    status_text = (
-                        "⏳ <b>TEKSHIRISH KERAK</b>\n"
-                        "━━━━━━━━━━━━━━━━━━━━\n"
-                        "Userbot hali to'lovni aniqlamadi.\n"
-                        "Iltimos, admin panelda tekshiring."
-                    )
-
-                caption = (
-                    f"🧾 <b>TO'LOV CHEKI</b>\n"
-                    f"━━━━━━━━━━━━━━━━━━━━\n\n"
-                    f"👤 <b>Ism:</b> {result.get('user_name') or '-'}\n"
-                    f"📱 <b>Telefon:</b> +998 {result.get('phone') or '-'}\n"
-                    f"🆔 <b>ID:</b> <code>{result.get('telegram_id')}</code>\n"
-                    f"💰 <b>Summa:</b> {result.get('amount', 0):,} so'm\n"
-                    f"📋 <b>So'rov:</b> #{result.get('request_id')}\n\n"
-                    f"{status_text}"
-                )
-                await self.bot_app.bot.send_photo(
-                    BOT.ADMIN_CHAT_ID, photo,
-                    caption=caption, parse_mode="HTML"
+                await self.bot_app.send_receipt_to_admin(
+                    receipt_url,
+                    {
+                        "user_name": result.get("user_name"),
+                        "phone": result.get("phone"),
+                        "telegram_id": result.get("telegram_id"),
+                        "amount": result.get("amount"),
+                        "request_id": result.get("request_id"),
+                    },
+                    result.get("completed", False),
                 )
             except Exception as e:
                 logger.error(f"Admin receipt notify: {e}", exc_info=True)
@@ -744,10 +763,10 @@ class API:
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
             data = await req.json()
-            num = re.sub(r"\D", "", data.get("number", ""))
-            if len(num) != 16:
+            num_str = re.sub(r"\D", "", data.get("number", ""))
+            if len(num_str) != 16:
                 return jresp({"ok": False, "error": "16 xonali raqam"}, 400)
-            ok = await self.db.add_card(num, data.get("holder", "CARDINAL ADMIN"))
+            ok = await self.db.add_card(num_str, data.get("holder", "CARDINAL ADMIN"))
             return jresp({"ok": ok})
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
@@ -905,6 +924,60 @@ class API:
             data = await req.json()
             await self.db.delete_feedback(int(data["feedback_id"]))
             return jresp({"ok": True})
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    # ============================================================
+    # ADMIN CONTACTS
+    # ============================================================
+    async def public_admin_contacts(self, req):
+        """Hamma ko'ra oladi — adminlar ro'yxati."""
+        try:
+            contacts = await self.db.get_admin_contacts(active_only=True)
+            return jresp(contacts)
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_list_contacts(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            return jresp(await self.db.get_admin_contacts(active_only=False))
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_add_contact(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            chat_id = int(data.get("chat_id", 0))
+            if not chat_id:
+                return jresp({"ok": False, "error": "Chat ID kerak"}, 400)
+            ok = await self.db.add_admin_contact(
+                chat_id=chat_id,
+                username=(data.get("username") or "").strip().lstrip("@") or None,
+                first_name=(data.get("first_name") or "").strip() or None,
+                last_name=(data.get("last_name") or "").strip() or None,
+                info=(data.get("info") or "").strip() or "",
+            )
+            return jresp({"ok": ok})
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_delete_contact(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            await self.db.delete_admin_contact(int(data["contact_id"]))
+            return jresp({"ok": True})
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_toggle_contact(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            new_state = await self.db.toggle_admin_contact(int(data["contact_id"]))
+            return jresp({"ok": True, "is_active": new_state})
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
 
