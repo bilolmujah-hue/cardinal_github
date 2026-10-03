@@ -1,3 +1,9 @@
+"""
+Cardinal DB v5.6
+- Soft delete kartalar uchun
+- Karta holder saqlanadi
+- Topup holder qaytaradi
+"""
 import asyncpg
 import json
 import logging
@@ -25,6 +31,9 @@ class Database:
         if self.pool:
             await self.pool.close()
 
+    # ============================================================
+    # TABLES
+    # ============================================================
     async def create_tables(self):
         async with self.pool.acquire() as c:
             # USERS
@@ -110,13 +119,13 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # TOPUP_REQUESTS — yangilangan statuslar
+            # TOPUP_REQUESTS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS topup_requests (
                     id              SERIAL PRIMARY KEY,
                     user_id         INTEGER REFERENCES users(id) ON DELETE CASCADE,
                     amount          BIGINT NOT NULL,
-                    card_id         INTEGER REFERENCES cards(id),
+                    card_id         INTEGER REFERENCES cards(id) ON DELETE SET NULL,
                     card_number     VARCHAR(20),
                     status          VARCHAR(30) DEFAULT 'WAITING',
                     expires_at      TIMESTAMP NOT NULL,
@@ -159,7 +168,7 @@ class Database:
                     created_at  TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # USERBOT
+            # USERBOT SESSIONS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS userbot_sessions (
                     id              SERIAL PRIMARY KEY,
@@ -170,7 +179,7 @@ class Database:
                     updated_at      TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # 🔥 YANGI: ADMIN CONTACTS
+            # ADMIN CONTACTS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS admin_contacts (
                     id          SERIAL PRIMARY KEY,
@@ -215,6 +224,7 @@ class Database:
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS reject_reason TEXT",
             "ALTER TABLE admin_contacts ADD COLUMN IF NOT EXISTS info TEXT",
             "ALTER TABLE admin_contacts ADD COLUMN IF NOT EXISTS is_active BOOLEAN DEFAULT TRUE",
+            "ALTER TABLE cards ADD COLUMN IF NOT EXISTS holder VARCHAR(100) DEFAULT 'CARDINAL ADMIN'",
         ]
         async with self.pool.acquire() as c:
             for sql in migrations:
@@ -239,11 +249,14 @@ class Database:
         async with self.pool.acquire() as c:
             for num in INITIAL_CARDS:
                 await c.execute("""
-                    INSERT INTO cards (number, holder) VALUES ($1, $2)
+                    INSERT INTO cards (number, holder, is_active)
+                    VALUES ($1, $2, TRUE)
                     ON CONFLICT (number) DO NOTHING
                 """, num, "CARDINAL ADMIN")
 
-    # ==================== USERBOT SESSION ====================
+    # ============================================================
+    # USERBOT SESSION
+    # ============================================================
     async def save_userbot_session(self, phone, session_string):
         async with self.pool.acquire() as c:
             async with c.transaction():
@@ -269,7 +282,9 @@ class Database:
             await c.execute("DELETE FROM userbot_sessions")
         return True
 
-    # ==================== USERS ====================
+    # ============================================================
+    # USERS
+    # ============================================================
     async def get_or_create_user(self, telegram_id, username=None, first_name=None, last_name=None):
         async with self.pool.acquire() as c:
             u = await c.fetchrow("SELECT * FROM users WHERE telegram_id=$1", telegram_id)
@@ -299,7 +314,8 @@ class Database:
     async def get_user_full(self, telegram_id):
         async with self.pool.acquire() as c:
             u = await c.fetchrow("SELECT * FROM users WHERE telegram_id=$1", telegram_id)
-            if not u: return None
+            if not u:
+                return None
             d = dict(u)
             d["ads_count"] = await c.fetchval("SELECT COUNT(*) FROM ads WHERE user_id=$1", d["id"])
             d["is_admin"] = (telegram_id == 7038296036) or d.get("is_admin", False)
@@ -364,26 +380,41 @@ class Database:
             """)
             return [dict(r) for r in rows]
 
-    # ==================== CARDS ====================
+    # ============================================================
+    # CARDS
+    # ============================================================
     async def get_cards(self, active_only=True):
         async with self.pool.acquire() as c:
             q = "SELECT * FROM cards"
-            if active_only: q += " WHERE is_active=TRUE"
+            if active_only:
+                q += " WHERE is_active=TRUE"
             q += " ORDER BY id"
             return [dict(r) for r in await c.fetch(q)]
 
     async def add_card(self, number, holder="CARDINAL ADMIN"):
         async with self.pool.acquire() as c:
             try:
-                await c.execute("INSERT INTO cards (number, holder) VALUES ($1,$2)", number, holder)
+                await c.execute("""
+                    INSERT INTO cards (number, holder, is_active)
+                    VALUES ($1, $2, TRUE)
+                    ON CONFLICT (number) DO UPDATE
+                        SET holder = EXCLUDED.holder,
+                            is_active = TRUE
+                """, number, holder)
                 return True
-            except: return False
+            except Exception as e:
+                logger.error(f"add_card: {e}")
+                return False
 
     async def remove_card(self, card_id):
+        """Soft delete — foreign key xatolarini oldini oladi."""
         async with self.pool.acquire() as c:
-            await c.execute("DELETE FROM cards WHERE id=$1", card_id)
+            await c.execute("UPDATE cards SET is_active=FALSE WHERE id=$1", card_id)
+            return True
 
-    # ==================== BALANCE ====================
+    # ============================================================
+    # BALANCE
+    # ============================================================
     async def update_balance(self, telegram_id, amount, tx_type="topup", desc=None):
         async with self.pool.acquire() as c:
             async with c.transaction():
@@ -409,7 +440,9 @@ class Database:
                         VALUES ($1,$2,'remove','Admin olib tashladi','APPROVED')
                     """, u["id"], amount)
 
-    # ==================== ADS ====================
+    # ============================================================
+    # ADS
+    # ============================================================
     async def create_ad(self, user_id, data):
         async with self.pool.acquire() as c:
             acc_json = json.dumps(data.get("account_data", {}) or {}, ensure_ascii=False)
@@ -425,11 +458,13 @@ class Database:
     def _parse_ad(self, r):
         d = dict(r)
         if isinstance(d.get("account_data"), str):
-            try: d["account_data"] = json.loads(d["account_data"])
-            except: d["account_data"] = {}
+            try:
+                d["account_data"] = json.loads(d["account_data"])
+            except Exception:
+                d["account_data"] = {}
         elif d.get("account_data") is None:
             d["account_data"] = {}
-        for k in ("video_data","video_base64","video"):
+        for k in ("video_data", "video_base64", "video"):
             d["account_data"].pop(k, None)
         vid = d.get("video_file_id")
         if vid and isinstance(vid, str) and vid.startswith("data:"):
@@ -504,11 +539,14 @@ class Database:
         async with self.pool.acquire() as c:
             await c.execute("UPDATE ads SET views=views+1 WHERE id=$1", ad_id)
 
-    # ==================== SAVED ====================
+    # ============================================================
+    # SAVED
+    # ============================================================
     async def toggle_save(self, ad_id, telegram_id):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
-            if not u: return {"ok": False}
+            if not u:
+                return {"ok": False}
             ex = await c.fetchrow("SELECT id FROM saved_ads WHERE ad_id=$1 AND user_id=$2", ad_id, u["id"])
             if ex:
                 await c.execute("DELETE FROM saved_ads WHERE id=$1", ex["id"])
@@ -519,7 +557,8 @@ class Database:
     async def get_saved(self, telegram_id):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
-            if not u: return []
+            if not u:
+                return []
             rows = await c.fetch("""
                 SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
                        a.currency, a.location, a.full_location, a.account_data, a.tariff,
@@ -531,20 +570,21 @@ class Database:
             """, u["id"])
             return [self._parse_ad(r) for r in rows]
 
-    # ==================== TOPUP — MUKAMMAL ====================
+    # ============================================================
+    # TOPUP
+    # ============================================================
     async def create_topup_request(self, telegram_id, amount):
-        """10 daqiqalik so'rov. Bir xil summa uchun boshqa karta."""
+        """10 daqiqalik so'rov. Karta holder bilan qaytariladi."""
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
-            if not u: return None
+            if not u:
+                return None
 
-            # Eski kutayotgan so'rovlarni bekor qilish
             await c.execute("""
                 UPDATE topup_requests SET status='CANCELLED'
                 WHERE user_id=$1 AND status IN ('WAITING','MATCHED','RECEIPT_UPLOADED')
             """, u["id"])
 
-            # Bir xil summada band qilinmagan kartani topish
             card = await c.fetchrow("""
                 SELECT * FROM cards
                 WHERE is_active=TRUE
@@ -558,35 +598,50 @@ class Database:
 
             if not card:
                 card = await c.fetchrow("SELECT * FROM cards WHERE is_active=TRUE ORDER BY RANDOM() LIMIT 1")
-            if not card: return None
+            if not card:
+                return None
 
-            expires = datetime.now() + timedelta(minutes=10)
+            expires = datetime.now() + timedelta(minutes=LIMITS.PAYMENT_TIMEOUT_MIN)
             rid = await c.fetchval("""
                 INSERT INTO topup_requests (user_id, amount, card_id, card_number, status, expires_at)
                 VALUES ($1,$2,$3,$4,'WAITING',$5) RETURNING id
             """, u["id"], amount, card["id"], card["number"], expires)
-            return {"id": rid, "card_number": card["number"], "expires_at": expires}
+
+            return {
+                "id": rid,
+                "card_number": card["number"],
+                "card_holder": card.get("holder") or "CARDINAL ADMIN",
+                "expires_at": expires,
+            }
 
     async def get_pending_topup(self, telegram_id):
-        """Hozirgi aktiv so'rovni qaytaradi."""
+        """Hozirgi aktiv so'rovni qaytaradi — holder JOIN bilan."""
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
-            if not u: return None
+            if not u:
+                return None
             r = await c.fetchrow("""
-                SELECT * FROM topup_requests
-                WHERE user_id=$1 AND status IN ('WAITING','MATCHED','RECEIPT_UPLOADED')
-                  AND expires_at > NOW()
-                ORDER BY created_at DESC LIMIT 1
+                SELECT t.*, c.holder AS card_holder
+                FROM topup_requests t
+                LEFT JOIN cards c ON c.id = t.card_id
+                WHERE t.user_id=$1
+                  AND t.status IN ('WAITING','MATCHED','RECEIPT_UPLOADED')
+                  AND t.expires_at > NOW()
+                ORDER BY t.created_at DESC LIMIT 1
             """, u["id"])
             return dict(r) if r else None
 
     async def get_topup_by_id(self, req_id):
         async with self.pool.acquire() as c:
-            r = await c.fetchrow("SELECT * FROM topup_requests WHERE id=$1", req_id)
+            r = await c.fetchrow("""
+                SELECT t.*, c.holder AS card_holder
+                FROM topup_requests t
+                LEFT JOIN cards c ON c.id = t.card_id
+                WHERE t.id=$1
+            """, req_id)
             return dict(r) if r else None
 
     async def expire_old_topups(self):
-        """Muddati o'tgan so'rovlarni EXPIRED qilish."""
         async with self.pool.acquire() as c:
             await c.execute("""
                 UPDATE topup_requests SET status='EXPIRED'
@@ -595,12 +650,8 @@ class Database:
             """)
 
     async def match_payment(self, amount, payer_last4):
-        """
-        Userbot xabar o'qidi. So'rovni MATCHED qilamiz — LEKIN xabar yubormaymiz.
-        Balans faqat chek yuklanganda qo'shiladi.
-        """
+        """Userbot xabar o'qidi. Silent — xabar yubormaymiz."""
         async with self.pool.acquire() as c:
-            # Avval karta oxirgi 4 raqami bo'yicha
             req = await c.fetchrow("""
                 SELECT * FROM topup_requests
                 WHERE amount=$1 AND status='WAITING' AND expires_at > NOW()
@@ -609,7 +660,6 @@ class Database:
             """, amount, payer_last4)
 
             if not req:
-                # Keyin faqat summa bo'yicha
                 req = await c.fetchrow("""
                     SELECT * FROM topup_requests
                     WHERE amount=$1 AND status='WAITING' AND expires_at > NOW()
@@ -630,18 +680,14 @@ class Database:
                 "user_tg": u["telegram_id"] if u else 0,
                 "amount": amount,
                 "request_id": req["id"],
-                "silent": True,  # 🔥 muhim: xabar yubormaymiz
+                "silent": True,
             }
 
     async def submit_receipt(self, telegram_id, receipt_url):
-        """
-        Foydalanuvchi chek yukladi.
-        - Agar status MATCHED bo'lsa: balans qo'shiladi.
-        - Aks holda: RECEIPT_UPLOADED — adminga xabar (qo'lda).
-        """
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
-            if not u: return {"ok": False, "reason": "no_user"}
+            if not u:
+                return {"ok": False, "reason": "no_user"}
 
             req = await c.fetchrow("""
                 SELECT * FROM topup_requests
@@ -651,7 +697,6 @@ class Database:
             if not req:
                 return {"ok": False, "reason": "no_request"}
 
-            # Receiptni saqlash
             await c.execute("UPDATE topup_requests SET receipt_url=$1 WHERE id=$2", receipt_url, req["id"])
 
             user_info = {
@@ -663,7 +708,6 @@ class Database:
             }
 
             if req["status"] == "MATCHED":
-                # ✅ To'lov aniqlandi → balans qo'shish
                 async with c.transaction():
                     await c.execute("""
                         UPDATE topup_requests SET status='COMPLETED', completed_at=NOW()
@@ -688,7 +732,6 @@ class Database:
                 return {"ok": True, **user_info, "completed": False, "already": True}
 
             else:
-                # ⏳ MATCHED emas — adminga yuboramiz
                 await c.execute("""
                     UPDATE topup_requests SET status='RECEIPT_UPLOADED'
                     WHERE id=$1
@@ -699,29 +742,36 @@ class Database:
     async def cancel_topup(self, telegram_id):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
-            if not u: return False
+            if not u:
+                return False
             await c.execute("""
                 UPDATE topup_requests SET status='CANCELLED'
                 WHERE user_id=$1 AND status IN ('WAITING','MATCHED','RECEIPT_UPLOADED')
             """, u["id"])
             return True
 
-    # ==================== TRANSACTIONS ====================
+    # ============================================================
+    # TRANSACTIONS
+    # ============================================================
     async def get_user_txs(self, telegram_id, limit=50):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
-            if not u: return []
+            if not u:
+                return []
             rows = await c.fetch(
                 "SELECT * FROM transactions WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2",
                 u["id"], limit
             )
             return [dict(r) for r in rows]
 
-    # ==================== FEEDBACKS ====================
+    # ============================================================
+    # FEEDBACKS
+    # ============================================================
     async def add_feedback(self, telegram_id, text, rating=5):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
-            if not u: return None
+            if not u:
+                return None
             return await c.fetchval(
                 "INSERT INTO feedbacks (user_id, text, rating) VALUES ($1,$2,$3) RETURNING id",
                 u["id"], text, rating
@@ -746,7 +796,9 @@ class Database:
             await c.execute("UPDATE feedbacks SET is_visible=FALSE WHERE id=$1", fb_id)
             return True
 
-    # ==================== CLEANUP ====================
+    # ============================================================
+    # CLEANUP
+    # ============================================================
     async def get_expired_ads(self):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
@@ -759,7 +811,9 @@ class Database:
         async with self.pool.acquire() as c:
             await c.execute("UPDATE ads SET status='EXPIRED', video_file_id=NULL WHERE id=$1", ad_id)
 
-    # ==================== STATS ====================
+    # ============================================================
+    # STATS
+    # ============================================================
     async def get_stats(self):
         async with self.pool.acquire() as c:
             return {
@@ -804,7 +858,9 @@ class Database:
                 target = date.today() - timedelta(days=i)
                 amt = 0
                 for r in rows:
-                    if r["d"] == target: amt = r["amt"]; break
+                    if r["d"] == target:
+                        amt = r["amt"]
+                        break
                 chart.append({"date": str(target), "day": days_uz[target.weekday()], "amount": int(amt)})
 
             return {
@@ -813,7 +869,9 @@ class Database:
                 "year": int(year or 0), "total": int(total or 0), "chart": chart,
             }
 
-    # ==================== 🔥 ADMIN CONTACTS ====================
+    # ============================================================
+    # ADMIN CONTACTS
+    # ============================================================
     async def add_admin_contact(self, chat_id, username, first_name, last_name, info=""):
         async with self.pool.acquire() as c:
             try:
@@ -831,7 +889,8 @@ class Database:
     async def get_admin_contacts(self, active_only=True):
         async with self.pool.acquire() as c:
             q = "SELECT * FROM admin_contacts"
-            if active_only: q += " WHERE is_active=TRUE"
+            if active_only:
+                q += " WHERE is_active=TRUE"
             q += " ORDER BY id"
             return [dict(r) for r in await c.fetch(q)]
 
@@ -848,7 +907,8 @@ class Database:
     async def toggle_admin_contact(self, contact_id):
         async with self.pool.acquire() as c:
             r = await c.fetchrow("SELECT is_active FROM admin_contacts WHERE id=$1", contact_id)
-            if not r: return False
+            if not r:
+                return False
             new_state = not r["is_active"]
             await c.execute("UPDATE admin_contacts SET is_active=$1, updated_at=NOW() WHERE id=$2", new_state, contact_id)
             return new_state
