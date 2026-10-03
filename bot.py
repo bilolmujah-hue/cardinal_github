@@ -1,7 +1,7 @@
 """
-CARDINAL REKLAMA BOT v5.4
-- Userbot DB orqali boshqariladi
-- Yangi topup oqimi (10 daqiqa, chek, bekor qilish)
+CARDINAL REKLAMA BOT v5.5
+- Userbot faqat to'lovni aniqlaydi (xabar yubormaydi)
+- Balans faqat chek yuklanganda qo'shiladi
 - Premium dizayn
 """
 import asyncio
@@ -89,30 +89,19 @@ class CardinalBot:
         self._register_callbacks()
 
     # ============================================================
-    # AVTOMATIK TO'LOV
+    # AVTOMATIK TO'LOV — SILENT
     # ============================================================
     async def _on_payment_received(self, amount: int, payer_last4: str, raw: str) -> dict:
         """
-        Userbot xabar o'qidi. So'rovni MATCHED qiladi — LEKIN balans qo'shmaydi.
-        Balans faqat chek yuklanganda qo'shiladi.
+        Userbot xabar o'qidi. So'rovni MATCHED qiladi.
+        HECH QANDAY XABAR YUBORMAYDI — faqat DB da belgilaydi.
+        Foydalanuvchi Web App da o'zi ko'radi.
         """
         try:
             result = await self.db.match_payment(amount, payer_last4)
             if result and result.get("ok"):
-                logger.info(f"✅ To'lov aniqlandi: {amount} so'm (karta ***{payer_last4}) — chek kutilmoqda")
-                # Userga xabar: chekni yuklang
-                try:
-                    await self.bot.send_message(
-                        result["user_tg"],
-                        "🔔 <b>To'lovingiz aniqlandi!</b>\n"
-                        "━━━━━━━━━━━━━━━━━━━━\n\n"
-                        f"💰 Summa: <b>{num(amount)} so'm</b>\n"
-                        f"💳 Karta: <code>**** {payer_last4}</code>\n\n"
-                        "📸 Endi <b>chekni</b> yuklang — hisobingiz to'ldiriladi!",
-                        parse_mode="HTML"
-                    )
-                except Exception as e:
-                    logger.warning(f"User xabarnoma xato: {e}")
+                logger.info(f"✅ To'lov aniqlandi: {amount} so'm (karta ***{payer_last4}) — silent")
+                # ❌ Xabar YUBORMAYMIZ! User Web App da ko'radi
                 return result
             return result or {"ok": False, "reason": "no_match"}
         except Exception as e:
@@ -230,7 +219,6 @@ class CardinalBot:
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🌐 Web App ni ochish", web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
             [InlineKeyboardButton(text="📢 Kanalimiz", url=f"https://t.me/{BOT.CHANNEL_USERNAME.replace('@','')}")],
-            [InlineKeyboardButton(text="👨‍💻 Admin bilan bog'lanish", url=f"https://t.me/{BOT.ADMIN_USERNAME}")],
         ])
         rkb = ReplyKeyboardMarkup(
             keyboard=[
@@ -523,13 +511,10 @@ class CardinalBot:
             "💳 <b>TO'LOV:</b>\n"
             "━━━━━━━━━━━━━━━━━━━━\n\n"
             "🤖 Web App orqali avtomatik\n"
-            "⚡ 10 daqiqada hisobingizga tushadi\n\n"
-            f"📞 <b>Qo'llab-quvvatlash:</b>\n"
-            f"👨‍💻 @{BOT.ADMIN_USERNAME}"
+            "⚡ 10 daqiqada hisobingizga tushadi"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🌐 Web App ni ochish", web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
-            [InlineKeyboardButton(text="👨‍💻 Admin bilan bog'lanish", url=f"https://t.me/{BOT.ADMIN_USERNAME}")],
         ])
         await message.answer(text, parse_mode="HTML", reply_markup=kb)
 
@@ -636,8 +621,7 @@ class CardinalBot:
                 "❌ <b>REKLAMA RAD ETILDI</b>\n"
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"📢 <b>{ad['title']}</b>\n"
-                f"💰 Pul qaytarildi: <b>{num(t.price)} so'm</b>\n\n"
-                "📞 Sabab uchun admin bilan bog'laning",
+                f"💰 Pul qaytarildi: <b>{num(t.price)} so'm</b>",
                 parse_mode="HTML"
             )
         except Exception:
@@ -761,10 +745,51 @@ class CardinalBot:
             logger.error(f"Admin notify xato: {e}")
 
     # ============================================================
+    # CHEK ADMINGA YUBORISH (API chaqiradi)
+    # ============================================================
+    async def send_receipt_to_admin(self, receipt_data_url: str, info: dict, completed: bool):
+        """Chekni adminga yuborish."""
+        try:
+            header, encoded = receipt_data_url.split(",", 1)
+            raw = base64.b64decode(encoded)
+            photo = BufferedInputFile(raw, filename="receipt.jpg")
+
+            if completed:
+                status_text = (
+                    "✅ <b>AVTOMATIK TASDIQLANDI</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n"
+                    "Userbot to'lovni aniqladi, balans qo'shildi"
+                )
+            else:
+                status_text = (
+                    "⏳ <b>TEKSHIRISH KERAK</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n"
+                    "Userbot hali to'lovni aniqlamadi.\n"
+                    "Admin panelda tekshiring."
+                )
+
+            caption = (
+                f"🧾 <b>TO'LOV CHEKI</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"👤 <b>Ism:</b> {info.get('user_name') or '-'}\n"
+                f"📱 <b>Telefon:</b> +998 {info.get('phone') or '-'}\n"
+                f"🆔 <b>ID:</b> <code>{info.get('telegram_id')}</code>\n"
+                f"💰 <b>Summa:</b> {num(info.get('amount', 0))} so'm\n"
+                f"📋 <b>So'rov:</b> #{info.get('request_id')}\n\n"
+                f"{status_text}"
+            )
+            await self.bot.send_photo(
+                BOT.ADMIN_CHAT_ID, photo,
+                caption=caption, parse_mode="HTML"
+            )
+        except Exception as e:
+            logger.error(f"send_receipt_to_admin: {e}", exc_info=True)
+
+    # ============================================================
     # START
     # ============================================================
     async def start(self):
-        logger.info("🚀 CardinalBot v5.4 ishga tushdi")
+        logger.info("🚀 CardinalBot v5.5 ishga tushdi")
         await self.userbot.start()
         await self.cleaner.start()
         await self.dp.start_polling(self.bot)
