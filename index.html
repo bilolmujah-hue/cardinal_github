@@ -305,7 +305,10 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .pay-card-lbl{font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px;opacity:.7;display:flex;align-items:center;gap:6px}
 .pay-card-lbl svg{width:12px;height:12px}
 .pay-card-num{font-size:20px;font-weight:800;font-family:'Space Grotesk',monospace;letter-spacing:1.5px;color:#93C5FD;word-break:break-all}
-.pay-card-amt{margin-top:14px;padding-top:14px;border-top:1px solid rgba(255,255,255,.15);font-size:13px;opacity:.85}
+.pay-card-holder{margin-top:10px;font-size:12.5px;font-weight:600;letter-spacing:.5px;color:#E2E8F0;display:flex;align-items:center;gap:6px;text-transform:uppercase;opacity:.85}
+.pay-card-holder svg{width:14px;height:14px;opacity:.7}
+.pay-card-holder b{color:#fff;font-weight:700}
+.pay-card-amt{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);font-size:13px;opacity:.85}
 .pay-card-amt b{color:#fff;font-family:'Space Grotesk',sans-serif}
 .pay-timer{margin-top:16px;font-size:32px;font-weight:800;text-align:center;color:#3B82F6;font-family:'Space Grotesk',sans-serif;letter-spacing:.05em}
 .pay-timer.warn{color:#EF4444;animation:pulse 1s ease-in-out infinite}
@@ -386,10 +389,16 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .user-meta span{display:flex;align-items:center;gap:3px}
 .user-meta svg{width:11px;height:11px}
 .user-blocked-badge{font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;background:rgba(239,68,68,.15);color:#F87171;letter-spacing:.3px}
-.card-item{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:14px;margin-bottom:8px}
-.card-num{flex:1;font-family:'Space Grotesk',monospace;font-weight:700;font-size:13px;color:var(--blue);letter-spacing:.5px}
-.card-sum{font-size:11px;color:var(--text-3);margin-top:2px;display:flex;align-items:center;gap:4px}
+.card-item{display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:14px;margin-bottom:8px}
+.card-item .user-av{width:44px;height:44px;border-radius:13px}
+.card-info{flex:1;min-width:0}
+.card-num{font-family:'Space Grotesk',monospace;font-weight:700;font-size:14px;color:var(--blue);letter-spacing:.5px;margin-bottom:4px}
+.card-holder{font-size:11.5px;color:var(--text-2);font-weight:600;display:flex;align-items:center;gap:5px;margin-bottom:4px;text-transform:uppercase;letter-spacing:.3px}
+.card-holder svg{width:12px;height:12px;color:var(--text-3)}
+.card-sum{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:4px}
 .card-sum svg{width:11px;height:11px}
+.card-item .icon-btn{width:38px;height:38px;border-radius:11px}
+.card-item .icon-btn svg{width:15px;height:15px}
 
 .stat-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
 .stat-card{padding:16px;border-radius:16px;background:var(--surface);border:1px solid var(--border)}
@@ -432,7 +441,6 @@ body.dark .load{background:rgba(7,10,18,.85)}
 .mt-8{margin-top:8px}.mt-16{margin-top:16px}.mt-24{margin-top:24px}
 .mb-16{margin-bottom:16px}
 
-/* ====== TOPUP CONFIRMING ANIMATION ====== */
 .confirm-card{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:32px 24px;text-align:center;margin-top:16px;position:relative;overflow:hidden}
 .confirm-card::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at top,rgba(59,130,246,.10),transparent 60%);pointer-events:none}
 .confirm-anim{width:110px;height:110px;margin:0 auto 22px;position:relative;display:flex;align-items:center;justify-content:center}
@@ -478,8 +486,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
 .confirm-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .confirm-modal-actions .btn{padding:13px;font-size:13px}
 
-/* ====== ADMIN CONTACT CARDS ====== */
-.ac-card{display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:10px;transition:all .2s}
+.ac-card{display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:10px;transition:all .2s;cursor:pointer}
 .ac-card:active{transform:scale(.98)}
 .ac-av{width:56px;height:56px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#3B82F6,#06B6D4);padding:2.5px;position:relative}
 .ac-av-in{width:100%;height:100%;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:var(--blue);font-family:'Space Grotesk',sans-serif}
@@ -495,7 +502,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
 .ac-btn.tg{background:linear-gradient(135deg,#06B6D4,#0EA5E9);box-shadow:0 6px 18px rgba(6,182,212,.3)}
 .ac-btn svg{width:18px;height:18px;stroke-width:2.2}
 .ac-list .ac-card:last-child{margin-bottom:0}
-.ac-empty{text-align:center;padding:40px 20px;color:var(--text-3)}
+.ac-empty{text-align:center;padding:60px 20px;color:var(--text-3)}
 
 .ac-admin-row{display:flex;align-items:center;gap:12px;padding:12px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:14px;margin-bottom:8px}
 .ac-admin-row .ac-mini-av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,#3B82F6,#06B6D4);display:flex;align-items:center;justify-content:center;font-size:15px;font-weight:800;color:#fff;flex-shrink:0}
@@ -929,7 +936,6 @@ body.dark .load{background:rgba(7,10,18,.85)}
         </div>
       </div>
 
-      <!-- QADAM 1 -->
       <div id="topupStep1" class="mt-16">
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-wallet"/></svg></div>Summani kiriting</div>
@@ -952,11 +958,14 @@ body.dark .load{background:rgba(7,10,18,.85)}
         <button class="btn btn-primary btn-block mt-16" id="topupBtn" onclick="topupSend()" disabled><svg><use href="#i-chev-r"/></svg>Davom etish</button>
       </div>
 
-      <!-- QADAM 2 -->
       <div id="topupStep2" class="hidden">
         <div class="pay-card">
           <div class="pay-card-lbl"><svg><use href="#i-credit"/></svg>To'lov uchun karta</div>
           <div class="pay-card-num" id="payCard">----</div>
+          <div class="pay-card-holder" id="payHolderWrap" style="display:none">
+            <svg><use href="#i-user"/></svg>
+            <b id="payHolder">—</b>
+          </div>
           <div class="pay-card-amt">Summa: <b id="payAmt">0</b></div>
         </div>
         <button class="btn btn-secondary btn-block mt-16" onclick="copyPayCard()"><svg><use href="#i-copy"/></svg>Karta raqamini nusxalash</button>
@@ -985,7 +994,6 @@ body.dark .load{background:rgba(7,10,18,.85)}
         <button class="btn btn-secondary btn-block mt-8" onclick="cancelTopup()"><svg><use href="#i-x"/></svg>Bekor qilish</button>
       </div>
 
-      <!-- QADAM 3: TASDIQLANMOQDA -->
       <div id="topupStep3" class="hidden">
         <div class="confirm-card">
           <div class="confirm-anim">
@@ -1011,7 +1019,6 @@ body.dark .load{background:rgba(7,10,18,.85)}
         </button>
       </div>
 
-      <!-- NATIJA: RAD ETILDI -->
       <div id="topupRejected" class="hidden">
         <div class="result-card error">
           <div class="result-ic"><svg><use href="#i-x"/></svg></div>
@@ -1026,7 +1033,6 @@ body.dark .load{background:rgba(7,10,18,.85)}
         </div>
       </div>
 
-      <!-- NATIJA: MUVAFFAQIYAT -->
       <div id="topupSuccess" class="hidden">
         <div class="result-card success">
           <div class="result-ic"><svg><use href="#i-check"/></svg></div>
@@ -1117,7 +1123,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
 // CONFIG
 // =========================================================
 const API_URL = "https://cardinalgithub-production.up.railway.app";
-const BOT_LINK = "https://t.me/CardinalReklama_Bot";
+const BOT_LINK = "https://t.me/cardinal_akkaunt_bot";
 const USERBOT_BOT = "CardXabarBot";
 const RATE = { UZS: 1, USD: 10000, RUB: 100 };
 
@@ -2010,6 +2016,7 @@ function openTopup(){
   $("receiptUploadLabel").classList.remove("hidden");
   $("receiptInput").value = "";
   $("submitReceiptBtn").disabled = true;
+  $("payHolderWrap").style.display = "none";
   go("pageTopup");
   setTimeout(checkExistingTopup, 200);
 }
@@ -2020,6 +2027,18 @@ async function checkExistingTopup(){
     const r = await api(`/api/topup/status?telegram_id=${USER.telegram_id}`);
     handleTopupStatus(r, true);
   }catch(e){ /* ignore */ }
+}
+
+function setPayCardInfo(cardNumber, holder){
+  const c = cardNumber || "----";
+  $("payCard").innerText = c.length === 16
+    ? `${c.slice(0,4)} ${c.slice(4,8)} ${c.slice(8,12)} ${c.slice(12,16)}` : c;
+  if(holder){
+    $("payHolder").innerText = holder;
+    $("payHolderWrap").style.display = "flex";
+  } else {
+    $("payHolderWrap").style.display = "none";
+  }
 }
 
 function handleTopupStatus(r, silent=false){
@@ -2046,11 +2065,8 @@ function handleTopupStatus(r, silent=false){
     startTopupPoll();
     return;
   }
-  // waiting / matched
   showTopupStep("topupStep2");
-  const c = r.card_number || "----";
-  $("payCard").innerText = c.length === 16
-    ? `${c.slice(0,4)} ${c.slice(4,8)} ${c.slice(8,12)} ${c.slice(12,16)}` : c;
+  setPayCardInfo(r.card_number, r.card_holder);
   $("payAmt").innerText = num(r.amount) + " so'm";
   if(r.expires_at) startTopupTimer(r.expires_at, "payTimer");
   startTopupPoll();
@@ -2099,9 +2115,7 @@ async function topupSend(){
   try{
     const r = await api("/api/topup/request", "POST", { telegram_id: USER.telegram_id, amount: amt });
     showTopupStep("topupStep2");
-    const c = r.card_number;
-    $("payCard").innerText = c.length === 16
-      ? `${c.slice(0,4)} ${c.slice(4,8)} ${c.slice(8,12)} ${c.slice(12,16)}` : c;
+    setPayCardInfo(r.card_number, r.card_holder);
     $("payAmt").innerText = num(amt) + " so'm";
     if(r.expires_at) startTopupTimer(r.expires_at, "payTimer");
     startTopupPoll();
@@ -2235,7 +2249,7 @@ async function cancelTopup(){
 }
 
 // =========================================================
-// ADMIN CONTACTS — foydalanuvchi
+// ADMIN CONTACTS — USER VIEW
 // =========================================================
 async function loadAdminContacts(){
   const c = $("adminContactsList");
@@ -2244,6 +2258,7 @@ async function loadAdminContacts(){
     const list = await api("/api/admin-contacts","GET",null,false);
     renderAdminContacts(list || []);
   }catch(e){
+    console.error("admin contacts:", e);
     renderAdminContacts([]);
   }
 }
@@ -2289,7 +2304,7 @@ function tgOpenUser(chatId){
 function openAdminContact(chatId){ tgOpenUser(chatId) }
 
 // =========================================================
-// ADMIN CONTACTS — admin panel
+// ADMIN CONTACTS — ADMIN VIEW
 // =========================================================
 async function renderAdminContactsAdmin(){
   const c = $("atAdmins");
@@ -2431,15 +2446,26 @@ async function renderAdmin(){
     $("atCards").innerHTML = `
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("credit")}</div>Kartalar</div>
-        <div class="input-group" style="margin-bottom:14px">
-          <input class="input" id="newCardNum" placeholder="16 xonali raqam" maxlength="19" inputmode="numeric">
-          <button class="btn btn-primary" onclick="adminAddCard()">${ico("plus")}</button>
+
+        <div class="field">
+          <label class="label">${ico("credit")}Karta raqami</label>
+          <input class="input" id="newCardNum" placeholder="5614 6821 1072 5894" maxlength="19" inputmode="numeric" style="font-family:monospace;letter-spacing:1px">
         </div>
+        <div class="field">
+          <label class="label">${ico("user")}Karta egasi (ism-familiya)</label>
+          <input class="input" id="newCardHolder" placeholder="Masalan: CARDINAL ADMIN" maxlength="100" style="text-transform:uppercase">
+        </div>
+
+        <button class="btn btn-primary btn-block" onclick="adminAddCard()" style="margin-bottom:14px">
+          ${ico("plus")}Karta qo'shish
+        </button>
+
         ${cards.length ? cards.map(c => `
           <div class="card-item">
             <div class="user-av">${ico("credit")}</div>
-            <div style="flex:1;min-width:0">
+            <div class="card-info">
               <div class="card-num">${esc(c.number)}</div>
+              <div class="card-holder">${ico("user")}${esc(c.holder || "CARDINAL ADMIN")}</div>
               <div class="card-sum">${ico("wallet","ico-sm")}<span>${num(c.total_received)} so'm yig'ildi</span></div>
             </div>
             <button class="icon-btn small" onclick="adminDelCard(${c.id})">${ico("trash")}</button>
@@ -2447,6 +2473,14 @@ async function renderAdmin(){
         `).join("") : `<div style="color:var(--text-3);font-size:12.5px;text-align:center;padding:14px">Karta yo'q</div>`}
       </div>
     `;
+
+    const cardNumInp = $("newCardNum");
+    if(cardNumInp){
+      cardNumInp.oninput = e => {
+        let v = e.target.value.replace(/\D/g,"").slice(0,16);
+        e.target.value = v.replace(/(\d{4})(?=\d)/g,"$1 ");
+      };
+    }
 
     $("atUsers").innerHTML = users.length ? users.map(u => `
       <div class="user-row" onclick="openUserDetail(${u.telegram_id})">
@@ -2670,11 +2704,20 @@ async function adminReject(id){
 }
 
 async function adminAddCard(){
-  const n = $("newCardNum").value.replace(/\D/g,"");
-  if(n.length !== 16){ toast("16 xonali raqam", "error"); return }
+  const numStr = ($("newCardNum").value || "").replace(/\D/g,"");
+  const holder = ($("newCardHolder").value || "").trim();
+
+  if(numStr.length !== 16){ toast("16 xonali raqam kiriting", "error"); return }
+  if(!holder){ toast("Karta egasini kiriting", "error"); return }
+
   show();
-  try{ await api("/api/admin/card/add", "POST", {number:n}); toast("Qo'shildi", "success"); await renderAdmin() }
-  catch(e){ toast(e.message, "error") }
+  try{
+    const r = await api("/api/admin/card/add", "POST", { number: numStr, holder: holder });
+    if(r.ok){
+      toast("Karta qo'shildi", "success");
+      await renderAdmin();
+    } else toast(r.error || "Xatolik", "error");
+  }catch(e){ toast(e.message, "error") }
   hide();
 }
 
