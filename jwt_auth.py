@@ -1,3 +1,8 @@
+"""
+Cardinal JWT v5.6
+- access 15 min, refresh 7 kun
+- Public pathlar: /api/admin-contacts ham qo'shildi
+"""
 import jwt
 import bcrypt
 from datetime import datetime, timedelta, timezone
@@ -5,6 +10,9 @@ from aiohttp import web
 from config import JWT
 
 
+# ============================================================
+# PASSWORD
+# ============================================================
 def hash_password(password: str) -> str:
     return bcrypt.hashpw(password.encode(), bcrypt.gensalt()).decode()
 
@@ -16,6 +24,9 @@ def verify_password(password: str, hashed: str) -> bool:
         return False
 
 
+# ============================================================
+# TOKEN
+# ============================================================
 def create_access_token(user_id: int, telegram_id: int, is_admin: bool = False) -> str:
     payload = {
         "sub": str(user_id),
@@ -39,7 +50,7 @@ def create_refresh_token(user_id: int, telegram_id: int) -> str:
     return jwt.encode(payload, JWT.SECRET, algorithm=JWT.ALGORITHM)
 
 
-def decode_token(token: str) -> dict | None:
+def decode_token(token: str):
     try:
         return jwt.decode(token, JWT.SECRET, algorithms=[JWT.ALGORITHM])
     except jwt.ExpiredSignatureError:
@@ -48,56 +59,60 @@ def decode_token(token: str) -> dict | None:
         return None
 
 
-# ============ AIOHTTP MIDDLEWARE ============
+# ============================================================
+# PUBLIC PATHS
+# ============================================================
+EXACT_PUBLIC_PATHS = (
+    "/",
+    "/api/stats",
+    "/api/tariffs",
+    "/api/regions",
+    "/api/currencies",
+    "/api/ads",
+    "/api/feedbacks",
+    "/api/admin-contacts",   # 🔥 public — hamma ko'radi
+)
+PREFIX_PUBLIC_PATHS = (
+    "/api/auth/",
+    "/api/ad/",
+)
+
+
+# ============================================================
+# MIDDLEWARE
+# ============================================================
 @web.middleware
 async def jwt_middleware(request, handler):
-    """JWT tekshirish. OPTIONS, /api/auth/* va /api/public/* dan tashqari."""
+    """JWT tekshirish. OPTIONS va public pathlardan tashqari."""
 
-    # 🔥 MUHIM: CORS preflight (OPTIONS) — har doim ruxsat
+    # CORS preflight
     if request.method == "OPTIONS":
         return await handler(request)
 
     path = request.path
 
-    # Ochiq endpointlar
-    public_paths = (
-        "/", "/api/stats", "/api/tariffs",
-        "/api/auth/telegram", "/api/auth/refresh",
-        "/api/ads", "/api/feedbacks",
-        "/api/regions", "/api/currencies",
-    )
-
-    # Admin bo'lmagan yo'llar va public — token ixtiyoriy
     is_public = (
-        any(path.startswith(p) for p in public_paths)
-        and not path.startswith("/api/admin")
+        path in EXACT_PUBLIC_PATHS
+        or any(path.startswith(p) for p in PREFIX_PUBLIC_PATHS)
     )
-    # /api/ad/{id} ham public (lekin ads dan keyin keladi, alohida tekshiramiz)
-    if path.startswith("/api/ad/"):
-        is_public = True
 
+    # Token olish
+    auth = request.headers.get("Authorization", "")
+    token = None
+    if auth.startswith("Bearer "):
+        token = auth[7:]
+    else:
+        token = request.cookies.get("access_token")
+
+    # Public — token ixtiyoriy
     if is_public:
-        # Agar token bo'lsa — parse qilamiz (majburiy emas)
-        auth = request.headers.get("Authorization", "")
-        token = None
-        if auth.startswith("Bearer "):
-            token = auth[7:]
-        else:
-            token = request.cookies.get("access_token")
-
         if token:
             payload = decode_token(token)
             if payload and payload.get("type") == "access":
                 request["user"] = payload
         return await handler(request)
 
-    # === Qolganlarida JWT MAJBURIY ===
-    auth = request.headers.get("Authorization", "")
-    if auth.startswith("Bearer "):
-        token = auth[7:]
-    else:
-        token = request.cookies.get("access_token")
-
+    # Qolganlari uchun JWT majburiy
     if not token:
         return web.json_response({"ok": False, "error": "Token yo'q"}, status=401)
 
@@ -108,7 +123,8 @@ async def jwt_middleware(request, handler):
     request["user"] = payload
 
     # Admin tekshiruvi
-    if path.startswith("/api/admin") and not payload.get("adm"):
-        return web.json_response({"ok": False, "error": "Admin emas"}, status=403)
+    if path.startswith("/api/admin") and not path.startswith("/api/admin-contacts"):
+        if not payload.get("adm"):
+            return web.json_response({"ok": False, "error": "Admin emas"}, status=403)
 
     return await handler(request)
