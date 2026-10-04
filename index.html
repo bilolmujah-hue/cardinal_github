@@ -9,10 +9,22 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
+
+<!-- ============================================================
+     1. STYLES
+     ============================================================ -->
 <style>
+/* ---------- RESET ---------- */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;min-height:100%;overflow-x:hidden}
-body{font-family:'Manrope',-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:calc(96px + env(safe-area-inset-bottom,0));transition:background .3s,color .3s}
+body{
+  font-family:'Manrope',-apple-system,system-ui,sans-serif;
+  background:var(--bg);color:var(--text);
+  font-size:14px;line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  padding-bottom:calc(96px + env(safe-area-inset-bottom,0));
+  transition:background .3s,color .3s;
+}
 h1,h2,h3,h4{font-family:'Space Grotesk',sans-serif;letter-spacing:-.02em}
 button,input,select,textarea{font-family:inherit;color:inherit;font-size:inherit}
 button{border:0;background:none;cursor:pointer;color:inherit}
@@ -20,35 +32,46 @@ input,select,textarea{outline:0;border:0;background:none}
 img,video{display:block;max-width:100%}
 a{color:inherit;text-decoration:none}
 
+/* ---------- THEME VARIABLES ---------- */
 :root{
   --bg:#F5F7FB;--bg-2:#FFFFFF;--surface:#FFFFFF;--surface-2:#F3F5FA;--surface-3:#E5E9F2;
   --border:rgba(15,23,42,.08);--border-2:rgba(15,23,42,.14);--border-3:rgba(15,23,42,.24);
   --blue:#3B82F6;--blue-2:#2563EB;--cyan:#06B6D4;--sky:#0EA5E9;
   --text:#0F172A;--text-2:#475569;--text-3:#94A3B8;--text-4:#CBD5E1;
   --heart:#FF3B6B;--green:#10B981;--amber:#F59E0B;--red:#EF4444;--purple:#8B5CF6;
-  --shadow-sm:0 1px 3px rgba(15,23,42,.06);--shadow:0 4px 16px rgba(15,23,42,.08);--shadow-lg:0 12px 40px rgba(15,23,42,.12);
+  --shadow-sm:0 1px 3px rgba(15,23,42,.06);
+  --shadow:0 4px 16px rgba(15,23,42,.08);
+  --shadow-lg:0 12px 40px rgba(15,23,42,.12);
   --radius:20px;--radius-sm:14px;--radius-lg:26px;
   --icon-color:#60A5FA;
 }
 body.dark{
-  --bg:#0A0A0A;--bg-2:#0F0F0F;--surface:#141414;--surface-2:#1C1C1C;--surface-3:#262626;
-  --border:rgba(255,255,255,.06);--border-2:rgba(255,255,255,.10);--border-3:rgba(255,255,255,.18);
+  --bg:#070A12;--bg-2:#0B1220;--surface:#0F1729;--surface-2:#141C30;--surface-3:#1A2440;
+  --border:rgba(96,165,250,.10);--border-2:rgba(96,165,250,.18);--border-3:rgba(96,165,250,.32);
   --blue:#3B82F6;--blue-2:#2563EB;--cyan:#22D3EE;--sky:#38BDF8;
-  --text:#FFFFFF;--text-2:#B0B0B0;--text-3:#757575;--text-4:#4D4D4D;
-  --shadow-sm:0 1px 2px rgba(0,0,0,.6);--shadow:0 4px 16px rgba(0,0,0,.7);--shadow-lg:0 12px 40px rgba(0,0,0,.85);
+  --text:#E8EBF2;--text-2:#A8B2C7;--text-3:#6B7A94;--text-4:#4A5670;
+  --shadow-sm:0 1px 2px rgba(0,0,0,.4);
+  --shadow:0 4px 16px rgba(0,0,0,.5);
+  --shadow-lg:0 12px 40px rgba(0,0,0,.6);
   --icon-color:#60A5FA;
 }
 
+/* ---------- SVG ICONS ---------- */
 svg.ico{width:20px;height:20px;stroke-width:2;stroke:currentColor;fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;vertical-align:middle;display:inline-block}
 svg.ico-sm{width:14px;height:14px;stroke-width:2.2}
 svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 
+/* ---------- LAYOUT ---------- */
 .app{min-height:100vh;position:relative}
 .container{width:100%;max-width:1200px;margin:0 auto;padding:0 16px}
 .page{display:none}
 .page.active{display:block;animation:pageIn .3s cubic-bezier(.16,1,.3,1)}
 @keyframes pageIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+.hidden{display:none !important}
+.mt-8{margin-top:8px}.mt-16{margin-top:16px}.mt-24{margin-top:24px}
+.mb-16{margin-bottom:16px}
 
+/* ---------- TOPBAR ---------- */
 .topbar{position:sticky;top:0;z-index:50;background:var(--bg-2);backdrop-filter:blur(20px);border-bottom:1px solid var(--border)}
 .topbar-in{max-width:1200px;margin:0 auto;padding:12px 16px;display:flex;align-items:center;gap:12px}
 .brand{display:flex;align-items:center;gap:10px;cursor:pointer;flex:1;min-width:0}
@@ -66,6 +89,7 @@ svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 .balance-val{font-size:13px;font-weight:800;white-space:nowrap;color:var(--text)}
 .balance-lbl{font-size:9px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.6px;margin-top:1px}
 
+/* ---------- BOTTOM NAV ---------- */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:100;padding:0 12px calc(8px + env(safe-area-inset-bottom,0));background:linear-gradient(180deg,transparent,var(--bg) 30%);pointer-events:none}
 .nav-in{max-width:680px;margin:0 auto;background:var(--surface);border:1px solid var(--border-2);border-radius:22px;padding:6px;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;pointer-events:auto;box-shadow:0 -8px 40px rgba(0,0,0,.08)}
 body.dark .nav-in{background:rgba(15,23,41,.95);backdrop-filter:blur(24px);box-shadow:0 -8px 40px rgba(0,0,0,.6)}
@@ -80,16 +104,19 @@ body.dark .nav-in{background:rgba(15,23,41,.95);backdrop-filter:blur(24px);box-s
 .nav-btn.nav-create span:last-child{color:var(--blue);font-weight:800;font-size:10px;margin-top:4px}
 .nav-btn.nav-create:active .nav-icon{transform:scale(.9) rotate(90deg)}
 
+/* ---------- HERO / HEADINGS ---------- */
 .hero{padding:24px 0 8px}
 .hero-title{font-size:28px;font-weight:700;display:flex;align-items:center;gap:10px;line-height:1.15;flex-wrap:wrap}
 .hero-title .accent{background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
 .hero-sub{font-size:13px;color:var(--text-3);margin-top:6px;font-weight:500}
 
+/* ---------- CATEGORIES ---------- */
 .cats{display:flex;gap:8px;overflow-x:auto;padding:16px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
 .cat{flex-shrink:0;padding:10px 16px;background:var(--surface);border:1px solid var(--border);border-radius:14px;color:var(--text-2);font-size:12.5px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:6px}
 .cat.active{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;border-color:transparent;box-shadow:0 6px 20px rgba(59,130,246,.4);font-weight:700}
 
+/* ---------- ADS GRID ---------- */
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
 @media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:960px){.grid{grid-template-columns:repeat(4,1fr)}}
@@ -102,7 +129,7 @@ body.dark .nav-in{background:rgba(15,23,41,.95);backdrop-filter:blur(24px);box-s
 .ad-media .placeholder svg{width:50px;height:50px}
 .ad-badge{position:absolute;top:10px;left:10px;padding:5px 10px;border-radius:9px;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;display:flex;align-items:center;gap:4px}
 .ad-badge svg{width:11px;height:11px;stroke-width:2.5}
-.ad-badge.vip{background:linear-gradient(135deg,#3B82F6,#06B6D4);color:#fff}
+.ad-badge.vip{background:linear-gradient(135deg,#8B5CF6,#7C3AED);color:#fff}
 .ad-badge.rare{background:linear-gradient(135deg,#06B6D4,#0EA5E9);color:#fff}
 .ad-badge.std{background:rgba(255,255,255,.95);color:#3B82F6}
 body.dark .ad-badge.std{background:rgba(15,23,41,.9);color:#93C5FD}
@@ -112,20 +139,20 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .ad-heart.saved svg{fill:var(--heart);stroke:var(--heart)}
 .ad-admin-del{position:absolute;top:54px;right:10px;width:36px;height:36px;border-radius:12px;background:rgba(239,68,68,.95);display:flex;align-items:center;justify-content:center;z-index:5;color:#fff}
 .ad-admin-del svg{width:18px;height:18px;stroke-width:2}
-.ad-top{position:absolute;bottom:10px;left:10px;padding:4px 8px;border-radius:8px;background:linear-gradient(135deg,#F59E0B,#F97316);color:#fff;font-size:9px;font-weight:800;letter-spacing:.4px;display:flex;align-items:center;gap:3px}
-.ad-top svg{width:10px;height:10px;stroke-width:2.5}
 .ad-body{padding:12px;display:flex;flex-direction:column;gap:5px}
 .ad-title{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ad-meta{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:4px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ad-meta svg{width:11px;height:11px;stroke-width:2.2;flex-shrink:0}
 .ad-price{font-size:15px;font-weight:800;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
+/* ---------- EMPTY STATE ---------- */
 .empty{grid-column:1/-1;padding:60px 20px;text-align:center;color:var(--text-3)}
 .empty-icon{width:72px;height:72px;margin:0 auto 16px;border-radius:22px;background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(6,182,212,.05));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue)}
 .empty-icon svg{width:34px;height:34px;stroke-width:1.6}
 .empty h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
 .empty p{font-size:12.5px;color:var(--text-3);max-width:280px;margin:0 auto}
 
+/* ---------- BUTTONS ---------- */
 .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:14px;font-size:13.5px;font-weight:700;transition:all .2s;white-space:nowrap}
 .btn svg{width:16px;height:16px}
 .btn:active{transform:scale(.97)}
@@ -137,19 +164,20 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .btn-danger{background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff}
 .btn-purple{background:linear-gradient(135deg,#8B5CF6,#7C3AED);color:#fff}
 .btn-ghost{background:rgba(59,130,246,.08);border:1px solid var(--border-2);color:var(--blue)}
-
 .icon-btn{width:44px;height:44px;flex-shrink:0;border-radius:14px;background:var(--surface-2);border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center}
 .icon-btn:active{transform:scale(.92)}
 .icon-btn svg{width:20px;height:20px;stroke-width:2}
 .icon-btn.small{width:40px;height:40px;border-radius:12px}
 .icon-btn.small svg{width:17px;height:17px}
 
+/* ---------- PAGE HEAD ---------- */
 .page-head{display:flex;align-items:center;gap:12px;padding:20px 0 8px}
 .page-head-txt{flex:1;min-width:0}
 .page-head h1{font-size:22px;font-weight:700;line-height:1.2;display:flex;align-items:center;gap:8px;color:var(--text)}
 .page-head h1 svg{width:22px;height:22px;color:var(--icon-color)}
 .page-head p{font-size:12.5px;color:var(--text-3);margin-top:2px;font-weight:500}
 
+/* ---------- FORMS ---------- */
 .field{margin-bottom:16px}
 .label{display:flex;align-items:center;gap:6px;font-size:12.5px;font-weight:600;color:var(--text-2);margin-bottom:8px}
 .label svg{width:15px;height:15px;color:var(--icon-color);flex-shrink:0}
@@ -164,16 +192,19 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .input-prefix{display:flex;align-items:center;gap:6px;padding:14px;background:var(--surface-2);border:1.5px solid var(--border-2);border-radius:14px;font-weight:700;font-size:14px;color:var(--text-2);flex-shrink:0}
 .input-group .input{flex:1;min-width:0}
 
+/* ---------- CARD BOX ---------- */
 .card-box{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:18px;margin-bottom:14px}
 .card-box-title{font-size:14px;font-weight:700;display:flex;align-items:center;gap:10px;margin-bottom:16px;color:var(--text)}
 .card-box-ic{width:34px;height:34px;border-radius:10px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--icon-color);flex-shrink:0}
 .card-box-ic svg{width:17px;height:17px}
 
+/* ---------- DYNAMIC LIST ---------- */
 .dyn-row{display:flex;gap:8px;margin-bottom:8px}
 .dyn-row .input{flex:1;min-width:0}
 .dyn-del{width:46px;flex-shrink:0;background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.2);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#F87171}
 .dyn-del svg{width:16px;height:16px}
 
+/* ---------- CHIPS (Linked) ---------- */
 .chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .chip{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface-2);border:1.5px solid var(--border-2);border-radius:13px;font-size:12.5px;font-weight:600;color:var(--text-2);text-align:left}
 .chip.active{background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border-color:#3B82F6;color:var(--blue)}
@@ -181,9 +212,9 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .chip.active .chip-check{background:#3B82F6;border-color:#3B82F6}
 .chip-check svg{width:11px;height:11px;stroke:#fff;stroke-width:3.5;opacity:0}
 .chip.active .chip-check svg{opacity:1}
-.chip-icon{display:flex;align-items:center;justify-content:center}
-.chip-icon svg{width:16px;height:16px;stroke-width:2}
+.chip-emoji{font-size:18px;line-height:1;flex-shrink:0}
 
+/* ---------- CURRENCY ---------- */
 .cur-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .cur{padding:14px 8px;border-radius:14px;background:var(--surface-2);border:1.5px solid var(--border-2);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--text-2)}
 .cur-flag{font-size:20px}
@@ -192,10 +223,11 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .cur.active{background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(6,182,212,.1));border-color:#3B82F6}
 .cur.active .cur-name{color:var(--blue)}
 
-.tariff{position:relative;padding:20px;background:var(--surface);border:2px solid var(--border-2);border-radius:var(--radius-lg);cursor:pointer;margin-bottom:12px;overflow:hidden}
+/* ---------- TARIFFS ---------- */
+.tariff{position:relative;padding:20px;background:var(--surface);border:2px solid var(--border-2);border-radius:var(--radius-lg);cursor:pointer;margin-bottom:12px;overflow:hidden;transition:all .2s}
 .tariff.selected{border-color:#3B82F6;box-shadow:0 20px 60px rgba(59,130,246,.25),0 0 0 4px rgba(59,130,246,.08)}
 .tariff-tag{position:absolute;top:0;right:0;padding:6px 14px;border-radius:0 var(--radius-lg) 0 14px;font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:4px}
-.tariff-tag.vip{background:linear-gradient(135deg,#3B82F6,#06B6D4)}
+.tariff-tag.vip{background:linear-gradient(135deg,#8B5CF6,#7C3AED)}
 .tariff-tag.rare{background:linear-gradient(135deg,#06B6D4,#0EA5E9)}
 .tariff-head{display:flex;justify-content:space-between;align-items:flex-start;gap:12px;margin-bottom:12px}
 .tariff-name{font-size:16px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--text)}
@@ -210,12 +242,14 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .feat.no .feat-ic{background:rgba(239,68,68,.1);color:#EF4444}
 .feat.no{color:var(--text-4)}
 
+/* ---------- STEP PROGRESS ---------- */
 .steps{display:flex;gap:6px;margin:20px 0 24px}
 .step{height:4px;flex:1;border-radius:10px;background:var(--surface-3);transition:all .4s}
 .step.active{background:linear-gradient(90deg,#3B82F6,#06B6D4)}
 .step-page{display:none}
 .step-page.active{display:block;animation:pageIn .3s}
 
+/* ---------- UPLOAD ---------- */
 .upload{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:44px 24px;background:var(--surface);border:2px dashed var(--border-3);border-radius:var(--radius-lg);text-align:center;cursor:pointer}
 .upload-ic{width:60px;height:60px;border-radius:20px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue)}
 .upload-ic svg{width:28px;height:28px}
@@ -223,6 +257,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .upload span{font-size:12px;color:var(--text-3)}
 .preview-video{width:100%;border-radius:var(--radius);background:#000;max-height:400px;margin-top:14px}
 
+/* ---------- PROFILE ---------- */
 .profile-hero{position:relative;padding:28px 20px;background:linear-gradient(135deg,#3B82F6,#2563EB);border-radius:var(--radius-lg);overflow:hidden;text-align:center;margin-bottom:16px;color:#fff}
 .profile-hero-in{position:relative;z-index:1}
 .profile-av{width:88px;height:88px;margin:0 auto 12px;border-radius:50%;background:rgba(255,255,255,.2);padding:3px;cursor:pointer;position:relative}
@@ -240,6 +275,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .pstat-lbl{font-size:10px;opacity:.85;margin-top:2px;font-weight:600;text-transform:uppercase;letter-spacing:.4px;display:flex;align-items:center;justify-content:center;gap:3px;color:#fff}
 .pstat-lbl svg{width:10px;height:10px;stroke-width:2.5}
 
+/* ---------- MENU ---------- */
 .menu{display:flex;flex-direction:column;gap:8px}
 .menu-item{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;text-align:left;width:100%;color:var(--text)}
 .menu-item:active{transform:scale(.98)}
@@ -255,6 +291,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .menu-arrow{color:var(--text-4);flex-shrink:0}
 .menu-arrow svg{width:18px;height:18px;stroke-width:2.5}
 
+/* ---------- MODALS ---------- */
 .modal{position:fixed;inset:0;z-index:500;background:rgba(15,23,42,.6);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center}
 .modal.active{display:flex;animation:fadeIn .2s}
 @keyframes fadeIn{from{opacity:0}to{opacity:1}}
@@ -267,6 +304,18 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .modal-close svg{width:17px;height:17px;stroke-width:2.5}
 .modal-handle{width:40px;height:4px;border-radius:10px;background:var(--surface-3);margin:0 auto 12px}
 
+/* ---------- CONFIRM MODAL ---------- */
+.modal.confirm-pop{align-items:center;justify-content:center;padding:20px}
+.confirm-modal-in{max-width:380px;width:100%;background:var(--bg-2);border-radius:24px;padding:26px 22px 20px;text-align:center;animation:popIn .32s cubic-bezier(.34,1.56,.64,1)}
+@keyframes popIn{0%{transform:scale(.85);opacity:0}100%{transform:scale(1);opacity:1}}
+.confirm-modal-ic{width:64px;height:64px;margin:0 auto 16px;border-radius:20px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(220,38,38,.06));border:1px solid rgba(239,68,68,.25);display:flex;align-items:center;justify-content:center;color:#EF4444}
+.confirm-modal-ic svg{width:30px;height:30px;stroke-width:2.4}
+.confirm-modal-in h3{font-size:17px;font-weight:800;margin-bottom:8px;color:var(--text);font-family:'Space Grotesk',sans-serif}
+.confirm-modal-in p{font-size:13.5px;color:var(--text-2);line-height:1.55;margin-bottom:20px}
+.confirm-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.confirm-modal-actions .btn{padding:13px;font-size:13px}
+
+/* ---------- AD DETAIL ---------- */
 .detail-video{width:100%;border-radius:18px;background:#000;max-height:60vh;object-fit:contain;margin-bottom:16px}
 .detail-title{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--text);margin-bottom:8px}
 .detail-price{font-size:26px;font-weight:800;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:18px}
@@ -284,6 +333,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .detail-info-row .k svg{width:13px;height:13px}
 .detail-info-row .v{font-weight:700;text-align:right;color:var(--text)}
 
+/* ---------- CONTACT BOX ---------- */
 .contact-box{background:var(--surface-2);border:1.5px solid var(--border-2);border-radius:18px;padding:16px;margin-top:18px}
 .contact-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:14px}
 .contact-title svg{width:16px;height:16px;color:var(--icon-color)}
@@ -294,6 +344,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .contact-btn.message{background:linear-gradient(135deg,#3B82F6,#2563EB)}
 .contact-phone{text-align:center;font-family:'Space Grotesk',monospace;font-size:15px;font-weight:700;letter-spacing:1px;color:#10B981;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;padding:10px;margin-bottom:10px}
 
+/* ---------- TOPUP ---------- */
 .amount-wrap{position:relative;margin-bottom:14px}
 .amount-input{width:100%;padding:22px 66px 22px 22px;background:var(--surface);border:2px solid var(--border-2);border-radius:18px;font-size:24px;font-weight:800;text-align:center;color:var(--text);font-family:'Space Grotesk',sans-serif}
 .amount-input:focus{border-color:#3B82F6;box-shadow:0 0 0 5px rgba(59,130,246,.1)}
@@ -316,6 +367,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .pay-note{margin-top:12px;padding:12px 14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;font-size:12px;color:#10B981;font-weight:600;line-height:1.5;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
 .pay-note svg{width:16px;height:16px;flex-shrink:0}
 
+/* ---------- RECEIPT UPLOAD ---------- */
 .receipt-upload{border:2px dashed var(--border-3);border-radius:18px;padding:32px 20px;background:var(--surface);text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;margin-top:16px;min-height:160px}
 .receipt-upload svg{width:48px;height:48px;color:var(--icon-color);stroke-width:1.5}
 .receipt-upload strong{font-size:14px;font-weight:700;color:var(--text)}
@@ -325,6 +377,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .receipt-remove{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:12px;background:rgba(239,68,68,.95);color:#fff;display:flex;align-items:center;justify-content:center}
 .receipt-remove svg{width:18px;height:18px;stroke-width:2.5}
 
+/* ---------- MY ADS ---------- */
 .my-ad{display:flex;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:10px}
 .my-ad-thumb{width:80px;height:80px;flex-shrink:0;border-radius:14px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--icon-color)}
 .my-ad-thumb svg{width:32px;height:32px}
@@ -340,6 +393,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .my-ad-status.rejected{background:rgba(239,68,68,.12);color:#EF4444}
 .my-ad-status.expired{background:rgba(148,163,184,.12);color:var(--text-3)}
 
+/* ---------- FEEDBACKS ---------- */
 .feedback-card{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px}
 .feedback-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
 .feedback-av{width:40px;height:40px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(6,182,212,.1));display:flex;align-items:center;justify-content:center;overflow:hidden;color:var(--blue);font-weight:700}
@@ -357,6 +411,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .rate-btn.on{background:linear-gradient(135deg,#3B82F6,#06B6D4);border-color:transparent}
 .rate-btn.on svg{stroke:#fff;fill:#fff}
 
+/* ---------- ADMIN ---------- */
 .admin-stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
 .admin-stat{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px}
 .admin-stat-ic{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));display:flex;align-items:center;justify-content:center;color:var(--blue);margin-bottom:10px}
@@ -389,6 +444,8 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .user-meta span{display:flex;align-items:center;gap:3px}
 .user-meta svg{width:11px;height:11px}
 .user-blocked-badge{font-size:9px;font-weight:800;padding:2px 6px;border-radius:5px;background:rgba(239,68,68,.15);color:#F87171;letter-spacing:.3px}
+
+/* ---------- CARDS (admin) ---------- */
 .card-item{display:flex;align-items:flex-start;gap:12px;padding:14px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:14px;margin-bottom:8px}
 .card-item .user-av{width:44px;height:44px;border-radius:13px}
 .card-info{flex:1;min-width:0}
@@ -400,6 +457,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .card-item .icon-btn{width:38px;height:38px;border-radius:11px}
 .card-item .icon-btn svg{width:15px;height:15px}
 
+/* ---------- STATS ---------- */
 .stat-cards{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
 .stat-card{padding:16px;border-radius:16px;background:var(--surface);border:1px solid var(--border)}
 .stat-card-label{font-size:11px;color:var(--text-3);font-weight:600;text-transform:uppercase;letter-spacing:.5px;display:flex;align-items:center;gap:6px}
@@ -411,6 +469,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .stat-bar::after{content:attr(data-val);position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--blue);font-weight:700;white-space:nowrap}
 .stat-bar-label{position:absolute;bottom:-22px;font-size:10px;color:var(--text-3);font-weight:600}
 
+/* ---------- USER DETAIL ---------- */
 .user-detail-head{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 0 20px;border-bottom:1px solid var(--border);margin-bottom:16px}
 .user-detail-av{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#3B82F6,#06B6D4);padding:3px}
 .user-detail-av-in{width:100%;height:100%;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:var(--blue);overflow:hidden;font-family:'Space Grotesk',sans-serif}
@@ -422,6 +481,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .user-detail-actions .btn{width:100%;padding:12px;font-size:13px}
 .balance-row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
 
+/* ---------- TOAST ---------- */
 .toast-wrap{position:fixed;top:14px;left:14px;right:14px;z-index:1000;display:flex;flex-direction:column;align-items:center;gap:8px;pointer-events:none}
 .toast{background:var(--surface);border:1px solid var(--border-3);color:var(--text);padding:12px 18px;border-radius:14px;font-size:13px;font-weight:600;box-shadow:var(--shadow-lg);display:flex;align-items:center;gap:8px;max-width:100%;animation:toastIn .4s cubic-bezier(.34,1.56,.64,1)}
 .toast svg{width:16px;height:16px;flex-shrink:0;stroke-width:2.5}
@@ -431,16 +491,14 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 .toast.error svg{color:#EF4444}
 @keyframes toastIn{from{opacity:0;transform:translateY(-20px) scale(.9)}to{opacity:1;transform:translateY(0) scale(1)}}
 
+/* ---------- LOADER ---------- */
 .load{position:fixed;inset:0;z-index:9999;background:rgba(245,247,251,.85);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center}
 body.dark .load{background:rgba(7,10,18,.85)}
 .load.active{display:flex}
 .spin{width:48px;height:48px;border:3px solid rgba(59,130,246,.15);border-top-color:#3B82F6;border-right-color:#06B6D4;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
 
-.hidden{display:none !important}
-.mt-8{margin-top:8px}.mt-16{margin-top:16px}.mt-24{margin-top:24px}
-.mb-16{margin-bottom:16px}
-
+/* ---------- CONFIRMING ANIMATION ---------- */
 .confirm-card{background:var(--surface);border:1px solid var(--border);border-radius:22px;padding:32px 24px;text-align:center;margin-top:16px;position:relative;overflow:hidden}
 .confirm-card::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at top,rgba(59,130,246,.10),transparent 60%);pointer-events:none}
 .confirm-anim{width:110px;height:110px;margin:0 auto 22px;position:relative;display:flex;align-items:center;justify-content:center}
@@ -463,6 +521,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
 @keyframes dots{0%,60%,100%{opacity:.2}30%{opacity:1}}
 .confirm-hint{margin-top:14px;font-size:12px;color:var(--text-3);line-height:1.5;font-weight:500}
 
+/* ---------- RESULT CARDS ---------- */
 .result-card{padding:32px 24px;border-radius:22px;text-align:center;margin-top:16px;position:relative;overflow:hidden}
 .result-card.success{background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(5,150,105,.05));border:1.5px solid rgba(16,185,129,.3)}
 .result-card.error{background:linear-gradient(135deg,rgba(239,68,68,.12),rgba(220,38,38,.05));border:1.5px solid rgba(239,68,68,.3)}
@@ -476,16 +535,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
 .result-card .result-amount{font-size:28px;font-weight:800;font-family:'Space Grotesk',sans-serif;color:#10B981;margin:12px 0 4px}
 .result-card.error .result-amount{color:#EF4444}
 
-.modal.confirm-pop{align-items:center;justify-content:center;padding:20px}
-.confirm-modal-in{max-width:380px;width:100%;background:var(--bg-2);border-radius:24px;padding:26px 22px 20px;text-align:center;animation:popIn .32s cubic-bezier(.34,1.56,.64,1)}
-@keyframes popIn{0%{transform:scale(.85);opacity:0}100%{transform:scale(1);opacity:1}}
-.confirm-modal-ic{width:64px;height:64px;margin:0 auto 16px;border-radius:20px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(220,38,38,.06));border:1px solid rgba(239,68,68,.25);display:flex;align-items:center;justify-content:center;color:#EF4444}
-.confirm-modal-ic svg{width:30px;height:30px;stroke-width:2.4}
-.confirm-modal-in h3{font-size:17px;font-weight:800;margin-bottom:8px;color:var(--text);font-family:'Space Grotesk',sans-serif}
-.confirm-modal-in p{font-size:13.5px;color:var(--text-2);line-height:1.55;margin-bottom:20px}
-.confirm-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
-.confirm-modal-actions .btn{padding:13px;font-size:13px}
-
+/* ---------- ADMIN CONTACT CARDS ---------- */
 .ac-card{display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:10px;transition:all .2s;cursor:pointer}
 .ac-card:active{transform:scale(.98)}
 .ac-av{width:56px;height:56px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#3B82F6,#06B6D4);padding:2.5px;position:relative}
@@ -518,6 +568,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
 </head>
 <body>
 
+<!-- ============================================================
+     2. SVG ICONS
+     ============================================================ -->
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
@@ -569,10 +622,16 @@ body.dark .load{background:rgba(7,10,18,.85)}
     <symbol id="i-dollar" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></symbol>
     <symbol id="i-lock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></symbol>
     <symbol id="i-unlock" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 9.9-1"/></symbol>
+    <symbol id="i-settings" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></symbol>
   </defs>
 </svg>
 
+<!-- ============================================================
+     3. APP LAYOUT
+     ============================================================ -->
 <div class="app">
+
+  <!-- TOPBAR -->
   <header class="topbar">
     <div class="topbar-in">
       <div class="brand" onclick="go('pageProfile')">
@@ -592,6 +651,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </header>
 
+  <!-- ==================================================
+       PAGE: DASHBOARD (Asosiy)
+       ================================================== -->
   <section class="page active" id="pageDashboard">
     <div class="container">
       <div class="hero">
@@ -608,6 +670,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
+  <!-- ==================================================
+       PAGE: SAVED (Saqlanganlar)
+       ================================================== -->
   <section class="page" id="pageSaved">
     <div class="container">
       <div class="page-head">
@@ -621,6 +686,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
+  <!-- ==================================================
+       PAGE: CREATE (Reklama berish)
+       ================================================== -->
   <section class="page" id="pageCreate">
     <div class="container">
       <div class="page-head">
@@ -632,11 +700,13 @@ body.dark .load{background:rgba(7,10,18,.85)}
       </div>
       <div class="steps" id="steps"></div>
 
+      <!-- STEP 1: TARIF -->
       <div class="step-page active" data-step="1">
         <div class="hero"><h2 class="hero-title" style="font-size:20px">Tarifni <span class="accent">tanlang</span></h2></div>
         <div id="tariffList" style="margin-top:16px"></div>
       </div>
 
+      <!-- STEP 2: VIDEO -->
       <div class="step-page" data-step="2">
         <div class="hero"><h2 class="hero-title" style="font-size:20px">Video <span class="accent">yuklang</span></h2>
           <p class="hero-sub">MP4, max 200 MB, 10 daqiqa</p></div>
@@ -649,62 +719,70 @@ body.dark .load{background:rgba(7,10,18,.85)}
         <div id="videoPreview"></div>
       </div>
 
+      <!-- STEP 3: AKKAUNT MA'LUMOTLARI -->
       <div class="step-page" data-step="3">
         <div class="hero"><h2 class="hero-title" style="font-size:20px">Akkaunt <span class="accent">ma'lumotlari</span></h2></div>
 
+        <!-- ASOSIY -->
         <div class="card-box" style="margin-top:16px">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-chart"/></svg></div>Asosiy ma'lumotlar</div>
           <div class="field">
-            <label class="label"><svg><use href="#i-trending"/></svg>LVL · Akkaunt darajasi</label>
-            <input class="input" id="accLevel" inputmode="numeric" placeholder="Masalan: 75">
+            <label class="label"><svg><use href="#i-trending"/></svg>LVL · Akkaunt darajasi<span class="hint">max 100</span></label>
+            <input class="input" id="accLevel" inputmode="numeric" placeholder="Masalan: 70" maxlength="3">
           </div>
           <div class="field">
             <label class="label"><svg><use href="#i-target"/></svg>Kolleksiya darajasi<span class="hint">max 101</span></label>
-            <input class="input" id="accColl" inputmode="numeric" placeholder="Masalan: 56">
+            <input class="input" id="accColl" inputmode="numeric" placeholder="Masalan: 56" maxlength="3">
           </div>
           <div class="field">
             <label class="label"><svg><use href="#i-award"/></svg>RP · Nechinchi sezondan<span class="hint">max 50 harf</span></label>
-            <input class="input" id="accRP" maxlength="50" placeholder="Masalan: S2 sezondan">
+            <input class="input" id="accRP" maxlength="50" placeholder="Masalan: S2 sezondan hamma rp olingan">
           </div>
           <div class="field" style="margin-bottom:0">
-            <label class="label"><svg><use href="#i-shirt"/></svg>Mifik kiyimlar soni</label>
-            <input class="input" id="accMythic" inputmode="numeric" placeholder="Masalan: 20">
+            <label class="label"><svg><use href="#i-shirt"/></svg>Mifik kiyimlar soni<span class="hint">max 1500</span></label>
+            <input class="input" id="accMythic" inputmode="numeric" placeholder="Masalan: 300" maxlength="4">
           </div>
         </div>
 
-        <div class="card-box">
-          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-fire"/></svg></div>Redkiy skinlar <span style="margin-left:auto;font-size:10px;color:var(--text-4)">max 25</span></div>
-          <div id="skinsList"></div>
-          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('skinsList','skin-input','Masalan: Brigatka')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
-        </div>
-
+        <!-- X-KOSTYUM -->
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-gift"/></svg></div>X-KOSTYUM <span style="margin-left:auto;font-size:10px;color:var(--text-4)">ixtiyoriy · max 25</span></div>
           <div id="xcList"></div>
-          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('xcList','xc-input','Masalan: Fravon 7 full')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
+          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('xcList','xc-input','Masalan: Farovon Full 7')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
         </div>
 
-        <div class="card-box">
-          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-target"/></svg></div>Kuchaytirilgan qurollar <span style="margin-left:auto;font-size:10px;color:var(--text-4)">max 25</span></div>
-          <div id="gunsList"></div>
-          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('gunsList','gun-input','Masalan: Lednik 7 full')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
-          <div class="field mt-16" style="margin-bottom:0">
-            <label class="label"><svg><use href="#i-zap"/></svg>Jami qurollar soni</label>
-            <input class="input" id="gunsCount" inputmode="numeric" placeholder="Masalan: 5">
-          </div>
-        </div>
-
+        <!-- SUPAR-CAR -->
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-car"/></svg></div>SUPAR-CAR <span style="margin-left:auto;font-size:10px;color:var(--text-4)">ixtiyoriy · max 25</span></div>
           <div id="carList"></div>
           <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('carList','car-input','Masalan: Lamborghini')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
         </div>
 
+        <!-- REDKIY SKINLAR -->
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-fire"/></svg></div>Redkiy skinlar <span style="margin-left:auto;font-size:10px;color:var(--text-4)">max 25</span></div>
+          <div id="skinsList"></div>
+          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('skinsList','skin-input','Masalan: M416 Glacier')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
+        </div>
+
+        <!-- KUCHAYTIRILGAN QUROLLAR -->
+        <div class="card-box">
+          <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-target"/></svg></div>Kuchaytirilgan qurollar <span style="margin-left:auto;font-size:10px;color:var(--text-4)">max 25</span></div>
+          <div id="gunsList"></div>
+          <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('gunsList','gun-input','Masalan: Lednik 7 full')"><svg><use href="#i-plus"/></svg>Qo'shish</button>
+          <div class="field mt-16" style="margin-bottom:0">
+            <label class="label"><svg><use href="#i-zap"/></svg>Jami qurollar soni</label>
+            <input class="input" id="gunsCount" inputmode="numeric" placeholder="Masalan: 70">
+          </div>
+        </div>
+
+        <!-- ULANGAN TARMOQLAR -->
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-link"/></svg></div>Ulangan tarmoqlar</div>
           <div class="chips" id="linkedGrid"></div>
         </div>
 
+        <!-- MANZIL VA NARX -->
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-map"/></svg></div>Manzil va narx</div>
           <div class="field">
@@ -712,8 +790,8 @@ body.dark .load{background:rgba(7,10,18,.85)}
             <select class="select" id="accRegion"></select>
           </div>
           <div class="field">
-            <label class="label"><svg><use href="#i-map"/></svg>To'liq manzil</label>
-            <input class="input" id="accFull" placeholder="Masalan: Chilonzor 5-mavze">
+            <label class="label"><svg><use href="#i-map"/></svg>To'liq manzil (Majburiy emas)</label>
+            <input class="input" id="accFull" placeholder="Masalan: Qo'qon shahar">
           </div>
           <div class="field">
             <label class="label"><svg><use href="#i-credit"/></svg>Narx valyutasi</label>
@@ -730,22 +808,29 @@ body.dark .load{background:rgba(7,10,18,.85)}
           </div>
         </div>
 
+        <!-- ALOQA -->
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-phone"/></svg></div>Aloqa <span style="margin-left:auto;font-size:10px;color:var(--text-4)">kamida bittasi</span></div>
+          <!-- Username birinchi -->
           <div class="field">
+            <label class="label"><svg><use href="#i-msg"/></svg>Telegram username</label>
+            <div class="input-group">
+              <input class="input" id="accUser" placeholder="@username" maxlength="64">
+              <button type="button" class="input-prefix" onclick="useMyUsername()" style="cursor:pointer;background:var(--surface)">👤 O'zimniki</button>
+            </div>
+          </div>
+          <!-- Telefon ikkinchi -->
+          <div class="field" style="margin-bottom:0">
             <label class="label"><svg><use href="#i-phone"/></svg>Telefon raqam</label>
             <div class="input-group">
               <div class="input-prefix">🇺🇿 +998</div>
               <input class="input" id="accPhone" inputmode="numeric" maxlength="9" placeholder="901234567">
             </div>
           </div>
-          <div class="field" style="margin-bottom:0">
-            <label class="label"><svg><use href="#i-msg"/></svg>Telegram username</label>
-            <input class="input" id="accUser" placeholder="@username" maxlength="64">
-          </div>
         </div>
       </div>
 
+      <!-- STEP 4: PREVIEW -->
       <div class="step-page" data-step="4">
         <div class="hero"><h2 class="hero-title" style="font-size:20px">Tekshiring</h2></div>
         <div id="previewBox" style="margin-top:16px"></div>
@@ -758,6 +843,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
+  <!-- ==================================================
+       PAGE: MY ADS (Reklamalarim)
+       ================================================== -->
   <section class="page" id="pageMyAds">
     <div class="container">
       <div class="page-head">
@@ -772,6 +860,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
+  <!-- ==================================================
+       PAGE: FEEDBACKS (Otziflar)
+       ================================================== -->
   <section class="page" id="pageFeedbacks">
     <div class="container">
       <div class="page-head">
@@ -786,6 +877,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
+  <!-- ==================================================
+       PAGE: PROFILE
+       ================================================== -->
   <section class="page" id="pageProfile">
     <div class="container">
       <div class="page-head">
@@ -803,18 +897,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
           <div class="profile-name" id="profName">Foydalanuvchi</div>
           <div class="profile-user" id="profUser">@username</div>
           <div class="profile-stats">
-            <div class="pstat">
-              <div class="pstat-val" id="profBal">0</div>
-              <div class="pstat-lbl"><svg><use href="#i-wallet"/></svg>Balans</div>
-            </div>
-            <div class="pstat">
-              <div class="pstat-val" id="profSpent">0</div>
-              <div class="pstat-lbl"><svg><use href="#i-trending"/></svg>Sarflangan</div>
-            </div>
-            <div class="pstat">
-              <div class="pstat-val" id="profAds">0</div>
-              <div class="pstat-lbl"><svg><use href="#i-mega"/></svg>Reklama</div>
-            </div>
+            <div class="pstat"><div class="pstat-val" id="profBal">0</div><div class="pstat-lbl"><svg><use href="#i-wallet"/></svg>Balans</div></div>
+            <div class="pstat"><div class="pstat-val" id="profSpent">0</div><div class="pstat-lbl"><svg><use href="#i-trending"/></svg>Sarflangan</div></div>
+            <div class="pstat"><div class="pstat-val" id="profAds">0</div><div class="pstat-lbl"><svg><use href="#i-mega"/></svg>Reklama</div></div>
           </div>
         </div>
       </div>
@@ -857,7 +942,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
         </button>
         <button class="menu-item" onclick="advertiseBot()">
           <div class="menu-ic"><svg><use href="#i-send"/></svg></div>
-          <div class="menu-txt"><strong>Reklama bermoqchiman</strong><span>Bot orqali bog'lanish</span></div>
+          <div class="menu-txt"><strong>Reklama bermoqchiman</strong><span>Tariflarni ko'rish</span></div>
           <div class="menu-arrow"><svg><use href="#i-chev-r"/></svg></div>
         </button>
         <button class="menu-item hidden" id="adminBtn" onclick="go('pageAdmin')">
@@ -869,6 +954,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
+  <!-- ==================================================
+       PAGE: ADMIN CONTACTS
+       ================================================== -->
   <section class="page" id="pageAdminContacts">
     <div class="container">
       <div class="page-head">
@@ -882,6 +970,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
+  <!-- ==================================================
+       PAGE: ADMIN
+       ================================================== -->
   <section class="page" id="pageAdmin">
     <div class="container">
       <div class="page-head">
@@ -906,6 +997,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
         <button class="admin-tab" data-at="userbot"><svg><use href="#i-phone"/></svg>Userbot</button>
         <button class="admin-tab" data-at="addadmin"><svg><use href="#i-shield"/></svg>Admin qo'shish</button>
         <button class="admin-tab" data-at="admins"><svg><use href="#i-users"/></svg>Adminlar</button>
+        <button class="admin-tab" data-at="settings"><svg><use href="#i-settings"/></svg>Sozlamalar</button>
         <button class="admin-tab" data-at="broadcast"><svg><use href="#i-send"/></svg>Xabar</button>
       </div>
       <div id="atAds"></div>
@@ -916,6 +1008,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
       <div id="atUserbot" class="hidden"></div>
       <div id="atAddadmin" class="hidden"></div>
       <div id="atAdmins" class="hidden"></div>
+      <div id="atSettings" class="hidden"></div>
       <div id="atBroadcast" class="hidden">
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-send"/></svg></div>Barchaga xabar</div>
@@ -926,6 +1019,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
+  <!-- ==================================================
+       PAGE: TOPUP
+       ================================================== -->
   <section class="page" id="pageTopup">
     <div class="container">
       <div class="page-head">
@@ -936,6 +1032,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
         </div>
       </div>
 
+      <!-- STEP 1: Summa -->
       <div id="topupStep1" class="mt-16">
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-wallet"/></svg></div>Summani kiriting</div>
@@ -954,10 +1051,11 @@ body.dark .load{background:rgba(7,10,18,.85)}
             </div>
           </div>
         </div>
-        <div class="pay-note"><svg><use href="#i-info"/></svg>To'lov <b style="margin:0 4px">10 daqiqa</b> ichida amalga oshirilishi kerak</div>
+        <div class="pay-note"><svg><use href="#i-info"/></svg>To'lov <b style="margin:0 4px">20 daqiqa</b> ichida amalga oshirilishi kerak</div>
         <button class="btn btn-primary btn-block mt-16" id="topupBtn" onclick="topupSend()" disabled><svg><use href="#i-chev-r"/></svg>Davom etish</button>
       </div>
 
+      <!-- STEP 2: Karta + Timer + Chek -->
       <div id="topupStep2" class="hidden">
         <div class="pay-card">
           <div class="pay-card-lbl"><svg><use href="#i-credit"/></svg>To'lov uchun karta</div>
@@ -969,7 +1067,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
           <div class="pay-card-amt">Summa: <b id="payAmt">0</b></div>
         </div>
         <button class="btn btn-secondary btn-block mt-16" onclick="copyPayCard()"><svg><use href="#i-copy"/></svg>Karta raqamini nusxalash</button>
-        <div class="pay-timer" id="payTimer">10:00</div>
+        <div class="pay-timer" id="payTimer">20:00</div>
         <div class="pay-note"><svg><use href="#i-info"/></svg>Pulni o'tkazing va <b style="margin:0 4px">chekni</b> yuklang</div>
 
         <div class="mt-16">
@@ -994,6 +1092,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
         <button class="btn btn-secondary btn-block mt-8" onclick="cancelTopup()"><svg><use href="#i-x"/></svg>Bekor qilish</button>
       </div>
 
+      <!-- STEP 3: Tasdiqlanmoqda -->
       <div id="topupStep3" class="hidden">
         <div class="confirm-card">
           <div class="confirm-anim">
@@ -1006,7 +1105,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
           <div class="confirm-amount" id="cf3Amount">0 so'm</div>
           <div class="confirm-timer-wrap">
             <svg><use href="#i-clock"/></svg>
-            <div class="confirm-timer" id="cf3Timer">09:59</div>
+            <div class="confirm-timer" id="cf3Timer">19:59</div>
           </div>
           <div class="confirm-status">
             <span>Tasdiqlanmoqda</span>
@@ -1019,6 +1118,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
         </button>
       </div>
 
+      <!-- NATIJA: RAD ETILDI -->
       <div id="topupRejected" class="hidden">
         <div class="result-card error">
           <div class="result-ic"><svg><use href="#i-x"/></svg></div>
@@ -1033,6 +1133,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
         </div>
       </div>
 
+      <!-- NATIJA: MUVAFFAQIYAT -->
       <div id="topupSuccess" class="hidden">
         <div class="result-card success">
           <div class="result-ic"><svg><use href="#i-check"/></svg></div>
@@ -1047,6 +1148,7 @@ body.dark .load{background:rgba(7,10,18,.85)}
     </div>
   </section>
 
+  <!-- BOTTOM NAVIGATION -->
   <nav class="nav">
     <div class="nav-in">
       <button class="nav-btn active" data-nav="pageDashboard"><div class="nav-icon"><svg><use href="#i-home"/></svg></div><span>Asosiy</span></button>
@@ -1058,6 +1160,9 @@ body.dark .load{background:rgba(7,10,18,.85)}
   </nav>
 </div>
 
+<!-- ============================================================
+     4. MODALS
+     ============================================================ -->
 <div class="modal" id="mAd">
   <div class="modal-in">
     <div class="modal-handle"></div>
@@ -1118,23 +1223,28 @@ body.dark .load{background:rgba(7,10,18,.85)}
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="load" id="loadOverlay"><div class="spin"></div></div>
 
+<!-- ============================================================
+     5. SCRIPTS
+     ============================================================ -->
 <script>
-// =========================================================
-// CONFIG
-// =========================================================
+/* ============================================================
+   CONFIG
+   ============================================================ */
 const API_URL = "https://cardinalgithub-production.up.railway.app";
 const BOT_LINK = "https://t.me/cardinal_akkaunt_bot";
 const USERBOT_BOT = "CardXabarBot";
-const RATE = { UZS: 1, USD: 10000, RUB: 100 };
+const RATE = { UZS: 1, USD: 16000, RUB: 200 };
 
-// =========================================================
-// STATE
-// =========================================================
+/* ============================================================
+   STATE
+   ============================================================ */
 const tg = window.Telegram?.WebApp;
 let TOKEN = null;
 let USER = null;
 let IS_ADMIN = false;
-let S = {
+let AD_DAYS = 15;
+
+const S = {
   balance:0, spent:0, avatar:"",
   ads:[], saved:[], myAds:[], feedbacks:[],
   category:"ALL",
@@ -1146,11 +1256,10 @@ let S = {
 };
 let UB_PHONE = null;
 let _videoObserver = null;
-let CURRENT_USER_DETAIL = null;
 
-// =========================================================
-// HELPERS
-// =========================================================
+/* ============================================================
+   HELPERS
+   ============================================================ */
 const $ = id => document.getElementById(id);
 const esc = s => !s ? "" : String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
 const num = n => (Number(n)||0).toLocaleString("uz-UZ");
@@ -1207,12 +1316,15 @@ async function api(path, method="GET", body=null, auth=true){
   return d;
 }
 
+/* ============================================================
+   CURRENCIES / FORMATTING
+   ============================================================ */
 const CURRENCIES = [
   {code:"UZS", flag:"🇺🇿", name:"So'm", sym:"so'm", label:"Akkauntiz narxini yozing", placeholder:"400 000"},
-  {code:"USD", flag:"🇺🇸", name:"Dollar", sym:"$", label:"Akkauntiz narxini yozing", placeholder:"80"},
+  {code:"USD", flag:"🇺🇸", name:"Dollar", sym:"$", label:"Akkauntiz narxini yozing", placeholder:"500"},
   {code:"RUB", flag:"🇷🇺", name:"Rubl", sym:"₽", label:"Akkauntiz narxini yozing", placeholder:"7 500"},
 ];
-function getCur(code){ return CURRENCIES.find(c => c.code === code) || CURRENCIES[0] }
+const getCur = code => CURRENCIES.find(c => c.code === code) || CURRENCIES[0];
 
 function fmtPrice(price, cur="UZS"){
   const c = getCur(cur);
@@ -1224,13 +1336,23 @@ function fmtPrice(price, cur="UZS"){
 }
 
 function priceInUZS(price, currency){ return (Number(price)||0) * (RATE[currency] || 1) }
+
+/* ============================================================
+   KATEGORIYA
+   - PREMIUM: 8 000 000+ so'm (yoki 500$+)
+   - RARE:    1 600 000 – 7 999 999 so'm (100$-499$)
+   - STANDARD: < 1 600 000
+   ============================================================ */
 function getCategory(ad){
   const p = priceInUZS(ad.price, ad.currency || "UZS");
-  if(p < 300000) return "STANDARD";
-  if(p <= 1000000) return "RARE";
-  return "PREMIUM";
+  if(p >= 8000000) return "PREMIUM";
+  if(p >= 1600000) return "RARE";
+  return "STANDARD";
 }
 
+/* ============================================================
+   DATE HELPERS
+   ============================================================ */
 function parseUTCDate(s){
   if(!s) return new Date();
   if(s instanceof Date) return s;
@@ -1239,6 +1361,22 @@ function parseUTCDate(s){
   return new Date(str + "Z");
 }
 
+function formatTime(dateStr){
+  if(!dateStr) return "";
+  try{
+    const d = parseUTCDate(dateStr);
+    const diff = Math.floor((new Date() - d) / 1000);
+    if(diff < 60) return "hozir";
+    if(diff < 3600) return `${Math.floor(diff/60)} daqiqa oldin`;
+    if(diff < 86400) return `${Math.floor(diff/3600)} soat oldin`;
+    if(diff < 604800) return `${Math.floor(diff/86400)} kun oldin`;
+    return d.toLocaleDateString("uz-UZ");
+  } catch { return "" }
+}
+
+/* ============================================================
+   NAVIGATION
+   ============================================================ */
 function go(pageId){
   document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === pageId));
   document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.nav === pageId));
@@ -1252,23 +1390,9 @@ function go(pageId){
   if(pageId === "pageAdminContacts") loadAdminContacts();
 }
 
-function formatTime(dateStr){
-  if(!dateStr) return "";
-  try{
-    const d = parseUTCDate(dateStr);
-    const now = new Date();
-    const diff = Math.floor((now - d) / 1000);
-    if(diff < 60) return "hozir";
-    if(diff < 3600) return `${Math.floor(diff/60)} daqiqa oldin`;
-    if(diff < 86400) return `${Math.floor(diff/3600)} soat oldin`;
-    if(diff < 604800) return `${Math.floor(diff/86400)} kun oldin`;
-    return d.toLocaleDateString("uz-UZ");
-  } catch { return "" }
-}
-
-// =========================================================
-// THEME
-// =========================================================
+/* ============================================================
+   THEME
+   ============================================================ */
 function applyTheme(isDark){
   document.body.classList.toggle("dark", isDark);
   const icon = $("themeIconSvg");
@@ -1285,9 +1409,9 @@ function toggleTheme(){
   toast(isDark ? "Tungi rejim yoqildi" : "Kunduzgi rejim yoqildi", "success");
 }
 
-// =========================================================
-// VIDEO OBSERVER
-// =========================================================
+/* ============================================================
+   VIDEO OBSERVER (autoplay in view)
+   ============================================================ */
 function setupVideoObserver(){
   if(!window.IntersectionObserver) return;
   if(_videoObserver){ try { _videoObserver.disconnect(); } catch(e){} }
@@ -1308,9 +1432,9 @@ function setupVideoObserver(){
   });
 }
 
-// =========================================================
-// AUTH
-// =========================================================
+/* ============================================================
+   AUTH
+   ============================================================ */
 async function initAuth(){
   if(!tg || !tg.initDataUnsafe?.user){
     toast("Telegram WebApp da oching", "error");
@@ -1345,9 +1469,19 @@ function updateTopbar(){
   }
 }
 
-// =========================================================
-// ADS
-// =========================================================
+/* ============================================================
+   PUBLIC SETTINGS (ad_days)
+   ============================================================ */
+async function loadAdDays(){
+  try{
+    const r = await api("/api/settings", "GET", null, false);
+    if(r.ad_days) AD_DAYS = r.ad_days;
+  }catch(e){}
+}
+
+/* ============================================================
+   ADS (Dashboard)
+   ============================================================ */
 async function loadAds(){
   try{
     const url = USER ? `/api/ads?telegram_id=${USER.telegram_id}` : "/api/ads";
@@ -1357,7 +1491,13 @@ async function loadAds(){
 
 function renderAds(){
   const g = $("gridAds");
-  const arr = S.ads.filter(a => S.category === "ALL" || getCategory(a) === S.category);
+  let arr = S.ads.filter(a => S.category === "ALL" || getCategory(a) === S.category);
+
+  // ARZON → narx o'sish tartibida (arzon tepada)
+  if(S.category === "STANDARD"){
+    arr = arr.slice().sort((a, b) => priceInUZS(a.price, a.currency) - priceInUZS(b.price, b.currency));
+  }
+
   if(!arr.length){
     g.innerHTML = `<div class="empty"><div class="empty-icon">${ico("mega","ico-lg")}</div><h3>Reklama topilmadi</h3><p>Bu bo'limda hozircha e'lonlar yo'q</p></div>`;
     return;
@@ -1372,7 +1512,6 @@ function adCard(a){
                 a.ad_type==="RARE" ? {c:"rare", t:"NOYOB", i:"fire"} :
                 {c:"std", t:"STANDARD", i:"zap"};
   const isSaved = a.is_saved === true;
-  const isTop = a.top_until && parseUTCDate(a.top_until) > new Date();
   const adminDel = IS_ADMIN ? `<button class="ad-admin-del" onclick="event.stopPropagation();adminDeleteAd(${a.id})">${ico("trash")}</button>` : "";
   const phone = acc.phone || "";
   const coll = acc.collection || "-";
@@ -1386,7 +1525,6 @@ function adCard(a){
         <div class="ad-badge ${badge.c}">${ico(badge.i,"ico-sm")}<span>${badge.t}</span></div>
         <button class="ad-heart ${isSaved?'saved':''}" onclick="event.stopPropagation();toggleSave(${a.id}, this)">${ico("heart")}</button>
         ${adminDel}
-        ${isTop ? `<div class="ad-top">${ico("zap","ico-sm")}TOP</div>` : ""}
       </div>
       <div class="ad-body">
         <div class="ad-title">PUBG · ${esc(acc.level||"?")} LVL</div>
@@ -1413,9 +1551,9 @@ async function adminDeleteAd(adId){
   hide();
 }
 
-// =========================================================
-// AD DETAIL
-// =========================================================
+/* ============================================================
+   AD DETAIL (barcha ma'lumot + sotuvchi bilan bog'lanish ENG PASTDA)
+   ============================================================ */
 async function openAd(id){
   show();
   try{
@@ -1439,24 +1577,8 @@ async function openAd(id){
     html += `<h2 class="detail-title">PUBG Mobile · ${esc(acc.level||"?")} LVL</h2>`;
     html += `<div class="detail-price">${fmtPrice(a.price, cur)}</div>`;
 
-    const phone = (acc.phone || "").trim();
-    const username = (acc.username || "").trim();
-    if(phone || username){
-      html += `<div class="contact-box">
-        <div class="contact-title">${ico("phone","ico-sm")}Sotuvchi bilan bog'lanish</div>`;
-      if(phone){
-        const fullPhone = "+998" + phone.replace(/\D/g, "");
-        html += `<div class="contact-phone">${fullPhone}</div>
-          <button class="contact-btn call" onclick="callSeller('${fullPhone}')">${ico("phone")}<span>Qo'ng'iroq qilish</span></button>`;
-      }
-      if(username){
-        const uname = username.replace("@", "");
-        html += `<button class="contact-btn message" onclick="messageSeller('${esc(uname)}')">${ico("msg")}<span>Xabar yozish</span></button>`;
-      }
-      html += `</div>`;
-    }
-
-    html += `<div class="detail-section" style="margin-top:18px">
+    // --- ASOSIY ---
+    html += `<div class="detail-section">
       <div class="detail-section-title"><span class="icon-sm">${ico("chart")}</span>Asosiy ma'lumotlar</div>
       <div class="detail-info-row"><span class="k">${ico("trending")}LVL</span><span class="v">${esc(acc.level||"-")}</span></div>
       <div class="detail-info-row"><span class="k">${ico("target")}Kolleksiya</span><span class="v">${esc(acc.collection||"-")}</span></div>
@@ -1464,18 +1586,28 @@ async function openAd(id){
       <div class="detail-info-row"><span class="k">${ico("shirt")}Mifik kiyimlar</span><span class="v">${num(acc.mythic_clothes||0)} ta</span></div>
     </div>`;
 
-    if(skins.length){
-      html += `<div class="detail-section">
-        <div class="detail-section-title"><span class="icon-sm">${ico("fire")}</span>Redkiy skinlar<span class="count">${skins.length}</span></div>
-        <div class="detail-list">${skins.map(s => `<div class="detail-item">${ico("fire","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>
-      </div>`;
-    }
+    // --- X-KOSTYUM ---
     if(xc.length){
       html += `<div class="detail-section">
         <div class="detail-section-title"><span class="icon-sm">${ico("gift")}</span>X-KOSTYUM<span class="count">${xc.length}</span></div>
         <div class="detail-list">${xc.map(s => `<div class="detail-item">${ico("gift","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>
       </div>`;
     }
+    // --- SUPAR-CAR ---
+    if(cars.length){
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${ico("car")}</span>SUPAR-CAR<span class="count">${cars.length}</span></div>
+        <div class="detail-list">${cars.map(s => `<div class="detail-item">${ico("car","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>
+      </div>`;
+    }
+    // --- REDKIY SKINLAR ---
+    if(skins.length){
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${ico("fire")}</span>Redkiy skinlar<span class="count">${skins.length}</span></div>
+        <div class="detail-list">${skins.map(s => `<div class="detail-item">${ico("fire","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>
+      </div>`;
+    }
+    // --- KUCHAYTIRILGAN QUROLLAR ---
     if(guns.length || acc.guns_count){
       const count = acc.guns_count || guns.length;
       html += `<div class="detail-section">
@@ -1483,19 +1615,32 @@ async function openAd(id){
         ${guns.length ? `<div class="detail-list">${guns.map(s => `<div class="detail-item">${ico("target","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>` : ""}
       </div>`;
     }
-    if(cars.length){
-      html += `<div class="detail-section">
-        <div class="detail-section-title"><span class="icon-sm">${ico("car")}</span>SUPAR-CAR<span class="count">${cars.length}</span></div>
-        <div class="detail-list">${cars.map(s => `<div class="detail-item">${ico("car","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>
-      </div>`;
-    }
 
+    // --- QO'SHIMCHA ---
     html += `<div class="detail-section">
       <div class="detail-section-title"><span class="icon-sm">${ico("info")}</span>Qo'shimcha</div>
       <div class="detail-info-row"><span class="k">${ico("link")}Ulangan</span><span class="v">${esc(linkedTxt)}</span></div>
       <div class="detail-info-row"><span class="k">${ico("map")}Manzil</span><span class="v">${esc(a.location||"-")}</span></div>
       ${a.full_location ? `<div class="detail-info-row"><span class="k">${ico("map")}To'liq</span><span class="v">${esc(a.full_location)}</span></div>` : ""}
     </div>`;
+
+    // --- SOTUVCHI BILAN BOG'LANISH (ENG PASTDA) ---
+    const phone = (acc.phone || "").trim();
+    const username = (acc.username || "").trim();
+    if(phone || username){
+      html += `<div class="contact-box">
+        <div class="contact-title">${ico("phone","ico-sm")}Sotuvchi bilan bog'lanish</div>`;
+      if(username){
+        const uname = username.replace("@", "");
+        html += `<button class="contact-btn message" onclick="messageSeller('${esc(uname)}')">${ico("msg")}<span>Xabar yozish</span></button>`;
+      }
+      if(phone){
+        const fullPhone = "+998" + phone.replace(/\D/g, "");
+        html += `<div class="contact-phone">${fullPhone}</div>
+          <button class="contact-btn call" onclick="callSeller('${fullPhone}')">${ico("phone")}<span>Qo'ng'iroq qilish</span></button>`;
+      }
+      html += `</div>`;
+    }
 
     if(IS_ADMIN){
       html += `<button class="btn btn-danger btn-block mt-16" onclick="adminDeleteAd(${a.id}); closeModal('mAd');">${ico("trash")}E'lonni o'chirish</button>`;
@@ -1533,9 +1678,9 @@ async function toggleSave(adId, btn){
   }catch(e){ toast(e.message, "error") }
 }
 
-// =========================================================
-// SAVED
-// =========================================================
+/* ============================================================
+   SAVED
+   ============================================================ */
 async function loadSaved(){
   if(!USER) return;
   try{ S.saved = await api(`/api/saved-ads/${USER.telegram_id}`) }
@@ -1552,9 +1697,9 @@ function renderSaved(){
   setTimeout(setupVideoObserver, 100);
 }
 
-// =========================================================
-// PROFILE
-// =========================================================
+/* ============================================================
+   PROFILE
+   ============================================================ */
 function renderProfile(){
   if(!USER) return;
   $("profName").innerHTML = (esc(USER.first_name||"") + " " + esc(USER.last_name||"")).trim() +
@@ -1613,9 +1758,9 @@ function openEditAv(){
   input.click();
 }
 
-// =========================================================
-// FEEDBACKS
-// =========================================================
+/* ============================================================
+   FEEDBACKS
+   ============================================================ */
 async function loadFeedbacks(){
   try{ S.feedbacks = await api("/api/feedbacks", "GET", null, false) }
   catch(e){ S.feedbacks = [] }
@@ -1695,31 +1840,76 @@ async function deleteFeedback(id){
   hide();
 }
 
-// =========================================================
-// CREATE AD
-// =========================================================
+/* ============================================================
+   LINKED OPTIONS (emoji bilan)
+   ============================================================ */
 const LINKED_OPTIONS = [
-  {id:"google", name:"Google", icon:"link"},
-  {id:"facebook", name:"Facebook", icon:"link"},
-  {id:"twitter", name:"Twitter/X", icon:"link"},
-  {id:"vk", name:"VK", icon:"link"},
-  {id:"email", name:"Email", icon:"msg"},
-  {id:"phone", name:"Telefon", icon:"phone"},
-  {id:"apple", name:"Apple ID", icon:"link"},
-  {id:"discord", name:"Discord", icon:"msg"},
+  {id:"google",   name:"Google",    emoji:"🔍"},
+  {id:"facebook", name:"Facebook",  emoji:"📘"},
+  {id:"twitter",  name:"Twitter/X", emoji:"𝕏"},
+  {id:"vk",       name:"VK",        emoji:"💙"},
+  {id:"email",    name:"Email",     emoji:"✉️"},
+  {id:"phone",    name:"Telefon",   emoji:"📱"},
+  {id:"apple",    name:"Apple ID",  emoji:"🍎"},
+  {id:"discord",  name:"Discord",   emoji:"🎮"},
 ];
 
 const REGIONS = ["Toshkent","Samarqand","Buxoro","Namangan","Andijon","Farg'ona","Qashqadaryo","Surxondaryo","Xorazm","Navoiy","Jizzax","Sirdaryo","Toshkent viloyati","Qoraqalpog'iston"];
 
+/* ============================================================
+   TARIFLAR (19 000 tepada, 9 000 pastda, VIP 49 000)
+   ============================================================ */
 const TARIFFS = [
-  {id:1, name:"STANDART", price:9000, desc:"Faqat Web App'da chiqadi", badge:null,
-   feats:[["yes","Web App'da joylash"],["yes","7 kun faol"],["no","Kanalga chiqmaydi"],["no","TOP'da turmaydi"]]},
-  {id:2, name:"KANAL", price:19000, desc:"Faqat kanalda chiqadi", badge:null,
-   feats:[["yes","Kanalga joylash"],["yes","7 kun kanalda"],["no","Web App'da chiqmaydi"],["no","TOP'da turmaydi"]]},
-  {id:3, name:"RARE 10%", price:25000, desc:"Kanal + Web App + 10% skidka", badge:{t:"RARE", c:"rare"},
-   feats:[["yes","Web App'da joylash"],["yes","Kanalga joylash"],["yes","10% skidka keyingi"],["yes","7 kun faol"]]},
-  {id:4, name:"PREMIUM VIP", price:29000, desc:"Kanal + Web App + 48 soat TOP", badge:{t:"VIP", c:"vip"},
-   feats:[["yes","Web App'da joylash"],["yes","Kanalga joylash"],["yes","48 soat TOP'da"],["yes","7 kun faol"]]},
+  // 1) KANAL (19 000)
+  {
+    id:2, name:"KANAL", price:19000,
+    desc:"Faqat kanalda chiqadi",
+    badge:null,
+    feats:[
+      ["yes","Kanalga joylash"],
+      ["yes","Butun umur kanalda turadi"],
+      ["no","Web App'da chiqmaydi"],
+      ["no","TOP'da turmaydi"]
+    ],
+    showChannel:true
+  },
+  // 2) STANDART (9 000)
+  {
+    id:1, name:"STANDART", price:9000,
+    desc:"Faqat Web App'da chiqadi",
+    badge:null,
+    feats:[
+      ["yes","Web App'da joylash"],
+      ["yes","Admin belgilagan kun faol"],
+      ["no","Kanalga chiqmaydi"],
+      ["no","TOP'da turmaydi"]
+    ]
+  },
+  // 3) RARE (25 000)
+  {
+    id:3, name:"RARE 10%", price:25000,
+    desc:"Kanal + Web App + 10% skidka",
+    badge:{t:"RARE", c:"rare"},
+    feats:[
+      ["yes","Web App'da joylash"],
+      ["yes","Kanalga joylash"],
+      ["yes","10% skidka keyingi"],
+      ["yes","Admin belgilagan kun faol"]
+    ]
+  },
+  // 4) PREMIUM VIP (49 000)
+  {
+    id:4, name:"PREMIUM VIP", price:49000,
+    desc:"QR kod orqali akkauntni o'zimiz olamiz",
+    badge:{t:"VIP", c:"vip"},
+    feats:[
+      ["yes","Admin siz bilan bog'lanadi"],
+      ["yes","QR kod orqali kirish"],
+      ["yes","Akkauntni biz olib chiqamiz"],
+      ["yes","To'liq xizmat"]
+    ],
+    vip:true
+  },
 ];
 
 function renderTariffs(){
@@ -1733,16 +1923,27 @@ function renderTariffs(){
         </div>
         <div>
           <div class="tariff-price-val">${num(t.price)}</div>
-          <div class="tariff-price-lbl">so'm · 7 kun</div>
+          <div class="tariff-price-lbl">so'm</div>
         </div>
       </div>
       <div class="tariff-feats">
         ${t.feats.map(f => `<div class="feat ${f[0]}"><div class="feat-ic">${ico(f[0]==="yes"?"check":"x","ico-sm")}</div><span>${f[1]}</span></div>`).join("")}
       </div>
+      ${t.showChannel ? `
+        <a class="btn btn-ghost btn-block mt-16" href="https://t.me/+5XuKi8Nxoz5iODky" target="_blank" onclick="event.stopPropagation()">
+          ${ico("mega")}Kanalimiz
+        </a>
+      ` : ""}
+      ${t.vip ? `
+        <div class="pay-note" style="margin-top:12px;text-align:left;background:rgba(139,92,246,.08);border-color:rgba(139,92,246,.25);color:#A78BFA">
+          ${ico("info")}<span>Sizning akkauntingizga biz QR kod orqali kirib, akkauntni o'zimiz olib chiqamiz</span>
+        </div>
+      ` : ""}
     </div>
   `).join("");
   $("tariffList").querySelectorAll(".tariff").forEach(el => {
-    el.onclick = () => {
+    el.onclick = (e) => {
+      if(e.target.closest("a")) return;
       $("tariffList").querySelectorAll(".tariff").forEach(x => x.classList.remove("selected"));
       el.classList.add("selected");
       S.tariff = +el.dataset.t;
@@ -1751,11 +1952,14 @@ function renderTariffs(){
   });
 }
 
+/* ============================================================
+   LINKED RENDER
+   ============================================================ */
 function renderLinked(){
   $("linkedGrid").innerHTML = LINKED_OPTIONS.map(l => `
-    <button class="chip" data-l="${l.id}">
+    <button type="button" class="chip" data-l="${l.id}">
       <div class="chip-check">${ico("check","ico-sm")}</div>
-      <div class="chip-icon">${ico(l.icon,"ico-sm")}</div>
+      <div class="chip-emoji">${l.emoji}</div>
       <div>${l.name}</div>
     </button>
   `).join("");
@@ -1768,6 +1972,9 @@ function renderLinked(){
   });
 }
 
+/* ============================================================
+   CURRENCY RENDER
+   ============================================================ */
 function renderCurrencies(){
   $("curGrid").innerHTML = CURRENCIES.map(c => `
     <div class="cur ${c.code===S.currency?'active':''}" data-cur="${c.code}">
@@ -1803,6 +2010,9 @@ function updatePricePreview(){
   else $("pricePreview").innerText = "";
 }
 
+/* ============================================================
+   DYNAMIC INPUT ROWS
+   ============================================================ */
 function addDyn(listId, cls, ph){
   const c = $(listId);
   if(!c) return;
@@ -1813,6 +2023,9 @@ function addDyn(listId, cls, ph){
   c.appendChild(d);
 }
 
+/* ============================================================
+   START CREATE
+   ============================================================ */
 function startCreate(){
   S.step = 1; S.tariff = null; S.videoData = null;
   S.linked = []; S.currency = "UZS";
@@ -1823,8 +2036,8 @@ function startCreate(){
   $("videoPreview").innerHTML = "";
   $("videoInput").value = "";
   renderTariffs(); renderLinked(); renderCurrencies(); renderSteps();
-  addDyn("skinsList", "skin-input", "Masalan: M416 Glacier");
-  addDyn("gunsList", "gun-input", "Masalan: AKM Glacier");
+  addDyn("xcList", "xc-input", "Masalan: Farovon Full 7");
+  addDyn("gunsList", "gun-input", "Masalan: Lednik 7 full");
   go("pageCreate");
 }
 
@@ -1835,6 +2048,9 @@ function renderSteps(){
   $("btnNext").innerHTML = S.step === 4 ? `${ico("check")}Tasdiqlash` : `Davom etish${ico("chev-r")}`;
 }
 
+/* ============================================================
+   VALIDATION
+   ============================================================ */
 function validateStep(){
   if(S.step === 1 && !S.tariff){ toast("Tarifni tanlang", "error"); return false }
   if(S.step === 2 && !S.videoData){ toast("Video yuklang", "error"); return false }
@@ -1844,6 +2060,10 @@ function validateStep(){
     }
     const coll = +$("accColl").value || 0;
     if(coll > 101){ toast("Kolleksiya max 101", "error"); return false }
+    const lvl = +$("accLevel").value || 0;
+    if(lvl > 100){ toast("LVL max 100", "error"); return false }
+    const mc = +$("accMythic").value || 0;
+    if(mc > 1500){ toast("Mifik kiyimlar max 1500", "error"); return false }
     const phone = $("accPhone").value.trim();
     const un = $("accUser").value.trim();
     if(!phone && !un){ toast("Telefon yoki username kiriting", "error"); return false }
@@ -1852,8 +2072,21 @@ function validateStep(){
   return true;
 }
 
+/* ============================================================
+   STEP NAVIGATION
+   VIP → video qadamni o'tkazib yuboradi
+   ============================================================ */
 function nextStep(){
   if(!validateStep()) return;
+
+  // VIP: video kerak emas
+  if(S.step === 1 && S.tariff === 4){
+    S.step = 3;
+    renderSteps();
+    window.scrollTo({top:0, behavior:"smooth"});
+    return;
+  }
+
   if(S.step === 4){ submitAd(); return }
   S.step++;
   if(S.step === 4) renderPreview();
@@ -1863,11 +2096,16 @@ function nextStep(){
 
 function prevStep(){
   if(S.step === 1){ go("pageDashboard"); return }
+  // VIP: 3 → 1
+  if(S.step === 3 && S.tariff === 4){ S.step = 1; renderSteps(); return }
   S.step--;
   renderSteps();
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
+/* ============================================================
+   VIDEO UPLOAD
+   ============================================================ */
 $("videoInput").addEventListener("change", e => {
   const f = e.target.files[0];
   if(!f) return;
@@ -1896,23 +2134,30 @@ function removeVideo(){
   $("videoInput").value = "";
 }
 
+/* ============================================================
+   COLLECT AD DATA
+   ============================================================ */
 function collectAd(){
   return {
     level: $("accLevel").value.trim(),
     collection: $("accColl").value.trim(),
     rp: $("accRP").value.trim(),
     mythic_clothes: $("accMythic").value.trim() || "0",
-    rare_skins: [...document.querySelectorAll(".skin-input")].map(i => i.value.trim()).filter(Boolean),
     x_costume: [...document.querySelectorAll(".xc-input")].map(i => i.value.trim()).filter(Boolean),
+    supar_car: [...document.querySelectorAll(".car-input")].map(i => i.value.trim()).filter(Boolean),
+    rare_skins: [...document.querySelectorAll(".skin-input")].map(i => i.value.trim()).filter(Boolean),
     guns: [...document.querySelectorAll(".gun-input")].map(i => i.value.trim()).filter(Boolean),
     guns_count: $("gunsCount").value.trim() || "0",
-    supar_car: [...document.querySelectorAll(".car-input")].map(i => i.value.trim()).filter(Boolean),
     linked: S.linked,
-    phone: $("accPhone").value.trim(),
+    location: $("accRegion").value,
     username: $("accUser").value.trim(),
+    phone: $("accPhone").value.trim(),
   };
 }
 
+/* ============================================================
+   PREVIEW
+   ============================================================ */
 function renderPreview(){
   const acc = collectAd();
   const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
@@ -1924,29 +2169,54 @@ function renderPreview(){
       <div class="detail-info-row"><span class="k">${ico("target")}Kolleksiya</span><span class="v">${esc(acc.collection)}</span></div>
       <div class="detail-info-row"><span class="k">${ico("award")}RP</span><span class="v">${esc(acc.rp)}</span></div>
       <div class="detail-info-row"><span class="k">${ico("shirt")}Mifik</span><span class="v">${num(acc.mythic_clothes)} ta</span></div>
-      ${acc.rare_skins.length ? `<div class="detail-info-row"><span class="k">${ico("fire")}Skinlar</span><span class="v">${acc.rare_skins.length} ta</span></div>` : ""}
       ${acc.x_costume.length ? `<div class="detail-info-row"><span class="k">${ico("gift")}X-KOSTYUM</span><span class="v">${acc.x_costume.length} ta</span></div>` : ""}
-      ${acc.guns.length ? `<div class="detail-info-row"><span class="k">${ico("target")}Qurollar</span><span class="v">${acc.guns_count||acc.guns.length} ta</span></div>` : ""}
       ${acc.supar_car.length ? `<div class="detail-info-row"><span class="k">${ico("car")}SUPAR-CAR</span><span class="v">${acc.supar_car.length} ta</span></div>` : ""}
-      <div class="detail-info-row"><span class="k">${ico("map")}Manzil</span><span class="v">${esc($("accRegion").value)}</span></div>
-      ${acc.phone ? `<div class="detail-info-row"><span class="k">${ico("phone")}Telefon</span><span class="v">+998 ${esc(acc.phone)}</span></div>` : ""}
+      ${acc.rare_skins.length ? `<div class="detail-info-row"><span class="k">${ico("fire")}Skinlar</span><span class="v">${acc.rare_skins.length} ta</span></div>` : ""}
+      ${acc.guns.length ? `<div class="detail-info-row"><span class="k">${ico("target")}Qurollar</span><span class="v">${acc.guns_count||acc.guns.length} ta</span></div>` : ""}
+      <div class="detail-info-row"><span class="k">${ico("map")}Manzil</span><span class="v">${esc(acc.location||"-")}</span></div>
       ${acc.username ? `<div class="detail-info-row"><span class="k">${ico("msg")}Telegram</span><span class="v">${esc(acc.username)}</span></div>` : ""}
+      ${acc.phone ? `<div class="detail-info-row"><span class="k">${ico("phone")}Telefon</span><span class="v">+998 ${esc(acc.phone)}</span></div>` : ""}
     </div>
   `;
 }
 
+/* ============================================================
+   SUBMIT AD
+   - VIP → /api/create-vip-request
+   - boshqa → /api/create-ad
+   ============================================================ */
 async function submitAd(){
   const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
   if(price <= 0){ toast("Narx noto'g'ri", "error"); return }
   show();
   try{
     const acc = collectAd();
+
+    // VIP maxsus oqim
+    if(S.tariff === 4){
+      const r = await api("/api/create-vip-request", "POST", {
+        telegram_id: USER.telegram_id,
+        account_data: acc,
+      });
+      if(r.ok){
+        S.balance = r.balance;
+        updateTopbar(); renderProfile();
+        toast("So'rov qabul qilindi! Admin tez orada bog'lanadi", "success");
+        setTimeout(() => go("pageDashboard"), 700);
+      } else {
+        toast(r.error || "Xatolik", "error");
+      }
+      hide();
+      return;
+    }
+
+    // Oddiy tariflar
     const adData = {
       title: `PUBG Mobile - ${acc.level} LVL`,
       video_url: S.videoData,
       price: price,
       currency: S.currency,
-      location: $("accRegion").value,
+      location: acc.location,
       full_location: $("accFull").value.trim(),
       tariff: S.tariff,
       account_data: acc,
@@ -1961,9 +2231,9 @@ async function submitAd(){
   hide();
 }
 
-// =========================================================
-// MY ADS
-// =========================================================
+/* ============================================================
+   MY ADS
+   ============================================================ */
 async function loadMyAds(){
   if(!USER) return;
   try{ S.myAds = await api(`/api/my-ads/${USER.telegram_id}`) }
@@ -1996,9 +2266,9 @@ function renderMyAds(){
   }).join("");
 }
 
-// =========================================================
-// TOPUP
-// =========================================================
+/* ============================================================
+   TOPUP
+   ============================================================ */
 function showTopupStep(step){
   ["topupStep1","topupStep2","topupStep3","topupRejected","topupSuccess"].forEach(id => {
     const el = $(id); if(el) el.classList.add("hidden");
@@ -2043,6 +2313,7 @@ function setPayCardInfo(cardNumber, holder){
 
 function handleTopupStatus(r, silent=false){
   const st = r.status;
+
   if(st === "none" || !st){
     stopTopupTimers();
     if(!silent) showTopupStep("topupStep1");
@@ -2065,6 +2336,7 @@ function handleTopupStatus(r, silent=false){
     startTopupPoll();
     return;
   }
+  // waiting / matched
   showTopupStep("topupStep2");
   setPayCardInfo(r.card_number, r.card_holder);
   $("payAmt").innerText = num(r.amount) + " so'm";
@@ -2082,7 +2354,7 @@ function showTopupRejected(reason){
   if(reason) $("cfRejReason").innerText = reason;
 }
 
-function showTopupSuccess(amount, newBalance){
+async function showTopupSuccess(amount, newBalance){
   showTopupStep("topupSuccess");
   $("cfOkAmount").innerText = num(amount) + " so'm";
   if(newBalance) S.balance = newBalance;
@@ -2090,6 +2362,8 @@ function showTopupSuccess(amount, newBalance){
   updateTopbar();
   renderProfile();
   toast(`Hisobingiz ${num(amount)} so'mga to'ldirildi`, "success");
+  // Backendga "ko'rildi" deb belgilash → qayta chiqmasin
+  try{ await api("/api/topup/dismiss", "POST", { telegram_id: USER.telegram_id }); }catch(e){}
 }
 
 function resetTopup(){
@@ -2105,6 +2379,8 @@ function stopTopupTimers(){
 }
 
 function closeTopup(){
+  stopTopupTimers();
+  showTopupStep(null);
   go("pageDashboard");
 }
 
@@ -2177,6 +2453,9 @@ function copyPayCard(){
     .catch(() => toast("Nusxalash imkonsiz","error"));
 }
 
+/* ============================================================
+   RECEIPT
+   ============================================================ */
 $("receiptInput").addEventListener("change", e => {
   const f = e.target.files[0];
   if(!f) return;
@@ -2248,9 +2527,9 @@ async function cancelTopup(){
   hide();
 }
 
-// =========================================================
-// ADMIN CONTACTS — USER VIEW
-// =========================================================
+/* ============================================================
+   ADMIN CONTACTS — USER VIEW
+   ============================================================ */
 async function loadAdminContacts(){
   const c = $("adminContactsList");
   if(c) c.innerHTML = `<div style="text-align:center;padding:40px;color:var(--text-3)">Yuklanmoqda...</div>`;
@@ -2258,7 +2537,6 @@ async function loadAdminContacts(){
     const list = await api("/api/admin-contacts","GET",null,false);
     renderAdminContacts(list || []);
   }catch(e){
-    console.error("admin contacts:", e);
     renderAdminContacts([]);
   }
 }
@@ -2303,9 +2581,9 @@ function tgOpenUser(chatId){
 }
 function openAdminContact(chatId){ tgOpenUser(chatId) }
 
-// =========================================================
-// ADMIN CONTACTS — ADMIN VIEW
-// =========================================================
+/* ============================================================
+   ADMIN CONTACTS — ADMIN VIEW
+   ============================================================ */
 async function renderAdminContactsAdmin(){
   const c = $("atAdmins");
   if(!c) return;
@@ -2403,9 +2681,9 @@ async function adminToggleContact(id){
   hide();
 }
 
-// =========================================================
-// ADMIN
-// =========================================================
+/* ============================================================
+   ADMIN PANEL
+   ============================================================ */
 async function renderAdmin(){
   if(!IS_ADMIN) return;
   show();
@@ -2421,6 +2699,7 @@ async function renderAdmin(){
     $("sPending").innerText = stats.pending || 0;
     $("sCards").innerText = stats.cards || 0;
 
+    /* --- PENDING ADS --- */
     if(!pending.length){
       $("atAds").innerHTML = `<div class="empty"><div class="empty-icon">${ico("check-circle","ico-lg")}</div><h3>Kutilayotgan e'lon yo'q</h3></div>`;
     }else{
@@ -2443,6 +2722,7 @@ async function renderAdmin(){
       `).join("");
     }
 
+    /* --- CARDS (ism-familiya bilan) --- */
     $("atCards").innerHTML = `
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("credit")}</div>Kartalar</div>
@@ -2461,7 +2741,7 @@ async function renderAdmin(){
         </button>
 
         ${cards.length ? cards.map(c => `
-          <div class="card-item">
+          <div class="card-item" data-cid="${c.id}">
             <div class="user-av">${ico("credit")}</div>
             <div class="card-info">
               <div class="card-num">${esc(c.number)}</div>
@@ -2482,6 +2762,7 @@ async function renderAdmin(){
       };
     }
 
+    /* --- USERS --- */
     $("atUsers").innerHTML = users.length ? users.map(u => `
       <div class="user-row" onclick="openUserDetail(${u.telegram_id})">
         <div class="user-av">${u.avatar ? `<img src="${u.avatar}">` : (u.first_name||"U")[0]}</div>
@@ -2500,6 +2781,7 @@ async function renderAdmin(){
       </div>
     `).join("") : `<div class="empty"><h3>Foydalanuvchi yo'q</h3></div>`;
 
+    /* --- FEEDBACKS --- */
     await loadFeedbacks();
     if(!S.feedbacks.length){
       $("atFeedbacks").innerHTML = `<div class="empty"><h3>Otziflar yo'q</h3></div>`;
@@ -2507,8 +2789,10 @@ async function renderAdmin(){
       $("atFeedbacks").innerHTML = S.feedbacks.map(fb => feedbackCard(fb, true)).join("");
     }
 
+    /* --- USERBOT --- */
     await renderUserbotSection();
 
+    /* --- ADD ADMIN --- */
     $("atAddadmin").innerHTML = `
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("shield")}</div>Admin qo'shish</div>
@@ -2523,11 +2807,15 @@ async function renderAdmin(){
       </div>
     `;
 
+    /* --- STATISTICS --- */
     await loadStatistics();
   }catch(e){ toast(e.message, "error") }
   hide();
 }
 
+/* ============================================================
+   STATISTICS
+   ============================================================ */
 async function loadStatistics(){
   const c = $("atStats");
   try{
@@ -2536,30 +2824,12 @@ async function loadStatistics(){
 
     c.innerHTML = `
       <div class="stat-cards">
-        <div class="stat-card">
-          <div class="stat-card-label">${ico("calendar","ico-sm")}Bugun</div>
-          <div class="stat-card-value">${num(data.today || 0)} so'm</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">${ico("calendar","ico-sm")}Kecha</div>
-          <div class="stat-card-value">${num(data.yesterday || 0)} so'm</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">${ico("chart","ico-sm")}7 kun</div>
-          <div class="stat-card-value">${num(data.week || 0)} so'm</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">${ico("trending","ico-sm")}30 kun</div>
-          <div class="stat-card-value">${num(data.month || 0)} so'm</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">${ico("calendar","ico-sm")}1 yil</div>
-          <div class="stat-card-value">${num(data.year || 0)} so'm</div>
-        </div>
-        <div class="stat-card">
-          <div class="stat-card-label">${ico("dollar","ico-sm")}Jami</div>
-          <div class="stat-card-value">${num(data.total || 0)} so'm</div>
-        </div>
+        <div class="stat-card"><div class="stat-card-label">${ico("calendar","ico-sm")}Bugun</div><div class="stat-card-value">${num(data.today || 0)} so'm</div></div>
+        <div class="stat-card"><div class="stat-card-label">${ico("calendar","ico-sm")}Kecha</div><div class="stat-card-value">${num(data.yesterday || 0)} so'm</div></div>
+        <div class="stat-card"><div class="stat-card-label">${ico("chart","ico-sm")}7 kun</div><div class="stat-card-value">${num(data.week || 0)} so'm</div></div>
+        <div class="stat-card"><div class="stat-card-label">${ico("trending","ico-sm")}30 kun</div><div class="stat-card-value">${num(data.month || 0)} so'm</div></div>
+        <div class="stat-card"><div class="stat-card-label">${ico("calendar","ico-sm")}1 yil</div><div class="stat-card-value">${num(data.year || 0)} so'm</div></div>
+        <div class="stat-card"><div class="stat-card-label">${ico("dollar","ico-sm")}Jami</div><div class="stat-card-value">${num(data.total || 0)} so'm</div></div>
       </div>
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("chart")}</div>Oxirgi 7 kun</div>
@@ -2578,6 +2848,108 @@ async function loadStatistics(){
   }
 }
 
+/* ============================================================
+   SOZLAMALAR (ad_days)
+   ============================================================ */
+async function renderSettings(){
+  const c = $("atSettings");
+  c.innerHTML = `<div style="text-align:center;padding:20px;color:var(--text-3)">Yuklanmoqda...</div>`;
+  try{
+    const r = await api("/api/admin/settings");
+    c.innerHTML = `
+      <div class="card-box">
+        <div class="card-box-title"><div class="card-box-ic">${ico("calendar")}</div>Reklama muddati</div>
+        <div class="pay-note" style="text-align:left;margin-bottom:14px;background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.2);color:var(--blue)">
+          ${ico("info")}<span>Web App'dagi barcha tariflar uchun umumiy reklama muddati. Telegram kanalga tegishli emas.</span>
+        </div>
+        <div class="field">
+          <label class="label">${ico("calendar")}Necha kun turadi?</label>
+          <div class="input-group">
+            <input class="input" id="setDays" inputmode="numeric" value="${r.ad_days || 15}">
+            <div class="input-prefix">kun</div>
+          </div>
+        </div>
+        <button class="btn btn-primary btn-block" onclick="saveDays()">${ico("check")}Saqlash</button>
+      </div>
+    `;
+  }catch(e){
+    c.innerHTML = `<div class="empty"><h3>Xatolik: ${esc(e.message)}</h3></div>`;
+  }
+}
+
+async function saveDays(){
+  const d = +($("setDays").value||"0");
+  if(d < 1 || d > 365){ toast("1 – 365 kun oralig'ida kiriting", "error"); return }
+  show();
+  try{
+    await api("/api/admin/settings/set-days","POST",{days:d});
+    toast("Saqlandi: " + d + " kun", "success");
+    await loadAdDays();
+  }catch(e){ toast(e.message,"error") }
+  hide();
+}
+
+/* ============================================================
+   ADMIN ACTIONS — CARDS
+   ============================================================ */
+async function adminAddCard(){
+  const numStr = ($("newCardNum").value || "").replace(/\D/g,"");
+  const holder = ($("newCardHolder").value || "").trim();
+
+  if(numStr.length !== 16){ toast("16 xonali raqam kiriting", "error"); return }
+  if(!holder){ toast("Karta egasini kiriting", "error"); return }
+
+  show();
+  try{
+    const r = await api("/api/admin/card/add", "POST", { number: numStr, holder: holder });
+    if(r.ok){
+      toast("Karta qo'shildi", "success");
+      await renderAdmin();
+    } else toast(r.error || "Xatolik", "error");
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+async function adminDelCard(id){
+  const ok = await customConfirm("Kartani o'chirish", "Karta ro'yxatdan olib tashlanadi.", {yesText:"Ha, o'chirish"});
+  if(!ok) return;
+  show();
+  try{
+    await api("/api/admin/card/del", "POST", {card_id:id});
+    toast("O'chirildi", "success");
+    // Darhol UI'dan olib tashlash
+    const row = document.querySelector(`.card-item[data-cid="${id}"]`);
+    if(row) row.remove();
+    // Keyin to'liq yangilash
+    setTimeout(renderAdmin, 250);
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+/* ============================================================
+   ADMIN ACTIONS — APPROVE / REJECT
+   ============================================================ */
+async function adminApprove(id){
+  show();
+  try{ await api("/api/admin/approve-ad", "POST", {ad_id:id}); toast("Tasdiqlandi", "success"); await renderAdmin() }
+  catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+async function adminReject(id){
+  const ok = await customConfirm("Rad etish", "E'lonni rad etmoqchimisiz? Foydalanuvchiga pul qaytariladi.", {yesText:"Ha, rad etish"});
+  if(!ok) return;
+  const r = prompt("Rad etish sababi:", "Sifatsiz e'lon");
+  if(!r) return;
+  show();
+  try{ await api("/api/admin/reject-ad", "POST", {ad_id:id, reason:r}); toast("Rad etildi", "success"); await renderAdmin() }
+  catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+/* ============================================================
+   ADMIN ACTIONS — ADD ADMIN
+   ============================================================ */
 async function addNewAdmin(){
   const tgId = ($("newAdminId")?.value || "").replace(/\D/g,"");
   if(!tgId || tgId.length < 6){ toast("Chat ID kiriting", "error"); return }
@@ -2594,11 +2966,13 @@ async function addNewAdmin(){
   hide();
 }
 
+/* ============================================================
+   USER DETAIL MODAL
+   ============================================================ */
 async function openUserDetail(tgId){
   show();
   try{
     const u = await api(`/api/admin/user/${tgId}`);
-    CURRENT_USER_DETAIL = u;
     const isAdmin = !!u.is_admin;
     const isBlocked = !!u.is_blocked;
 
@@ -2661,7 +3035,7 @@ async function changeBalance(tgId, sign){
   try{
     await api("/api/admin/add-balance", "POST", { telegram_id: tgId, amount: amt * sign });
     toast(sign > 0 ? "Balans qo'shildi" : "Balansdan olindi", "success");
-    await openUserDetail(tgId);
+    closeModal("mUserDetail");
     await renderAdmin();
   }catch(e){ toast(e.message, "error") }
   hide();
@@ -2685,51 +3059,9 @@ async function toggleUserBlock(tgId, isBlocked){
   hide();
 }
 
-async function adminApprove(id){
-  show();
-  try{ await api("/api/admin/approve-ad", "POST", {ad_id:id}); toast("Tasdiqlandi", "success"); await renderAdmin() }
-  catch(e){ toast(e.message, "error") }
-  hide();
-}
-
-async function adminReject(id){
-  const ok = await customConfirm("Rad etish", "E'lonni rad etmoqchimisiz? Foydalanuvchiga pul qaytariladi.", {yesText:"Ha, rad etish"});
-  if(!ok) return;
-  const r = prompt("Rad etish sababi:", "Sifatsiz e'lon");
-  if(!r) return;
-  show();
-  try{ await api("/api/admin/reject-ad", "POST", {ad_id:id, reason:r}); toast("Rad etildi", "success"); await renderAdmin() }
-  catch(e){ toast(e.message, "error") }
-  hide();
-}
-
-async function adminAddCard(){
-  const numStr = ($("newCardNum").value || "").replace(/\D/g,"");
-  const holder = ($("newCardHolder").value || "").trim();
-
-  if(numStr.length !== 16){ toast("16 xonali raqam kiriting", "error"); return }
-  if(!holder){ toast("Karta egasini kiriting", "error"); return }
-
-  show();
-  try{
-    const r = await api("/api/admin/card/add", "POST", { number: numStr, holder: holder });
-    if(r.ok){
-      toast("Karta qo'shildi", "success");
-      await renderAdmin();
-    } else toast(r.error || "Xatolik", "error");
-  }catch(e){ toast(e.message, "error") }
-  hide();
-}
-
-async function adminDelCard(id){
-  const ok = await customConfirm("Kartani o'chirish", "Karta ro'yxatdan olib tashlanadi.", {yesText:"Ha, o'chirish"});
-  if(!ok) return;
-  show();
-  try{ await api("/api/admin/card/del", "POST", {card_id:id}); toast("O'chirildi", "success"); await renderAdmin() }
-  catch(e){ toast(e.message, "error") }
-  hide();
-}
-
+/* ============================================================
+   BROADCAST
+   ============================================================ */
 async function sendBroadcast(){
   const t = $("bcastText").value.trim();
   if(!t){ toast("Xabar bo'sh", "error"); return }
@@ -2744,9 +3076,9 @@ async function sendBroadcast(){
   hide();
 }
 
-// =========================================================
-// USERBOT
-// =========================================================
+/* ============================================================
+   USERBOT
+   ============================================================ */
 async function renderUserbotSection(){
   const c = $("atUserbot");
   if(!c) return;
@@ -2880,27 +3212,43 @@ function userbotBack(){
   UB_PHONE = null;
 }
 
+/* ============================================================
+   ADVERTISE / BOT LINK
+   ============================================================ */
 function advertiseBot(){
-  if(tg) tg.openTelegramLink(BOT_LINK);
-  else window.open(BOT_LINK, "_blank");
+  startCreate();  // to'g'ridan-to'g'ri tariflar sahifasiga
 }
 
-// =========================================================
-// INIT
-// =========================================================
+function useMyUsername(){
+  if(USER?.username){
+    $("accUser").value = "@" + USER.username;
+  } else {
+    toast("Sizda Telegram username yo'q", "error");
+  }
+}
+
+/* ============================================================
+   INIT
+   ============================================================ */
 async function init(){
+  // Theme
   const saved = localStorage.getItem("cardinal_theme");
   applyTheme(saved === "dark");
 
+  // Regions
   $("accRegion").innerHTML = `<option value="">Viloyatni tanlang</option>` + REGIONS.map(r => `<option>${r}</option>`).join("");
 
+  // Auth + data
   await initAuth();
+  await loadAdDays();
   await Promise.all([loadAds(), loadMyAds(), loadSaved(), loadFeedbacks()]);
 
   renderAds(); renderMyAds(); renderSaved(); renderProfile(); renderFeedbacks();
 
+  // Bottom nav
   document.querySelectorAll(".nav-btn[data-nav]").forEach(b => b.onclick = () => go(b.dataset.nav));
 
+  // Categories
   document.querySelectorAll("#pageDashboard .cat").forEach(c => {
     c.onclick = () => {
       document.querySelectorAll("#pageDashboard .cat").forEach(x => x.classList.remove("active"));
@@ -2910,21 +3258,24 @@ async function init(){
     };
   });
 
+  // Admin tabs
   document.querySelectorAll(".admin-tab").forEach(t => {
     t.onclick = () => {
       document.querySelectorAll(".admin-tab").forEach(x => x.classList.remove("active"));
       t.classList.add("active");
       const at = t.dataset.at;
-      ["ads","stats","cards","users","feedbacks","userbot","addadmin","admins","broadcast"].forEach(k => {
+      ["ads","stats","cards","users","feedbacks","userbot","addadmin","admins","settings","broadcast"].forEach(k => {
         const el = $("at" + k.charAt(0).toUpperCase() + k.slice(1));
         if(el) el.classList.toggle("hidden", k !== at);
       });
       if(at === "userbot") renderUserbotSection();
       if(at === "stats") loadStatistics();
       if(at === "admins") renderAdminContactsAdmin();
+      if(at === "settings") renderSettings();
     };
   });
 
+  // Topup amount input
   $("topupAmt").oninput = e => {
     e.target.value = e.target.value.replace(/\D/g,"").replace(/\B(?=(\d{3})+(?!\d))/g," ");
     const v = +e.target.value.replace(/\D/g,"") || 0;
@@ -2942,6 +3293,7 @@ async function init(){
     };
   });
 
+  // Price / numeric inputs
   $("accPrice").oninput = e => {
     e.target.value = e.target.value.replace(/\D/g,"").replace(/\B(?=(\d{3})+(?!\d))/g," ");
     updatePricePreview();
@@ -2949,12 +3301,25 @@ async function init(){
   ["accLevel","accColl","accMythic","gunsCount"].forEach(id => {
     $(id).oninput = e => { e.target.value = e.target.value.replace(/\D/g,"") };
   });
+  // LVL max 100
+  $("accLevel").onblur = e => {
+    let v = +e.target.value || 0;
+    if(v > 100){ e.target.value = 100; toast("LVL max 100", "error") }
+  };
+  // Kolleksiya max 101
   $("accColl").onblur = e => {
     let v = +e.target.value || 0;
     if(v > 101){ e.target.value = 101; toast("Kolleksiya max 101", "error") }
   };
+  // Mifik max 1500
+  $("accMythic").onblur = e => {
+    let v = +e.target.value || 0;
+    if(v > 1500){ e.target.value = 1500; toast("Mifik kiyimlar max 1500", "error") }
+  };
+  // Telefon format
   $("accPhone").oninput = e => { e.target.value = e.target.value.replace(/\D/g,"").slice(0,9) };
 
+  // Steps
   $("btnBack").onclick = prevStep;
   $("btnNext").onclick = nextStep;
 }
