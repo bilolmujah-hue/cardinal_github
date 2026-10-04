@@ -9,6 +9,7 @@ import asyncio
 import logging
 import json
 import base64
+from html import escape as html_escape
 from datetime import datetime, timedelta
 
 from aiogram import Bot, Dispatcher, F
@@ -72,10 +73,20 @@ def tx_type_emoji(tx_type: str):
     if tx_type == "topup":
         return "💰", "Hisob to'ldirish", "+"
     if tx_type == "spend":
-        return "💸", "Reklama uchun", "−"
+        return "💸", "Reklama uchun", "-"
     if tx_type == "remove":
-        return "⚠️", "Admin olib tashladi", "−"
+        return "⚠️", "Admin olib tashladi", "-"
     return "💳", "Boshqa", ""
+
+
+def safe_name(u) -> str:
+    """HTML uchun xavfsiz ism."""
+    if not u:
+        return "do'stim"
+    name = (getattr(u, "first_name", None) or getattr(u, "username", None) or "do'stim").strip()
+    if not name:
+        return "do'stim"
+    return html_escape(name)
 
 
 # ============================================================
@@ -104,7 +115,7 @@ class CardinalBot:
         try:
             result = await self.db.match_payment(amount, payer_last4)
             if result and result.get("ok"):
-                logger.info(f"✅ To'lov aniqlandi: {amount} so'm (***{payer_last4}) — silent")
+                logger.info(f"✅ To'lov aniqlandi: {amount} so'm (***{payer_last4}) - silent")
                 return result
             return result or {"ok": False, "reason": "no_match"}
         except Exception as e:
@@ -190,8 +201,8 @@ class CardinalBot:
             first_name=u.first_name, last_name=u.last_name
         )
 
-        # 🔥 /start=create — Web App'ni reklama berish sahifasida ochish
-        args = message.text.split(maxsplit=1)
+        # /start=create
+        args = (message.text or "").split(maxsplit=1)
         if len(args) > 1 and args[1].strip() == "create":
             if await self.db.is_registered(u.id):
                 kb = InlineKeyboardMarkup(inline_keyboard=[[
@@ -227,9 +238,10 @@ class CardinalBot:
             keyboard=[[KeyboardButton(text="📞 Raqamni yuborish", request_contact=True)]],
             resize_keyboard=True, one_time_keyboard=True
         )
+        name = safe_name(u)
         await message.answer(
-            f" <b>ASSALOMU ALAYKUM {u.first_name}</b> 🤝\n"
-            " <b>CARDINAL AKKAUNT</b> —  Orqali Pubg mobile, akkauntingizni ishonchli sotasiz va sotib olasiz! 😊\n\n"
+            f"👋 <b>ASSALOMU ALAYKUM, {name}!</b>\n\n"
+            "🎮 <b>CARDINAL AKKAUNT</b> — PUBG Mobile akkauntlarini ishonchli sotish va sotib olish platformasi!\n\n"
             "📌 <b>Ro'yxatdan o'tish uchun</b>\n"
             "pastdagi <b>📞 Raqamni yuborish</b> tugmasini bosing.",
             parse_mode="HTML", reply_markup=kb
@@ -257,10 +269,10 @@ class CardinalBot:
         await message.answer(
             "🎮 <b>CARDINAL AKKAUNT</b>\n\n"
             "💎 <b>Premium xizmat:</b>\n"
-            "  •  Video reklama joylash\n"
-            "  •  Akkaunt sotish va sotib olish\n"
-            "  •  Balansni avtomatik to'ldirish\n"
-            "  •  Otzif qoldirish\n\n"
+            "  • 🎬 Video reklama joylash\n"
+            "  • 🛒 Akkaunt sotish va sotib olish\n"
+            "  • 💰 Balansni avtomatik to'ldirish\n"
+            "  • ⭐ Otzif qoldirish\n\n"
             "🚀 Web App orqali barcha imkoniyatlar!",
             parse_mode="HTML", reply_markup=kb
         )
@@ -318,7 +330,7 @@ class CardinalBot:
         lines = ["💳 <b>KARTALAR</b>\n\n"]
         for i, c in enumerate(cards, 1):
             st = "🟢" if c["is_active"] else "🔴"
-            holder = c.get("holder") or "—"
+            holder = c.get("holder") or "-"
             lines.append(
                 f"{st} <b>#{i}</b> · <code>{c['number']}</code>\n"
                 f"     👤 {holder}\n"
@@ -411,7 +423,7 @@ class CardinalBot:
             active_ads = await c.fetchval("SELECT COUNT(*) FROM ads WHERE user_id=$1 AND status='ACTIVE'", u["id"])
             pending_ads = await c.fetchval("SELECT COUNT(*) FROM ads WHERE user_id=$1 AND status='PENDING'", u["id"])
 
-        text = 
+        text = (
             f"👤 <b>PROFILINGIZ</b>{admin_label}\n\n"
             f"🆔 <b>ID:</b> <code>{u['telegram_id']}</code>\n"
             f"📛 <b>Ism:</b> {u.get('first_name') or '-'}\n"
@@ -460,8 +472,7 @@ class CardinalBot:
             f"💳 <b>TRANZAKSIYALAR TARIXI</b>\n\n"
             f"💰 <b>Joriy balans:</b> {num(u['balance'])} so'm\n"
             f"💸 <b>Jami sarflangan:</b> {num(u['spent'])} so'm\n"
-            f"📊 <b>Oxirgi {len(txs)} ta tranzaksiya</b>\n"
-            f"\n\n"
+            f"📊 <b>Oxirgi {len(txs)} ta tranzaksiya</b>\n\n"
         )
 
         lines = [header]
@@ -472,7 +483,7 @@ class CardinalBot:
             date_str = fmt_date(tx["created_at"], full=True)
             desc = (tx.get("description") or "")[:40]
 
-            if sign in ("+", "−"):
+            if sign in ("+", "-"):
                 amount_str = f"<b>{sign}{num(amount)} so'm</b>"
             else:
                 amount_str = f"<b>{num(amount)} so'm</b>"
@@ -482,12 +493,10 @@ class CardinalBot:
                 f"   {amount_str}\n"
                 f"   🕐 {date_str}\n"
                 f"   📝 <i>{desc}</i>\n"
-                f"   ─────────────────\n"
+                f"   -----------------\n"
             )
 
-        lines.append(
-            "💡 <i>Har bir to'lov avtomatik tasdiqlanadi</i>"
-        )
+        lines.append("💡 <i>Har bir to'lov avtomatik tasdiqlanadi</i>")
 
         text = "\n".join(lines)
 
@@ -525,10 +534,10 @@ class CardinalBot:
             "💰 Avtomatik balans to'ldirish\n"
             "🛡️ Xavfsiz va ishonchli\n\n"
             "💎 <b>TARIFLAR:</b>\n\n"
-            f"1️⃣ Botda — {num(TARIFFS[1].price)} so'm\n"
-            f"2️⃣ KANAL — {num(TARIFFS[2].price)} so'm\n"
-            f"3️⃣ Bot + Kanal(10% skidka) — {num(TARIFFS[3].price)} so'm\n"
-            f"4️⃣ PREMIUM VIP — {num(TARIFFS[4].price)} so'm\n\n"
+            f"1️⃣ Botda - {num(TARIFFS[1].price)} so'm\n"
+            f"2️⃣ KANAL - {num(TARIFFS[2].price)} so'm\n"
+            f"3️⃣ Bot + Kanal (10% skidka) - {num(TARIFFS[3].price)} so'm\n"
+            f"4️⃣ PREMIUM VIP - {num(TARIFFS[4].price)} so'm\n\n"
             "💳 <b>TO'LOV:</b>\n\n"
             "🤖 Web App orqali avtomatik\n"
             f"⚡ Reklama muddati: {days} kun\n"
@@ -550,12 +559,12 @@ class CardinalBot:
             await message.answer(
                 "🛡️ <b>ADMIN BUYRUQLAR</b>\n"
                 "━━━━━━━━━━━━━━━━━━━━\n\n"
-                "/admin — statistika\n"
-                "/stats — batafsil (JSON)\n"
-                "/cards — kartalar\n"
-                "/addcard — karta qo'shish (ism bilan)\n"
-                "/delcard — karta o'chirish\n"
-                "/channelid — kanal ID",
+                "/admin - statistika\n"
+                "/stats - batafsil (JSON)\n"
+                "/cards - kartalar\n"
+                "/addcard - karta qo'shish (ism bilan)\n"
+                "/delcard - karta o'chirish\n"
+                "/channelid - kanal ID",
                 parse_mode="HTML"
             )
         else:
@@ -659,7 +668,7 @@ class CardinalBot:
         await cb.answer("❌ Rad etildi")
 
     # ============================================================
-    # KANALGA JOYLASH — FAQAT 1-KANAL, YANGI FORMAT
+    # KANALGA JOYLASH
     # ============================================================
     async def _post_to_channel(self, ad: dict):
         """Faqat 1-kanalga (ADS_CHANNEL_ID) yangi formatda post qiladi."""
@@ -676,7 +685,6 @@ class CardinalBot:
                 f"👕 <b>Mifik kiyimlar:</b> {acc.get('mythic_clothes', 0)} ta",
             ]
 
-            # X-KOSTYUM
             xc = acc.get("x_costume") or []
             if xc:
                 lines.append("")
@@ -684,7 +692,6 @@ class CardinalBot:
                 for s in xc[:25]:
                     lines.append(f"  • {s}")
 
-            # SUPAR-CAR
             cars = acc.get("supar_car") or []
             if cars:
                 lines.append("")
@@ -692,7 +699,6 @@ class CardinalBot:
                 for s in cars[:25]:
                     lines.append(f"  • {s}")
 
-            # Redkiy skinlar
             skins = acc.get("rare_skins") or []
             if skins:
                 lines.append("")
@@ -700,7 +706,6 @@ class CardinalBot:
                 for s in skins[:25]:
                     lines.append(f"  • {s}")
 
-            # Kuchaytirilgan qurollar
             guns = acc.get("guns") or []
             gc = acc.get("guns_count") or len(guns)
             lines.append("")
@@ -710,7 +715,6 @@ class CardinalBot:
             if gc:
                 lines.append(f"  • Jami kuchaytiriladigan qurollar {gc} ta")
 
-            # Ulangan
             linked = acc.get("linked") or []
             lines.append("")
             lines.append(f"🔗 <b>Ulangan:</b> {', '.join(linked) if linked else '-'}")
@@ -718,7 +722,6 @@ class CardinalBot:
             if ad.get("full_location"):
                 lines.append(f"📍 {ad['full_location']}")
 
-            # Aloqa
             uname = (acc.get("username") or "").strip()
             phone = (acc.get("phone") or "").strip()
             if uname:
@@ -729,14 +732,12 @@ class CardinalBot:
                     p = "998" + p
                 lines.append(f"📞 <b>Telefon raqam:</b> +{p}")
 
-            # Narx
             if cur["symbol"] == "$":
                 price_str = f"{ad['price']} $ {cur['flag']}"
             else:
                 price_str = f"{num(ad['price'])} {cur['symbol']} {cur['flag']}"
             lines.append(f"💰 <b>NARXI:</b> {price_str}")
 
-            # Doimiy matnlar
             lines.append("")
             lines.append(BOT.CHANNEL_NOTE)
             lines.append("")
@@ -746,7 +747,6 @@ class CardinalBot:
 
             text = "\n".join(lines)
 
-            # Tugma: botga o'tib avtomatik /start=create
             kb = InlineKeyboardMarkup(inline_keyboard=[[
                 InlineKeyboardButton(
                     text="📢 Reklama berish",
@@ -803,7 +803,7 @@ class CardinalBot:
             logger.error(f"Admin notify xato: {e}")
 
     # ============================================================
-    # VIP XIZMAT SO'ROVI — YANGI
+    # VIP XIZMAT SO'ROVI
     # ============================================================
     async def notify_admin_vip_request(self, info: dict):
         """VIP tarif tanlanganda adminga to'liq ma'lumot yuborish."""
