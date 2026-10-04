@@ -1,9 +1,9 @@
-"""
-Cardinal v5.6 — Sozlamalar
-- Yangi bot token
-- Yangi 2 kanal (private + public)
-- Reklama faqat 1-kanalga chiqadi
-"""
+
+#Cardinal v5.6 — Sozlamalar
+# Yangi bot token
+# Yangi 2 kanal (private + public)
+# Reklama faqat 1-kanalga chiqadi
+
 import os
 
 
