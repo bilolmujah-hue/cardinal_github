@@ -201,8 +201,7 @@ class CardinalBot:
                     )
                 ]])
                 await message.answer(
-                    "📢 <b>REKLAMA BERISH</b>\n"
-                    "━━━━━━━━━━━━━━━━━━━━\n\n"
+                    "📢 <b>REKLAMA BERISH</b>\n\n"
                     "Quyidagi tugmani bosing va tarifni tanlang:",
                     parse_mode="HTML", reply_markup=kb
                 )
