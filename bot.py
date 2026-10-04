@@ -216,7 +216,6 @@ class CardinalBot:
         if not_sub:
             await message.answer(
                 "📢 <b>KANALLARGA OBUNA BO'LING</b>\n"
-                "━━━━━━━━━━━━━━━━━━━━\n\n"
                 "Botdan foydalanish uchun quyidagi kanallarga obuna bo'ling:\n\n"
                 + "\n".join(f"  {i+1}. {c['name']}" for i, c in enumerate(BOT.REQUIRED_CHANNELS))
                 + "\n\n✅ Obuna bo'lgach, <b>Tekshirish</b> tugmasini bosing.",
@@ -230,9 +229,8 @@ class CardinalBot:
             resize_keyboard=True, one_time_keyboard=True
         )
         await message.answer(
-            "👋 <b>ASSALOMU ALAYKUM!</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            "🎮 <b>CARDINAL REKLAMA</b> — PUBG Mobile akkauntlarini sotish va sotib olish platformasi.\n\n"
+            f" <b>ASSALOMU ALAYKUM {u.first_name}</b> 🤝\n"
+            " <b>CARDINAL AKKAUNT</b> —  Orqali Pubg mobile, akkauntingizni ishonchli sotasiz va sotib olasiz! 😊\n\n"
             "📌 <b>Ro'yxatdan o'tish uchun</b>\n"
             "pastdagi <b>📞 Raqamni yuborish</b> tugmasini bosing.",
             parse_mode="HTML", reply_markup=kb
@@ -258,13 +256,12 @@ class CardinalBot:
             resize_keyboard=True
         )
         await message.answer(
-            "🎮 <b>CARDINAL REKLAMA</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🎮 <b>CARDINAL AKKAUNT</b>\n\n"
             "💎 <b>Premium xizmat:</b>\n"
-            "  • 🎬 Video reklama joylash\n"
-            "  • 🛒 Akkaunt sotib olish\n"
-            "  • 💰 Balansni avtomatik to'ldirish\n"
-            "  • ⭐ Otzif qoldirish\n\n"
+            "  •  Video reklama joylash\n"
+            "  •  Akkaunt sotish va sotib olish\n"
+            "  •  Balansni avtomatik to'ldirish\n"
+            "  •  Otzif qoldirish\n\n"
             "🚀 Web App orqali barcha imkoniyatlar!",
             parse_mode="HTML", reply_markup=kb
         )
@@ -279,8 +276,7 @@ class CardinalBot:
         s = await self.db.get_stats()
         days = await self.db.get_ad_days()
         await message.answer(
-            "🛡️ <b>ADMIN PANEL</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🛡️ <b>ADMIN PANEL</b>\n\n"
             f"👥 Foydalanuvchilar: <b>{num(s['users'])}</b>\n"
             f"🚫 Bloklangan: <b>{num(s['blocked'])}</b>\n"
             f"📢 Reklamalar: <b>{num(s['ads'])}</b>\n"
@@ -289,8 +285,7 @@ class CardinalBot:
             f"💳 Aktiv kartalar: <b>{num(s['cards'])}</b>\n"
             f"⭐ Otziflar: <b>{num(s['feedbacks'])}</b>\n"
             f"🤖 Userbot: <b>{'✅ Aktiv' if s.get('userbot') else '❌ Yoq'}</b>\n"
-            f"📅 Reklama muddati: <b>{days} kun</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"📅 Reklama muddati: <b>{days} kun</b>\n\n"
             f"💵 Umumiy balans: <b>{num(s['total_balance'])} so'm</b>\n"
             f"📈 30 kunlik daromad: <b>{num(s['monthly_income'])} so'm</b>",
             parse_mode="HTML"
@@ -321,7 +316,7 @@ class CardinalBot:
                 parse_mode="HTML"
             )
             return
-        lines = ["💳 <b>KARTALAR</b>\n━━━━━━━━━━━━━━━━━━━━\n"]
+        lines = ["💳 <b>KARTALAR</b>\n\n"]
         for i, c in enumerate(cards, 1):
             st = "🟢" if c["is_active"] else "🔴"
             holder = c.get("holder") or "—"
@@ -393,8 +388,7 @@ class CardinalBot:
         )
         await self.db.update_phone(u.id, phone)
         await message.answer(
-            "✅ <b>Ro'yxatdan muvaffaqiyatli o'tdingiz!</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "✅ <b>Ro'yxatdan muvaffaqiyatli o'tdingiz!</b>\n\n"
             "🎉 Endi siz platformadan to'liq foydalanishingiz mumkin!",
             parse_mode="HTML"
         )
@@ -418,24 +412,19 @@ class CardinalBot:
             active_ads = await c.fetchval("SELECT COUNT(*) FROM ads WHERE user_id=$1 AND status='ACTIVE'", u["id"])
             pending_ads = await c.fetchval("SELECT COUNT(*) FROM ads WHERE user_id=$1 AND status='PENDING'", u["id"])
 
-        text = (
-            f"╔══════════════════════════╗\n"
-            f"   👤 <b>PROFILINGIZ</b>{admin_label}\n"
-            f"╚══════════════════════════╝\n\n"
+        text = 
+            f"👤 <b>PROFILINGIZ</b>{admin_label}\n\n"
             f"🆔 <b>ID:</b> <code>{u['telegram_id']}</code>\n"
             f"📛 <b>Ism:</b> {u.get('first_name') or '-'}\n"
             f"📛 <b>Familiya:</b> {u.get('last_name') or '-'}\n"
             f"🔗 <b>Username:</b> @{u.get('username') or '-'}\n"
             f"📱 <b>Telefon:</b> +998{u.get('phone') or '-'}\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
             f"💰 <b>Balans:</b> {num(u['balance'])} so'm\n"
-            f"💸 <b>Sarflangan:</b> {num(u['spent'])} so'm\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"💸 <b>Sarflangan:</b> {num(u['spent'])} so'm\n\n"
             f"📢 <b>Reklamalar:</b>\n"
             f"  • 📊 Jami: <b>{total_ads}</b>\n"
             f"  • 🟢 Faol: <b>{active_ads}</b>\n"
             f"  • 🟡 Kutilmoqda: <b>{pending_ads}</b>\n\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n"
             f"📅 Ro'yxatdan: <b>{fmt_date(u.get('created_at'))}</b>\n"
             f"📊 Holat: {status_emoji_} <b>{status_text}</b>"
         )
@@ -459,9 +448,7 @@ class CardinalBot:
 
         if not txs:
             await message.answer(
-                "╔══════════════════════════╗\n"
-                "  💳 <b>TRANZAKSIYALAR</b>\n"
-                "╚══════════════════════════╝\n\n"
+                "💳 <b>TRANZAKSIYALAR</b>\n\n"
                 "😔 Hozircha tranzaksiyalar yo'q\n\n"
                 f"💰 Joriy balans: <b>{num(u['balance'])} so'm</b>\n\n"
                 "💡 Hisobni to'ldirish uchun:\n"
@@ -471,13 +458,11 @@ class CardinalBot:
             return
 
         header = (
-            f"╔══════════════════════════╗\n"
-            f"  💳 <b>TRANZAKSIYALAR TARIXI</b>\n"
-            f"╚══════════════════════════╝\n\n"
+            f"💳 <b>TRANZAKSIYALAR TARIXI</b>\n\n"
             f"💰 <b>Joriy balans:</b> {num(u['balance'])} so'm\n"
             f"💸 <b>Jami sarflangan:</b> {num(u['spent'])} so'm\n"
             f"📊 <b>Oxirgi {len(txs)} ta tranzaksiya</b>\n"
-            f"━━━━━━━━━━━━━━━━━━━━\n\n"
+            f"\n\n"
         )
 
         lines = [header]
@@ -502,7 +487,6 @@ class CardinalBot:
             )
 
         lines.append(
-            "\n━━━━━━━━━━━━━━━━━━━━\n"
             "💡 <i>Har bir to'lov avtomatik tasdiqlanadi</i>"
         )
 
@@ -531,33 +515,24 @@ class CardinalBot:
     async def handle_about_btn(self, message: Message):
         days = await self.db.get_ad_days()
         text = (
-            "╔══════════════════════════╗\n"
-            "  ℹ️ <b>BOT HAQIDA</b>\n"
-            "╚══════════════════════════╝\n\n"
-            "🎮 <b>CARDINAL REKLAMA</b>\n"
+            "ℹ️ <b>BOT HAQIDA</b>\n\n"
+            "🎮 <b>CARDINAL AKKAUNT</b>\n"
             "PUBG Mobile akkauntlarini sotish va sotib olish uchun premium platforma.\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "✨ <b>IMKONIYATLAR:</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "✨ <b>IMKONIYATLAR:</b>\n\n"
             "📹 Video reklama (10 daqiqagacha)\n"
             "🛒 Akkaunt sotib olish\n"
             "❤️ Saqlangan akkauntlar\n"
             "⭐ Otzif qoldirish\n"
             "💰 Avtomatik balans to'ldirish\n"
             "🛡️ Xavfsiz va ishonchli\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "💎 <b>TARIFLAR:</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
-            f"1️⃣ STANDART — {num(TARIFFS[1].price)} so'm\n"
+            "💎 <b>TARIFLAR:</b>\n\n"
+            f"1️⃣ Botda — {num(TARIFFS[1].price)} so'm\n"
             f"2️⃣ KANAL — {num(TARIFFS[2].price)} so'm\n"
-            f"3️⃣ RARE (10% skidka) — {num(TARIFFS[3].price)} so'm\n"
+            f"3️⃣ Bot + Kanal(10% skidka) — {num(TARIFFS[3].price)} so'm\n"
             f"4️⃣ PREMIUM VIP — {num(TARIFFS[4].price)} so'm\n\n"
-            "━━━━━━━━━━━━━━━━━━━━\n"
-            "💳 <b>TO'LOV:</b>\n"
-            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "💳 <b>TO'LOV:</b>\n\n"
             "🤖 Web App orqali avtomatik\n"
             f"⚡ Reklama muddati: {days} kun\n"
-            f"⏱ To'lov vaqti: {LIMITS.PAYMENT_TIMEOUT_MIN} daqiqa"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🌐 Web App ni ochish", web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
@@ -650,8 +625,7 @@ class CardinalBot:
         try:
             await self.bot.send_message(
                 ad["seller_tg"],
-                "✅ <b>REKLAMANGIZ TASDIQLANDI!</b>\n"
-                "━━━━━━━━━━━━━━━━━━━━\n\n"
+                "✅ <b>REKLAMANGIZ TASDIQLANDI!</b>\n\n"
                 f"📢 <b>{ad['title']}</b>\n"
                 f"🆔 #{ad_id}\n\n"
                 "🎉 Endi e'loningiz Web App'da ko'rinadi!",
@@ -675,8 +649,7 @@ class CardinalBot:
         try:
             await self.bot.send_message(
                 ad["seller_tg"],
-                "❌ <b>REKLAMA RAD ETILDI</b>\n"
-                "━━━━━━━━━━━━━━━━━━━━\n\n"
+                "❌ <b>REKLAMA RAD ETILDI</b>\n\n"
                 f"📢 <b>{ad['title']}</b>\n"
                 f"💰 Pul qaytarildi: <b>{num(t.price)} so'm</b>",
                 parse_mode="HTML"
@@ -839,7 +812,6 @@ class CardinalBot:
             acc = info.get("account_data", {}) or {}
             lines = [
                 "👑 <b>VIP XIZMAT SO'ROVI</b>",
-                "━━━━━━━━━━━━━━━━━━━━",
                 "",
                 f"👤 <b>Ism:</b> {info.get('first_name') or '-'} {info.get('last_name') or ''}",
                 f"🆔 <b>Chat ID:</b> <code>{info.get('telegram_id')}</code>",
@@ -849,7 +821,6 @@ class CardinalBot:
                 f"💰 <b>To'lov:</b> {num(info.get('price', 0))} so'm",
                 f"💳 <b>Yangi balans:</b> {num(info.get('balance', 0))} so'm",
                 "",
-                "━━━━━━━━━━━━━━━━━━━━",
                 "📋 <b>AKKAUNT MA'LUMOTLARI:</b>",
                 "",
                 f"📈 LVL: {acc.get('level', '-')}",
@@ -903,20 +874,17 @@ class CardinalBot:
             if completed:
                 status_text = (
                     "✅ <b>AVTOMATIK TASDIQLANDI</b>\n"
-                    "━━━━━━━━━━━━━━━━━━━━\n"
                     "Userbot to'lovni aniqladi, balans qo'shildi"
                 )
             else:
                 status_text = (
                     "⏳ <b>TEKSHIRISH KERAK</b>\n"
-                    "━━━━━━━━━━━━━━━━━━━━\n"
                     "Userbot hali to'lovni aniqlamadi.\n"
                     "Admin panelda tekshiring."
                 )
 
             caption = (
-                f"🧾 <b>TO'LOV CHEKI</b>\n"
-                f"━━━━━━━━━━━━━━━━━━━━\n\n"
+                f"🧾 <b>TO'LOV CHEKI</b>\n\n"
                 f"👤 <b>Ism:</b> {info.get('user_name') or '-'}\n"
                 f"📱 <b>Telefon:</b> +998 {info.get('phone') or '-'}\n"
                 f"🆔 <b>ID:</b> <code>{info.get('telegram_id')}</code>\n"
