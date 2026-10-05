@@ -74,7 +74,6 @@ PREMIUM_EMOJI = {
     "💰": "5224257782013769471",
     "💸": "5231449120635370684",
     "💵": "5409048419211682843",
-    "🧾": "5444856076954520455",
     "➕": "5397916757333654639",
     "🔜": "5440621591387980068",
     "🎬": "5375464961822695044",
@@ -86,7 +85,6 @@ PREMIUM_EMOJI = {
     "🚗": "5233638613358486264",
     "🔫": "5192724084881892602",
     "💎": "5427168083074628963",
-    "🖥": "5282843764451195532",
     "📍": "5391032818111363540",
     "🏠": "5416041192905265756",
     "⚡️": "5456140674028019486",
@@ -97,7 +95,6 @@ PREMIUM_EMOJI = {
     "🆕": "5382357040008021292",
     "✉️": "5253742260054409879",
     "⬇️": "5406745015365943482",
-    
 }
 
 # Uzunlikka qarab saralash — uzunroqdan qisqaroqqa
@@ -177,6 +174,14 @@ def safe_name(u) -> str:
     if not name:
         return "do'stim"
     return html_escape(name)
+
+
+def _json_default(obj):
+    """Decimal, datetime va boshqa JSON tushunmaydigan turlar uchun."""
+    try:
+        return str(obj)
+    except Exception:
+        return None
 
 
 # ============================================================
@@ -396,7 +401,8 @@ class CardinalBot:
         if message.from_user.id != BOT.ADMIN_CHAT_ID:
             return
         s = await self.db.get_stats()
-        await message.answer(f"<pre>{json.dumps(s, indent=2, ensure_ascii=False)}</pre>", parse_mode="HTML")
+        text = json.dumps(s, indent=2, ensure_ascii=False, default=_json_default)
+        await message.answer(f"<pre>{text}</pre>", parse_mode="HTML")
 
     async def cmd_channelid(self, message: Message):
         await message.answer(
