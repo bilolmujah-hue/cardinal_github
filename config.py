@@ -130,7 +130,7 @@ class T1:
 
 class T2:
     id = 2
-    price = 19000
+    price = 15000
     days = 0
     type = "STANDARD"
     name = "KANAL"
