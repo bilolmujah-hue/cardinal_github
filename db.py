@@ -4,6 +4,7 @@ Cardinal DB v5.7
 - topup_requests.seen (qayta chiqmaslik uchun)
 - Soft delete kartalar
 - Karta holder
+- Cleanup: get_expired_ads + expire_ad
 """
 import asyncpg
 import json
@@ -25,7 +26,7 @@ class Database:
             user=DB.USER, password=DB.PASSWORD,
             min_size=5, max_size=50, command_timeout=60,
         )
-        logger.info("✅ PostgreSQL ulandi")
+        logger.info("PostgreSQL ulandi")
 
     async def close(self):
         if self.pool:
@@ -151,7 +152,6 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
-            # 🔥 SETTINGS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS settings (
                     key VARCHAR(100) PRIMARY KEY,
@@ -163,7 +163,7 @@ class Database:
         await self._migrate()
         await self._seed_cards()
         await self._seed_settings()
-        logger.info("✅ Jadvallar tayyor")
+        logger.info("Jadvallar tayyor")
 
     async def _migrate(self):
         migrations = [
@@ -502,6 +502,30 @@ class Database:
             await c.execute("UPDATE ads SET views=views+1 WHERE id=$1", ad_id)
 
     # ============================================================
+    # CLEANUP — muddati o'tgan reklamalar
+    # ============================================================
+    async def get_expired_ads(self):
+        """Muddati o'tgan aktiv reklamalarni oladi (kanal posti o'chirilishi uchun)."""
+        async with self.pool.acquire() as c:
+            rows = await c.fetch("""
+                SELECT id, video_file_id, channel_msg_id, tariff
+                FROM ads
+                WHERE expires_at IS NOT NULL
+                  AND expires_at <= NOW()
+                  AND video_file_id IS NOT NULL
+                  AND status = 'ACTIVE'
+            """)
+            return [dict(r) for r in rows]
+
+    async def expire_ad(self, ad_id):
+        """Reklamani EXPIRED qiladi va video_file_id ni tozalaydi."""
+        async with self.pool.acquire() as c:
+            await c.execute(
+                "UPDATE ads SET status='EXPIRED', video_file_id=NULL, updated_at=NOW() WHERE id=$1",
+                ad_id
+            )
+
+    # ============================================================
     # SAVED
     # ============================================================
     async def toggle_save(self, ad_id, telegram_id):
@@ -828,6 +852,11 @@ class Database:
             if active_only: q += " WHERE is_active=TRUE"
             q += " ORDER BY id"
             return [dict(r) for r in await c.fetch(q)]
+
+    async def get_admin_contact(self, contact_id):
+        async with self.pool.acquire() as c:
+            r = await c.fetchrow("SELECT * FROM admin_contacts WHERE id=$1", contact_id)
+            return dict(r) if r else None
 
     async def delete_admin_contact(self, contact_id):
         async with self.pool.acquire() as c:
