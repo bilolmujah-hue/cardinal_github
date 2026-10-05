@@ -1,14 +1,15 @@
 """
-Cardinal Bot v5.7
-- Yangi kanal formati (1-kanalga post)
-- VIP maxsus oqim
-- /start=create parametri
-- Silent userbot
+Cardinal Bot v6.0 - Premium Emoji
+- Barcha xabarlar premium emoji bilan
+- Kanal posti ham premium
+- Faqat premium (fallback yo'q)
+- Chiroyli mukammal matnlar
 """
 import asyncio
 import logging
 import json
 import base64
+import re
 from html import escape as html_escape
 from datetime import datetime, timedelta
 
@@ -30,6 +31,89 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
 logger = logging.getLogger("CardinalBot")
+
+
+# ============================================================
+# PREMIUM EMOJI
+# ============================================================
+PREMIUM_EMOJI = {
+    "✔️": "5206607081334906820",
+    "❌": "5210952531676504517",
+    "⌛️": "5296482716567495148",
+    "⚠️": "5447644880824181073",
+    "🚫": "5240241223632954241",
+    "🟢": "5832572966721818453",
+    "🔴": "5411225014148014586",
+    "🟡": "6334705977073337764",
+    "⏳": "5368380585066665290",
+    "⛔️": "5370675038200541160",
+    "👤": "5879770735999717115",
+    "👥": "5372926953978341366",
+    "🆔": "5014902839575577394",
+    "📛": "5411554197621463099",
+    "🖥": "5282843764451195532",
+    "📱": "5355116622250026900",
+    "📞": "5467539229468793355",
+    "📲": "5406809207947142040",
+    "🔗": "5271604874419647061",
+    "❤️": "5354817009626425681",
+    "👑": "5217822164362739968",
+    "👋": "5413694143601842851",
+    "🎮": "5361741454685256344",
+    "📌": "5397782960512444700",
+    "🌐": "5447410659077661506",
+    "📢": "5278256077954105203",
+    "💳": "5445353829304387411",
+    "ℹ️": "5334544901428229844",
+    "🛡": "5251203410396458957",
+    "🤖": "5287684458881756303",
+    "🗓": "5413879192267805083",
+    "📁": "5336899419679792193",
+    "📊": "5231200819986047254",
+    "📈": "5244837092042750681",
+    "💰": "5224257782013769471",
+    "💸": "5231449120635370684",
+    "💵": "5409048419211682843",
+    "🧾": "5444856076954520455",
+    "➕": "5397916757333654639",
+    "🕐": "5314371139391233269",
+    "🎬": "5375464961822695044",
+    "🛒": "5312361253610475399",
+    "🏆": "5226431245918942763",
+    "🎯": "5256131095094652290",
+    "👕": "5204355388895410111",
+    "🎁": "5203996991054432397",
+    "🚗": "5233638613358486264",
+    "🔫": "5192724084881892602",
+    "💎": "5427168083074628963",
+    "📝": "5334621081263184744",
+    "📍": "5391032818111363540",
+    "🏠": "5416041192905265756",
+    "⚡️": "5456140674028019486",
+    "🎉": "5461151367559141950",
+    "🚀": "5188481279963715781",
+    "⭐️": "5438496463044752972",
+    "💡": "5422439311196834318",
+    "🆕": "5382357040008021292",
+    "✉️": "5253742260054409879",
+}
+
+# Uzunlikka qarab saralash — uzunroqdan qisqaroqqa
+_EMOJI_KEYS = sorted(PREMIUM_EMOJI.keys(), key=len, reverse=True)
+_EMOJI_PATTERN = re.compile("|".join(re.escape(e) for e in _EMOJI_KEYS))
+
+
+def pe(text: str) -> str:
+    """Matndagi oddiy emojilarni premium emojilarga aylantiradi."""
+    if not text:
+        return text
+    def repl(m):
+        emoji = m.group(0)
+        eid = PREMIUM_EMOJI.get(emoji)
+        if eid:
+            return f'<tg-emoji emoji-id="{eid}">{emoji}</tg-emoji>'
+        return emoji
+    return _EMOJI_PATTERN.sub(repl, text)
 
 
 # ============================================================
@@ -66,7 +150,12 @@ def fmt_date(date_obj, full=False) -> str:
 
 
 def status_emoji(status: str) -> str:
-    return {"APPROVED": "✅", "PENDING": "⏳", "REJECTED": "❌"}.get(status, "⚪")
+    return {
+        "APPROVED": "✔️",
+        "PENDING": "⏳",
+        "REJECTED": "❌",
+        "ACTIVE": "🟢",
+    }.get(status, "⚪")
 
 
 def tx_type_emoji(tx_type: str):
@@ -80,7 +169,6 @@ def tx_type_emoji(tx_type: str):
 
 
 def safe_name(u) -> str:
-    """HTML uchun xavfsiz ism."""
     if not u:
         return "do'stim"
     name = (getattr(u, "first_name", None) or getattr(u, "username", None) or "do'stim").strip()
@@ -111,11 +199,10 @@ class CardinalBot:
     # SILENT PAYMENT
     # ============================================================
     async def _on_payment_received(self, amount: int, payer_last4: str, raw: str) -> dict:
-        """Userbot xabar o'qidi. Silent — xabar YUBORMAYMIZ."""
         try:
             result = await self.db.match_payment(amount, payer_last4)
             if result and result.get("ok"):
-                logger.info(f"✅ To'lov aniqlandi: {amount} so'm (***{payer_last4}) - silent")
+                logger.info(f"To'lov aniqlandi: {amount} so'm (***{payer_last4}) - silent")
                 return result
             return result or {"ok": False, "reason": "no_match"}
         except Exception as e:
@@ -148,7 +235,7 @@ class CardinalBot:
                 await cb.answer("❌ Hali obuna bo'lmagansiz!", show_alert=True)
                 await cb.message.edit_reply_markup(reply_markup=self._sub_kb(not_sub))
             else:
-                await cb.answer("✅ Obuna tasdiqlandi!")
+                await cb.answer("✔️ Obuna tasdiqlandi!")
                 try:
                     await cb.message.delete()
                 except Exception:
@@ -162,8 +249,8 @@ class CardinalBot:
                         resize_keyboard=True, one_time_keyboard=True
                     )
                     await cb.message.answer(
-                        "✅ <b>Obuna tasdiqlandi!</b>\n\n"
-                        "📱 Endi telefon raqamingizni yuboring:",
+                        pe("✔️ <b>Obuna tasdiqlandi!</b>\n\n"
+                           "📱 Endi telefon raqamingizni yuboring:"),
                         parse_mode="HTML", reply_markup=kb
                     )
 
@@ -190,8 +277,8 @@ class CardinalBot:
         u = message.from_user
         if await self.db.is_blocked(u.id):
             await message.answer(
-                "🚫 <b>Siz botdan bloklangansiz!</b>\n\n"
-                "Savol uchun admin bilan bog'laning.",
+                pe("🚫 <b>Siz botdan bloklangansiz!</b>\n\n"
+                   "Savol uchun admin bilan bog'laning."),
                 parse_mode="HTML"
             )
             return
@@ -212,8 +299,9 @@ class CardinalBot:
                     )
                 ]])
                 await message.answer(
-                    "📢 <b>REKLAMA BERISH</b>\n\n"
-                    "Quyidagi tugmani bosing va tarifni tanlang:",
+                    pe("📢 <b>REKLAMA BERISH</b>\n"
+                       "━━━━━━━━━━━━━━━━━━━━\n\n"
+                       "Quyidagi tugmani bosing va tarifni tanlang:"),
                     parse_mode="HTML", reply_markup=kb
                 )
                 return
@@ -225,10 +313,11 @@ class CardinalBot:
         not_sub = await self._check_subscription(u.id)
         if not_sub:
             await message.answer(
-                "📢 <b>KANALLARGA OBUNA BO'LING</b>\n"
-                "Botdan foydalanish uchun quyidagi kanallarga obuna bo'ling:\n\n"
-                + "\n".join(f"  {i+1}. {c['name']}" for i, c in enumerate(BOT.REQUIRED_CHANNELS))
-                + "\n\n✅ Obuna bo'lgach, <b>Tekshirish</b> tugmasini bosing.",
+                pe("📢 <b>KANALLARGA OBUNA BO'LING</b>\n"
+                   "━━━━━━━━━━━━━━━━━━━━\n\n"
+                   "Botdan foydalanish uchun quyidagi kanallarga obuna bo'ling:\n\n"
+                   + "\n".join(f"  {i+1}. {c['name']}" for i, c in enumerate(BOT.REQUIRED_CHANNELS))
+                   + "\n\n✔️ Obuna bo'lgach, <b>Tekshirish</b> tugmasini bosing."),
                 parse_mode="HTML",
                 reply_markup=self._sub_kb(not_sub)
             )
@@ -240,10 +329,12 @@ class CardinalBot:
         )
         name = safe_name(u)
         await message.answer(
-            f"👋 <b>ASSALOMU ALAYKUM, {name}!</b>\n\n"
-            "🎮 <b>CARDINAL AKKAUNT</b> — PUBG Mobile akkauntlarini ishonchli sotish va sotib olish platformasi!\n\n"
-            "📌 <b>Ro'yxatdan o'tish uchun</b>\n"
-            "pastdagi <b>📞 Raqamni yuborish</b> tugmasini bosing.",
+            pe(f"👋 <b>ASSALOMU ALAYKUM, {name}!</b>\n"
+               "━━━━━━━━━━━━━━━━━━━━\n\n"
+               "🎮 <b>CARDINAL AKKAUNT</b>\n"
+               "PUBG Mobile akkauntlarini ishonchli sotish va sotib olish platformasi!\n\n"
+               "📌 <b>Ro'yxatdan o'tish uchun</b>\n"
+               "pastdagi <b>📞 Raqamni yuborish</b> tugmasini bosing."),
             parse_mode="HTML", reply_markup=kb
         )
 
@@ -267,17 +358,18 @@ class CardinalBot:
             resize_keyboard=True
         )
         await message.answer(
-            "🎮 <b>CARDINAL AKKAUNT</b>\n\n"
-            "💎 <b>Premium xizmat:</b>\n"
-            "  • 🎬 Video reklama joylash\n"
-            "  • 🛒 Akkaunt sotish va sotib olish\n"
-            "  • 💰 Balansni avtomatik to'ldirish\n"
-            "  • ⭐ Otzif qoldirish\n\n"
-            "🚀 Web App orqali barcha imkoniyatlar!",
+            pe("🎮 <b>CARDINAL AKKAUNT</b>\n"
+               "━━━━━━━━━━━━━━━━━━━━\n\n"
+               "💎 <b>Premium xizmat:</b>\n"
+               "  • 🎬 Video reklama joylash\n"
+               "  • 🛒 Akkaunt sotish va sotib olish\n"
+               "  • 💰 Balansni avtomatik to'ldirish\n"
+               "  • ⭐️ Otzif qoldirish\n\n"
+               "🚀 Web App orqali barcha imkoniyatlar!"),
             parse_mode="HTML", reply_markup=kb
         )
         await message.answer(
-            "⬇️ <b>Qo'shimcha bo'limlar:</b>",
+            pe("⬇️ <b>Qo'shimcha bo'limlar:</b>"),
             parse_mode="HTML", reply_markup=rkb
         )
 
@@ -287,18 +379,20 @@ class CardinalBot:
         s = await self.db.get_stats()
         days = await self.db.get_ad_days()
         await message.answer(
-            "🛡️ <b>ADMIN PANEL</b>\n\n"
-            f"👥 Foydalanuvchilar: <b>{num(s['users'])}</b>\n"
-            f"🚫 Bloklangan: <b>{num(s['blocked'])}</b>\n"
-            f"📢 Reklamalar: <b>{num(s['ads'])}</b>\n"
-            f"🟢 Faol: <b>{num(s['active_ads'])}</b>\n"
-            f"⏳ Kutilmoqda: <b>{num(s['pending'])}</b>\n"
-            f"💳 Aktiv kartalar: <b>{num(s['cards'])}</b>\n"
-            f"⭐ Otziflar: <b>{num(s['feedbacks'])}</b>\n"
-            f"🤖 Userbot: <b>{'✅ Aktiv' if s.get('userbot') else '❌ Yoq'}</b>\n"
-            f"📅 Reklama muddati: <b>{days} kun</b>\n\n"
-            f"💵 Umumiy balans: <b>{num(s['total_balance'])} so'm</b>\n"
-            f"📈 30 kunlik daromad: <b>{num(s['monthly_income'])} so'm</b>",
+            pe("🛡 <b>ADMIN PANEL</b>\n"
+               "━━━━━━━━━━━━━━━━━━━━\n\n"
+               f"👥 Foydalanuvchilar: <b>{num(s['users'])}</b>\n"
+               f"🚫 Bloklangan: <b>{num(s['blocked'])}</b>\n"
+               f"📢 Reklamalar: <b>{num(s['ads'])}</b>\n"
+               f"🟢 Faol: <b>{num(s['active_ads'])}</b>\n"
+               f"⏳ Kutilmoqda: <b>{num(s['pending'])}</b>\n"
+               f"💳 Aktiv kartalar: <b>{num(s['cards'])}</b>\n"
+               f"⭐️ Otziflar: <b>{num(s['feedbacks'])}</b>\n"
+               f"🤖 Userbot: <b>{'✔️ Aktiv' if s.get('userbot') else '❌ Yoq'}</b>\n"
+               f"🗓 Reklama muddati: <b>{days} kun</b>\n"
+               "━━━━━━━━━━━━━━━━━━━━\n\n"
+               f"💵 Umumiy balans: <b>{num(s['total_balance'])} so'm</b>\n"
+               f"📈 30 kunlik daromad: <b>{num(s['monthly_income'])} so'm</b>"),
             parse_mode="HTML"
         )
 
@@ -310,8 +404,8 @@ class CardinalBot:
 
     async def cmd_channelid(self, message: Message):
         await message.answer(
-            f"🆔 <b>Chat ID:</b> <code>{message.chat.id}</code>\n"
-            f"📁 <b>Type:</b> {message.chat.type}",
+            pe(f"🆔 <b>Chat ID:</b> <code>{message.chat.id}</code>\n"
+               f"📁 <b>Type:</b> {message.chat.type}"),
             parse_mode="HTML"
         )
 
@@ -321,13 +415,13 @@ class CardinalBot:
         cards = await self.db.get_cards(active_only=False)
         if not cards:
             await message.answer(
-                "💳 <b>KARTALAR</b>\n\n"
-                "❌ Karta yo'q\n\n"
-                "➕ Qo'shish: <code>/addcard 5614682110725894 Ism Familiya</code>",
+                pe("💳 <b>KARTALAR</b>\n\n"
+                   "❌ Karta yo'q\n\n"
+                   "➕ Qo'shish: <code>/addcard 5614682110725894 Ism Familiya</code>"),
                 parse_mode="HTML"
             )
             return
-        lines = ["💳 <b>KARTALAR</b>\n\n"]
+        lines = ["💳 <b>KARTALAR</b>\n━━━━━━━━━━━━━━━━━━━━\n"]
         for i, c in enumerate(cards, 1):
             st = "🟢" if c["is_active"] else "🔴"
             holder = c.get("holder") or "-"
@@ -336,7 +430,7 @@ class CardinalBot:
                 f"     👤 {holder}\n"
                 f"     💰 {num(c['total_received'])} so'm yig'ildi\n"
             )
-        await message.answer("\n".join(lines), parse_mode="HTML")
+        await message.answer(pe("\n".join(lines)), parse_mode="HTML")
 
     async def cmd_addcard(self, message: Message):
         if message.from_user.id != BOT.ADMIN_CHAT_ID:
@@ -344,8 +438,8 @@ class CardinalBot:
         parts = message.text.split(maxsplit=2)
         if len(parts) < 3:
             await message.answer(
-                "💳 <b>Karta qo'shish</b>\n\n"
-                "Format: <code>/addcard 5614682110725894 Ism Familiya</code>",
+                pe("💳 <b>Karta qo'shish</b>\n\n"
+                   "Format: <code>/addcard 5614682110725894 Ism Familiya</code>"),
                 parse_mode="HTML"
             )
             return
@@ -359,7 +453,7 @@ class CardinalBot:
             return
         ok = await self.db.add_card(num_str, holder.upper())
         await message.answer(
-            "✅ <b>Qo'shildi</b>" if ok else "❌ Xatolik",
+            pe("✔️ <b>Qo'shildi</b>" if ok else "❌ Xatolik"),
             parse_mode="HTML"
         )
 
@@ -368,12 +462,12 @@ class CardinalBot:
             return
         parts = message.text.split(maxsplit=1)
         if len(parts) < 2:
-            await message.answer("Format: <code>/delcard 1</code>", parse_mode="HTML")
+            await message.answer(pe("Format: <code>/delcard 1</code>"), parse_mode="HTML")
             return
         try:
             cid = int(parts[1])
             await self.db.remove_card(cid)
-            await message.answer(f"✅ <b>Karta #{cid} o'chirildi</b>", parse_mode="HTML")
+            await message.answer(pe(f"✔️ <b>Karta #{cid} o'chirildi</b>"), parse_mode="HTML")
         except Exception as e:
             await message.answer(f"❌ Xato: {e}")
 
@@ -387,7 +481,7 @@ class CardinalBot:
         not_sub = await self._check_subscription(u.id)
         if not_sub:
             await message.answer(
-                "📢 <b>Avval kanallarga obuna bo'ling!</b>",
+                pe("📢 <b>Avval kanallarga obuna bo'ling!</b>"),
                 parse_mode="HTML",
                 reply_markup=self._sub_kb(not_sub)
             )
@@ -399,8 +493,9 @@ class CardinalBot:
         )
         await self.db.update_phone(u.id, phone)
         await message.answer(
-            "✅ <b>Ro'yxatdan muvaffaqiyatli o'tdingiz!</b>\n\n"
-            "🎉 Endi siz platformadan to'liq foydalanishingiz mumkin!",
+            pe("✔️ <b>Ro'yxatdan muvaffaqiyatli o'tdingiz!</b>\n"
+               "━━━━━━━━━━━━━━━━━━━━\n\n"
+               "🎉 Endi siz platformadan to'liq foydalanishingiz mumkin!"),
             parse_mode="HTML"
         )
         await self._show_main_menu(message)
@@ -414,8 +509,8 @@ class CardinalBot:
             await message.answer("❌ /start bosing")
             return
 
-        admin_label = " 🛡️ <b>ADMIN</b>" if u.get("is_admin") else ""
-        status_emoji_ = "🟢" if not u.get("is_blocked") else "🔴"
+        admin_label = " 🛡 <b>ADMIN</b>" if u.get("is_admin") else ""
+        st_emoji = "🟢" if not u.get("is_blocked") else "🔴"
         status_text = "Faol" if not u.get("is_blocked") else "Bloklangan"
 
         async with self.db.pool.acquire() as c:
@@ -424,26 +519,30 @@ class CardinalBot:
             pending_ads = await c.fetchval("SELECT COUNT(*) FROM ads WHERE user_id=$1 AND status='PENDING'", u["id"])
 
         text = (
-            f"👤 <b>PROFILINGIZ</b>{admin_label}\n\n"
+            f"👤 <b>PROFILINGIZ</b>{admin_label}\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
             f"🆔 <b>ID:</b> <code>{u['telegram_id']}</code>\n"
             f"📛 <b>Ism:</b> {u.get('first_name') or '-'}\n"
             f"📛 <b>Familiya:</b> {u.get('last_name') or '-'}\n"
             f"🔗 <b>Username:</b> @{u.get('username') or '-'}\n"
-            f"📱 <b>Telefon:</b> +998{u.get('phone') or '-'}\n\n"
+            f"📱 <b>Telefon:</b> +998{u.get('phone') or '-'}\n"
+            "━━━━━━━━━━━━━━━━━━━━\n"
             f"💰 <b>Balans:</b> {num(u['balance'])} so'm\n"
-            f"💸 <b>Sarflangan:</b> {num(u['spent'])} so'm\n\n"
-            f"📢 <b>Reklamalar:</b>\n"
+            f"💸 <b>Sarflangan:</b> {num(u['spent'])} so'm\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "📢 <b>Reklamalar:</b>\n"
             f"  • 📊 Jami: <b>{total_ads}</b>\n"
             f"  • 🟢 Faol: <b>{active_ads}</b>\n"
             f"  • 🟡 Kutilmoqda: <b>{pending_ads}</b>\n\n"
-            f"📅 Ro'yxatdan: <b>{fmt_date(u.get('created_at'))}</b>\n"
-            f"📊 Holat: {status_emoji_} <b>{status_text}</b>"
+            "━━━━━━━━━━━━━━━━━━━━\n"
+            f"🗓 Ro'yxatdan: <b>{fmt_date(u.get('created_at'))}</b>\n"
+            f"📊 Holat: {st_emoji} <b>{status_text}</b>"
         )
 
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🌐 Web App ni ochish", web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
         ])
-        await message.answer(text, parse_mode="HTML", reply_markup=kb)
+        await message.answer(pe(text), parse_mode="HTML", reply_markup=kb)
 
     # ============================================================
     # TRANZAKSIYALAR
@@ -451,7 +550,7 @@ class CardinalBot:
     async def handle_tx_btn(self, message: Message):
         user_id = message.from_user.id
         if await self.db.is_blocked(user_id):
-            await message.answer("🚫 Siz bloklangansiz!")
+            await message.answer(pe("🚫 Siz bloklangansiz!"), parse_mode="HTML")
             return
 
         u = await self.db.get_user(user_id)
@@ -459,20 +558,23 @@ class CardinalBot:
 
         if not txs:
             await message.answer(
-                "💳 <b>TRANZAKSIYALAR</b>\n\n"
-                "😔 Hozircha tranzaksiyalar yo'q\n\n"
-                f"💰 Joriy balans: <b>{num(u['balance'])} so'm</b>\n\n"
-                "💡 Hisobni to'ldirish uchun:\n"
-                "🌐 Web App → Hisobni to'ldirish",
+                pe("💳 <b>TRANZAKSIYALAR</b>\n"
+                   "━━━━━━━━━━━━━━━━━━━━\n\n"
+                   "😔 Hozircha tranzaksiyalar yo'q\n\n"
+                   f"💰 Joriy balans: <b>{num(u['balance'])} so'm</b>\n\n"
+                   "💡 Hisobni to'ldirish uchun:\n"
+                   "🌐 Web App → Hisobni to'ldirish"),
                 parse_mode="HTML"
             )
             return
 
         header = (
-            f"💳 <b>TRANZAKSIYALAR TARIXI</b>\n\n"
+            "💳 <b>TRANZAKSIYALAR TARIXI</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
             f"💰 <b>Joriy balans:</b> {num(u['balance'])} so'm\n"
             f"💸 <b>Jami sarflangan:</b> {num(u['spent'])} so'm\n"
-            f"📊 <b>Oxirgi {len(txs)} ta tranzaksiya</b>\n\n"
+            f"📊 <b>Oxirgi {len(txs)} ta tranzaksiya</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
         )
 
         lines = [header]
@@ -512,10 +614,10 @@ class CardinalBot:
             if current:
                 chunks.append(current)
             for chunk in chunks:
-                await message.answer(chunk, parse_mode="HTML")
+                await message.answer(pe(chunk), parse_mode="HTML")
                 await asyncio.sleep(0.3)
         else:
-            await message.answer(text, parse_mode="HTML")
+            await message.answer(pe(text), parse_mode="HTML")
 
     # ============================================================
     # BOT HAQIDA
@@ -523,29 +625,33 @@ class CardinalBot:
     async def handle_about_btn(self, message: Message):
         days = await self.db.get_ad_days()
         text = (
-            "ℹ️ <b>BOT HAQIDA</b>\n\n"
+            "ℹ️ <b>BOT HAQIDA</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
             "🎮 <b>CARDINAL AKKAUNT</b>\n"
             "PUBG Mobile akkauntlarini sotish va sotib olish uchun premium platforma.\n\n"
-            "✨ <b>IMKONIYATLAR:</b>\n\n"
-            "📹 Video reklama (10 daqiqagacha)\n"
+            "✨ <b>IMKONIYATLAR:</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
+            "🎬 Video reklama (10 daqiqagacha)\n"
             "🛒 Akkaunt sotib olish\n"
             "❤️ Saqlangan akkauntlar\n"
-            "⭐ Otzif qoldirish\n"
+            "⭐️ Otzif qoldirish\n"
             "💰 Avtomatik balans to'ldirish\n"
-            "🛡️ Xavfsiz va ishonchli\n\n"
-            "💎 <b>TARIFLAR:</b>\n\n"
+            "🛡 Xavfsiz va ishonchli\n\n"
+            "💎 <b>TARIFLAR:</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
             f"1️⃣ Botda - {num(TARIFFS[1].price)} so'm\n"
             f"2️⃣ KANAL - {num(TARIFFS[2].price)} so'm\n"
             f"3️⃣ Bot + Kanal (10% skidka) - {num(TARIFFS[3].price)} so'm\n"
             f"4️⃣ PREMIUM VIP - {num(TARIFFS[4].price)} so'm\n\n"
-            "💳 <b>TO'LOV:</b>\n\n"
+            "💳 <b>TO'LOV:</b>\n"
+            "━━━━━━━━━━━━━━━━━━━━\n\n"
             "🤖 Web App orqali avtomatik\n"
-            f"⚡ Reklama muddati: {days} kun\n"
+            f"⚡️ Reklama muddati: {days} kun\n"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="🌐 Web App ni ochish", web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
         ])
-        await message.answer(text, parse_mode="HTML", reply_markup=kb)
+        await message.answer(pe(text), parse_mode="HTML", reply_markup=kb)
 
     async def handle_webapp_data(self, message: Message):
         try:
@@ -557,20 +663,20 @@ class CardinalBot:
     async def handle_other(self, message: Message):
         if message.from_user.id == BOT.ADMIN_CHAT_ID:
             await message.answer(
-                "🛡️ <b>ADMIN BUYRUQLAR</b>\n"
-                "━━━━━━━━━━━━━━━━━━━━\n\n"
-                "/admin - statistika\n"
-                "/stats - batafsil (JSON)\n"
-                "/cards - kartalar\n"
-                "/addcard - karta qo'shish (ism bilan)\n"
-                "/delcard - karta o'chirish\n"
-                "/channelid - kanal ID",
+                pe("🛡 <b>ADMIN BUYRUQLAR</b>\n"
+                   "━━━━━━━━━━━━━━━━━━━━\n\n"
+                   "/admin - statistika\n"
+                   "/stats - batafsil (JSON)\n"
+                   "/cards - kartalar\n"
+                   "/addcard - karta qo'shish (ism bilan)\n"
+                   "/delcard - karta o'chirish\n"
+                   "/channelid - kanal ID"),
                 parse_mode="HTML"
             )
         else:
             await message.answer(
-                "🎮 <b>Xush kelibsiz!</b>\n\n"
-                "Boshlash uchun /start bosing",
+                pe("🎮 <b>Xush kelibsiz!</b>\n\n"
+                   "Boshlash uchun /start bosing"),
                 parse_mode="HTML"
             )
 
@@ -605,7 +711,7 @@ class CardinalBot:
                 text=f"📢 {ch['name']}",
                 url=url
             )])
-        btns.append([InlineKeyboardButton(text="✅ Tekshirish", callback_data="check_sub")])
+        btns.append([InlineKeyboardButton(text="✔️ Tekshirish", callback_data="check_sub")])
         return InlineKeyboardMarkup(inline_keyboard=btns)
 
     # ============================================================
@@ -633,18 +739,19 @@ class CardinalBot:
         try:
             await self.bot.send_message(
                 ad["seller_tg"],
-                "✅ <b>REKLAMANGIZ TASDIQLANDI!</b>\n\n"
-                f"📢 <b>{ad['title']}</b>\n"
-                f"🆔 #{ad_id}\n\n"
-                "🎉 Endi e'loningiz Web App'da ko'rinadi!",
+                pe("✔️ <b>REKLAMANGIZ TASDIQLANDI!</b>\n"
+                   "━━━━━━━━━━━━━━━━━━━━\n\n"
+                   f"📢 <b>{ad['title']}</b>\n"
+                   f"🆔 #{ad_id}\n\n"
+                   "🎉 Endi e'loningiz Web App'da ko'rinadi!"),
                 parse_mode="HTML"
             )
         except Exception:
             pass
 
         await cb.message.edit_reply_markup(reply_markup=None)
-        await cb.answer("✅ Tasdiqlandi")
-        await cb.message.answer(f"✅ <b>E'lon #{ad_id} tasdiqlandi</b>", parse_mode="HTML")
+        await cb.answer("✔️ Tasdiqlandi")
+        await cb.message.answer(pe(f"✔️ <b>E'lon #{ad_id} tasdiqlandi</b>"), parse_mode="HTML")
 
     async def _reject_ad(self, ad_id: int, cb: CallbackQuery):
         ad = await self.db.get_ad(ad_id)
@@ -657,9 +764,10 @@ class CardinalBot:
         try:
             await self.bot.send_message(
                 ad["seller_tg"],
-                "❌ <b>REKLAMA RAD ETILDI</b>\n\n"
-                f"📢 <b>{ad['title']}</b>\n"
-                f"💰 Pul qaytarildi: <b>{num(t.price)} so'm</b>",
+                pe("❌ <b>REKLAMA RAD ETILDI</b>\n"
+                   "━━━━━━━━━━━━━━━━━━━━\n\n"
+                   f"📢 <b>{ad['title']}</b>\n"
+                   f"💰 Pul qaytarildi: <b>{num(t.price)} so'm</b>"),
                 parse_mode="HTML"
             )
         except Exception:
@@ -668,10 +776,9 @@ class CardinalBot:
         await cb.answer("❌ Rad etildi")
 
     # ============================================================
-    # KANALGA JOYLASH
+    # KANALGA JOYLASH — PREMIUM EMOJI
     # ============================================================
     async def _post_to_channel(self, ad: dict):
-        """Faqat 1-kanalga (ADS_CHANNEL_ID) yangi formatda post qiladi."""
         try:
             acc = ad.get("account_data", {}) or {}
             cur = CURRENCIES.get(ad.get("currency", "UZS"), CURRENCIES["UZS"])
@@ -754,18 +861,20 @@ class CardinalBot:
                 )
             ]])
 
+            caption = pe(text)
+
             if ad.get("video_file_id"):
                 msg = await self.bot.send_video(
                     BOT.ADS_CHANNEL_ID, ad["video_file_id"],
-                    caption=text, parse_mode="HTML", reply_markup=kb
+                    caption=caption, parse_mode="HTML", reply_markup=kb
                 )
             else:
                 msg = await self.bot.send_message(
-                    BOT.ADS_CHANNEL_ID, text,
+                    BOT.ADS_CHANNEL_ID, caption,
                     parse_mode="HTML", reply_markup=kb
                 )
             await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.message_id)
-            logger.info(f"📢 #{ad['id']} reklama kanaliga joylandi")
+            logger.info(f"#{ad['id']} reklama kanaliga joylandi (premium)")
         except Exception as e:
             logger.error(f"Kanalga joylash xato: {e}", exc_info=True)
 
@@ -786,17 +895,18 @@ class CardinalBot:
                 "👇 Tasdiqlaysizmi?"
             )
             kb = InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="✅ Tasdiqlash", callback_data=f"approve_ad_{ad['id']}"),
+                InlineKeyboardButton(text="✔️ Tasdiqlash", callback_data=f"approve_ad_{ad['id']}"),
                 InlineKeyboardButton(text="❌ Rad etish", callback_data=f"reject_ad_{ad['id']}"),
             ]])
+            caption = pe(text)
             if ad.get("video_file_id"):
                 await self.bot.send_video(
                     BOT.ADMIN_CHAT_ID, ad["video_file_id"],
-                    caption=text, parse_mode="HTML", reply_markup=kb
+                    caption=caption, parse_mode="HTML", reply_markup=kb
                 )
             else:
                 await self.bot.send_message(
-                    BOT.ADMIN_CHAT_ID, text,
+                    BOT.ADMIN_CHAT_ID, caption,
                     parse_mode="HTML", reply_markup=kb
                 )
         except Exception as e:
@@ -806,11 +916,11 @@ class CardinalBot:
     # VIP XIZMAT SO'ROVI
     # ============================================================
     async def notify_admin_vip_request(self, info: dict):
-        """VIP tarif tanlanganda adminga to'liq ma'lumot yuborish."""
         try:
             acc = info.get("account_data", {}) or {}
             lines = [
                 "👑 <b>VIP XIZMAT SO'ROVI</b>",
+                "━━━━━━━━━━━━━━━━━━━━",
                 "",
                 f"👤 <b>Ism:</b> {info.get('first_name') or '-'} {info.get('last_name') or ''}",
                 f"🆔 <b>Chat ID:</b> <code>{info.get('telegram_id')}</code>",
@@ -855,7 +965,7 @@ class CardinalBot:
             ]])
 
             await self.bot.send_message(
-                BOT.ADMIN_CHAT_ID, text,
+                BOT.ADMIN_CHAT_ID, pe(text),
                 parse_mode="HTML", reply_markup=kb
             )
         except Exception as e:
@@ -872,18 +982,21 @@ class CardinalBot:
 
             if completed:
                 status_text = (
-                    "✅ <b>AVTOMATIK TASDIQLANDI</b>\n"
+                    "✔️ <b>AVTOMATIK TASDIQLANDI</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n"
                     "Userbot to'lovni aniqladi, balans qo'shildi"
                 )
             else:
                 status_text = (
                     "⏳ <b>TEKSHIRISH KERAK</b>\n"
+                    "━━━━━━━━━━━━━━━━━━━━\n"
                     "Userbot hali to'lovni aniqlamadi.\n"
                     "Admin panelda tekshiring."
                 )
 
             caption = (
-                f"🧾 <b>TO'LOV CHEKI</b>\n\n"
+                f"🧾 <b>TO'LOV CHEKI</b>\n"
+                f"━━━━━━━━━━━━━━━━━━━━\n\n"
                 f"👤 <b>Ism:</b> {info.get('user_name') or '-'}\n"
                 f"📱 <b>Telefon:</b> +998 {info.get('phone') or '-'}\n"
                 f"🆔 <b>ID:</b> <code>{info.get('telegram_id')}</code>\n"
@@ -893,7 +1006,7 @@ class CardinalBot:
             )
             await self.bot.send_photo(
                 BOT.ADMIN_CHAT_ID, photo,
-                caption=caption, parse_mode="HTML"
+                caption=pe(caption), parse_mode="HTML"
             )
         except Exception as e:
             logger.error(f"send_receipt_to_admin: {e}", exc_info=True)
@@ -902,7 +1015,7 @@ class CardinalBot:
     # START
     # ============================================================
     async def start(self):
-        logger.info("🚀 CardinalBot v5.7 ishga tushdi")
+        logger.info("CardinalBot v6.0 (Premium Emoji) ishga tushdi")
         await self.userbot.start()
         await self.cleaner.start()
         await self.dp.start_polling(self.bot)
