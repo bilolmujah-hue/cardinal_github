@@ -1,9 +1,8 @@
 """
-Cardinal Bot v6.0 - Premium Emoji
+Cardinal Bot v6.1 - Premium Emoji + Button Icons
 - Barcha xabarlar premium emoji bilan
+- Inline tugmalarda premium emoji ikonkalar
 - Kanal posti ham premium
-- Faqat premium (fallback yo'q)
-- Chiroyli mukammal matnlar
 """
 import asyncio
 import logging
@@ -95,15 +94,31 @@ PREMIUM_EMOJI = {
     "🆕": "5382357040008021292",
     "✉️": "5253742260054409879",
     "⬇️": "5406745015365943482",
+    "💬": "5253742260054409879",
 }
 
-# Uzunlikka qarab saralash — uzunroqdan qisqaroqqa
+# Qisqa nomlar — tugma ikonkalari uchun
+EMOJI_ID = {
+    "webapp": "5447410659077661506",
+    "channel": "5278256077954105203",
+    "check": "5206607081334906820",
+    "cross": "5210952531676504517",
+    "person": "5879770735999717115",
+    "phone": "5467539229468793355",
+    "card": "5445353829304387411",
+    "info": "5334544901428229844",
+    "shield": "5251203410396458957",
+    "money": "5224257782013769471",
+    "game": "5361741454685256344",
+    "message": "5253742260054409879",
+    "wallet": "5445353829304387411",
+}
+
 _EMOJI_KEYS = sorted(PREMIUM_EMOJI.keys(), key=len, reverse=True)
 _EMOJI_PATTERN = re.compile("|".join(re.escape(e) for e in _EMOJI_KEYS))
 
 
 def pe(text: str) -> str:
-    """Matndagi oddiy emojilarni premium emojilarga aylantiradi."""
     if not text:
         return text
     def repl(m):
@@ -177,11 +192,26 @@ def safe_name(u) -> str:
 
 
 def _json_default(obj):
-    """Decimal, datetime va boshqa JSON tushunmaydigan turlar uchun."""
     try:
         return str(obj)
     except Exception:
         return None
+
+
+def ikb(text: str, emoji_key: str = None, **kwargs) -> InlineKeyboardButton:
+    """Premium emoji ikonka bilan InlineKeyboardButton yasash.
+    Agar aiogram icon_custom_emoji_id ni qo'llab-quvvatlamasa — oddiy tugma.
+    """
+    if emoji_key and emoji_key in EMOJI_ID:
+        try:
+            return InlineKeyboardButton(
+                text=text,
+                icon_custom_emoji_id=EMOJI_ID[emoji_key],
+                **kwargs
+            )
+        except TypeError:
+            pass
+    return InlineKeyboardButton(text=text, **kwargs)
 
 
 # ============================================================
@@ -202,9 +232,6 @@ class CardinalBot:
         self._register_handlers()
         self._register_callbacks()
 
-    # ============================================================
-    # SILENT PAYMENT
-    # ============================================================
     async def _on_payment_received(self, amount: int, payer_last4: str, raw: str) -> dict:
         try:
             result = await self.db.match_payment(amount, payer_last4)
@@ -216,9 +243,6 @@ class CardinalBot:
             logger.error(f"Payment match xato: {e}", exc_info=True)
             return {"ok": False, "reason": "error"}
 
-    # ============================================================
-    # HANDLERS
-    # ============================================================
     def _register_handlers(self):
         self.dp.message.register(self.cmd_start, CommandStart())
         self.dp.message.register(self.cmd_admin, Command("admin"))
@@ -295,15 +319,12 @@ class CardinalBot:
             first_name=u.first_name, last_name=u.last_name
         )
 
-        # /start=create
         args = (message.text or "").split(maxsplit=1)
         if len(args) > 1 and args[1].strip() == "create":
             if await self.db.is_registered(u.id):
                 kb = InlineKeyboardMarkup(inline_keyboard=[[
-                    InlineKeyboardButton(
-                        text="🌐 Reklama berish",
-                        web_app=WebAppInfo(url=BOT.WEB_APP_URL + "?open=create")
-                    )
+                    ikb("Reklama berish", "channel",
+                        web_app=WebAppInfo(url=BOT.WEB_APP_URL + "?open=create"))
                 ]])
                 await message.answer(
                     pe("📢 <b>REKLAMA BERISH</b>\n\n"
@@ -344,12 +365,11 @@ class CardinalBot:
 
     async def _show_main_menu(self, message: Message):
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🌐 Web App ni ochish", web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
-            [InlineKeyboardButton(text="📢 Asosiy kanal", url=BOT.ADS_CHANNEL_INVITE)],
-            [InlineKeyboardButton(
-                text="📢 " + BOT.PUBLIC_CHANNEL_NAME,
-                url=f"https://t.me/{BOT.PUBLIC_CHANNEL_USERNAME.replace('@','')}"
-            )],
+            [ikb("Web App ni ochish", "webapp",
+                 web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
+            [ikb("Asosiy kanal", "channel", url=BOT.ADS_CHANNEL_INVITE)],
+            [ikb(BOT.PUBLIC_CHANNEL_NAME, "channel",
+                 url=f"https://t.me/{BOT.PUBLIC_CHANNEL_USERNAME.replace('@','')}")],
         ])
         rkb = ReplyKeyboardMarkup(
             keyboard=[
@@ -501,9 +521,6 @@ class CardinalBot:
         )
         await self._show_main_menu(message)
 
-    # ============================================================
-    # PROFILE
-    # ============================================================
     async def handle_profile_btn(self, message: Message):
         u = await self.db.get_user(message.from_user.id)
         if not u:
@@ -537,13 +554,11 @@ class CardinalBot:
         )
 
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🌐 Web App ni ochish", web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
+            [ikb("Web App ni ochish", "webapp",
+                 web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
         ])
         await message.answer(pe(text), parse_mode="HTML", reply_markup=kb)
 
-    # ============================================================
-    # TRANZAKSIYALAR
-    # ============================================================
     async def handle_tx_btn(self, message: Message):
         user_id = message.from_user.id
         if await self.db.is_blocked(user_id):
@@ -613,9 +628,6 @@ class CardinalBot:
         else:
             await message.answer(pe(text), parse_mode="HTML")
 
-    # ============================================================
-    # BOT HAQIDA
-    # ============================================================
     async def handle_about_btn(self, message: Message):
         days = await self.db.get_ad_days()
         text = (
@@ -639,7 +651,8 @@ class CardinalBot:
             f"⚡️ Reklama muddati: {days} kun\n"
         )
         kb = InlineKeyboardMarkup(inline_keyboard=[
-            [InlineKeyboardButton(text="🌐 Web App ni ochish", web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
+            [ikb("Web App ni ochish", "webapp",
+                 web_app=WebAppInfo(url=BOT.WEB_APP_URL))],
         ])
         await message.answer(pe(text), parse_mode="HTML", reply_markup=kb)
 
@@ -669,9 +682,6 @@ class CardinalBot:
                 parse_mode="HTML"
             )
 
-    # ============================================================
-    # SUBSCRIPTION
-    # ============================================================
     async def _check_subscription(self, user_id: int) -> list:
         not_sub = []
         for ch in BOT.REQUIRED_CHANNELS:
@@ -696,16 +706,10 @@ class CardinalBot:
             else:
                 uname = ch["username"].replace("@", "")
                 url = f"https://t.me/{uname}"
-            btns.append([InlineKeyboardButton(
-                text=f"📢 {ch['name']}",
-                url=url
-            )])
-        btns.append([InlineKeyboardButton(text="✔️ Tekshirish", callback_data="check_sub")])
+            btns.append([ikb(ch['name'], "channel", url=url)])
+        btns.append([ikb("Tekshirish", "check", callback_data="check_sub")])
         return InlineKeyboardMarkup(inline_keyboard=btns)
 
-    # ============================================================
-    # ADMIN APPROVE / REJECT
-    # ============================================================
     async def _approve_ad(self, ad_id: int, cb: CallbackQuery):
         ad = await self.db.get_ad(ad_id)
         if not ad:
@@ -762,9 +766,6 @@ class CardinalBot:
         await cb.message.edit_reply_markup(reply_markup=None)
         await cb.answer("❌ Rad etildi")
 
-    # ============================================================
-    # KANALGA JOYLASH — PREMIUM EMOJI
-    # ============================================================
     async def _post_to_channel(self, ad: dict):
         try:
             acc = ad.get("account_data", {}) or {}
@@ -842,10 +843,8 @@ class CardinalBot:
             text = "\n".join(lines)
 
             kb = InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(
-                    text="📢 Reklama berish",
-                    url=f"https://t.me/{BOT.USERNAME}?start=create"
-                )
+                ikb("Reklama berish", "channel",
+                    url=f"https://t.me/{BOT.USERNAME}?start=create")
             ]])
 
             caption = pe(text)
@@ -865,9 +864,6 @@ class CardinalBot:
         except Exception as e:
             logger.error(f"Kanalga joylash xato: {e}", exc_info=True)
 
-    # ============================================================
-    # ADMIN NOTIFY — YANGI REKLAMA
-    # ============================================================
     async def notify_admin_new_ad(self, ad: dict):
         try:
             cur = CURRENCIES.get(ad.get("currency", "UZS"), CURRENCIES["UZS"])
@@ -881,8 +877,8 @@ class CardinalBot:
                 "👇 Tasdiqlaysizmi?"
             )
             kb = InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(text="✔️ Tasdiqlash", callback_data=f"approve_ad_{ad['id']}"),
-                InlineKeyboardButton(text="❌ Rad etish", callback_data=f"reject_ad_{ad['id']}"),
+                ikb("Tasdiqlash", "check", callback_data=f"approve_ad_{ad['id']}"),
+                ikb("Rad etish", "cross", callback_data=f"reject_ad_{ad['id']}"),
             ]])
             caption = pe(text)
             if ad.get("video_file_id"):
@@ -898,9 +894,6 @@ class CardinalBot:
         except Exception as e:
             logger.error(f"Admin notify xato: {e}")
 
-    # ============================================================
-    # VIP XIZMAT SO'ROVI
-    # ============================================================
     async def notify_admin_vip_request(self, info: dict):
         try:
             acc = info.get("account_data", {}) or {}
@@ -943,10 +936,8 @@ class CardinalBot:
             text = "\n".join(lines)
 
             kb = InlineKeyboardMarkup(inline_keyboard=[[
-                InlineKeyboardButton(
-                    text="💬 Foydalanuvchiga yozish",
-                    url=f"tg://user?id={info.get('telegram_id')}"
-                )
+                ikb("Foydalanuvchiga yozish", "message",
+                    url=f"tg://user?id={info.get('telegram_id')}")
             ]])
 
             await self.bot.send_message(
@@ -956,9 +947,6 @@ class CardinalBot:
         except Exception as e:
             logger.error(f"VIP notify: {e}", exc_info=True)
 
-    # ============================================================
-    # RECEIPT
-    # ============================================================
     async def send_receipt_to_admin(self, receipt_data_url: str, info: dict, completed: bool):
         try:
             header, encoded = receipt_data_url.split(",", 1)
@@ -993,11 +981,8 @@ class CardinalBot:
         except Exception as e:
             logger.error(f"send_receipt_to_admin: {e}", exc_info=True)
 
-    # ============================================================
-    # START
-    # ============================================================
     async def start(self):
-        logger.info("CardinalBot v6.0 (Premium Emoji) ishga tushdi")
+        logger.info("CardinalBot v6.1 (Premium Emoji + Button Icons) ishga tushdi")
         await self.userbot.start()
         await self.cleaner.start()
         await self.dp.start_polling(self.bot)
