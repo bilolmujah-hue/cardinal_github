@@ -46,14 +46,13 @@ a{color:inherit;text-decoration:none}
   --icon-color:#60A5FA;
 }
 body.dark{
-  --bg:#242C3A;--bg-2:#2A3342;--surface:#2E3849;--surface-2:#343F52;--surface-3:#3D4A5E;
-  --border:rgba(148,163,184,.14);--border-2:rgba(148,163,184,.22);--border-3:rgba(148,163,184,.34);
-  --blue:#60A5FA;--blue-2:#3B82F6;--cyan:#22D3EE;--sky:#38BDF8;
-  --text:#F1F5F9;--text-2:#CBD5E1;--text-3:#94A3B8;--text-4:#64748B;
-  --shadow-sm:0 1px 3px rgba(0,0,0,.3);--shadow:0 4px 16px rgba(0,0,0,.35);--shadow-lg:0 12px 40px rgba(0,0,0,.45);
-  --icon-color:#60A5FA;
+  --bg:#0B0F0B;--bg-2:#0F1410;--surface:#141A14;--surface-2:#1A211A;--surface-3:#202820;
+  --border:rgba(148,163,140,.10);--border-2:rgba(148,163,140,.18);--border-3:rgba(148,163,140,.30);
+  --blue:#C8FF3D;--blue-2:#A8E02E;--cyan:#9BCF2F;--sky:#B8E84A;
+  --text:#F1F5E8;--text-2:#C5CDB8;--text-3:#8A9480;--text-4:#5A6650;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.5);--shadow:0 4px 16px rgba(0,0,0,.55);--shadow-lg:0 12px 40px rgba(0,0,0,.65);
+  --icon-color:#C8FF3D;
 }
-
 /* ---------- SVG ICONS ---------- */
 svg.ico{width:20px;height:20px;stroke-width:2;stroke:currentColor;fill:none;stroke-linecap:round;stroke-linejoin:round;flex-shrink:0;vertical-align:middle;display:inline-block}
 svg.ico-sm{width:14px;height:14px;stroke-width:2.2}
@@ -90,7 +89,7 @@ svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 /* ---------- BOTTOM NAV ---------- */
 .nav{position:fixed;left:0;right:0;bottom:0;z-index:100;padding:0 12px calc(8px + env(safe-area-inset-bottom,0));background:linear-gradient(180deg,transparent,var(--bg) 30%);pointer-events:none}
 .nav-in{max-width:680px;margin:0 auto;background:var(--surface);border:1px solid var(--border-2);border-radius:22px;padding:6px;display:grid;grid-template-columns:repeat(5,1fr);gap:2px;pointer-events:auto;box-shadow:0 -8px 40px rgba(0,0,0,.08)}
-body.dark .nav-in{background:rgba(15,23,41,.95);backdrop-filter:blur(24px);box-shadow:0 -8px 40px rgba(0,0,0,.6)}
+body.dark .nav-in{background:rgba(20,26,20,.95);backdrop-filter:blur(24px);box-shadow:0 -8px 40px rgba(0,0,0,.7)}
 .nav-btn{display:flex;flex-direction:column;align-items:center;gap:3px;padding:8px 2px;border-radius:16px;color:var(--text-3);font-size:9.5px;font-weight:600;transition:all .2s}
 .nav-btn .nav-icon{width:24px;height:24px;display:flex;align-items:center;justify-content:center}
 .nav-btn .nav-icon svg{width:22px;height:22px;stroke-width:2}
@@ -130,9 +129,9 @@ body.dark .nav-in{background:rgba(15,23,41,.95);backdrop-filter:blur(24px);box-s
 .ad-badge.vip{background:linear-gradient(135deg,#8B5CF6,#7C3AED);color:#fff}
 .ad-badge.rare{background:linear-gradient(135deg,#06B6D4,#0EA5E9);color:#fff}
 .ad-badge.std{background:rgba(255,255,255,.95);color:#3B82F6}
-body.dark .ad-badge.std{background:rgba(15,23,41,.9);color:#93C5FD}
+body.dark .ad-badge.std{background:rgba(20,26,20,.92);color:#C8FF3D}
 .ad-heart{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;z-index:5}
-body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1)}
+body.dark .ad-heart{background:rgba(20,26,20,.75);border-color:rgba(255,255,255,.12)}
 .ad-heart svg{width:18px;height:18px;stroke:#64748B;stroke-width:2;fill:none;transition:all .25s}
 .ad-heart.saved svg{fill:var(--heart);stroke:var(--heart)}
 .ad-admin-del{position:absolute;top:54px;right:10px;width:36px;height:36px;border-radius:12px;background:rgba(239,68,68,.95);display:flex;align-items:center;justify-content:center;z-index:5;color:#fff}
@@ -491,7 +490,7 @@ body.dark .ad-heart{background:rgba(7,10,18,.6);border-color:rgba(255,255,255,.1
 
 /* ---------- LOADER ---------- */
 .load{position:fixed;inset:0;z-index:9999;background:rgba(245,247,251,.85);backdrop-filter:blur(12px);display:none;align-items:center;justify-content:center}
-body.dark .load{background:rgba(7,10,18,.85)}
+body.dark .load{background:rgba(11,15,11,.88)}
 .load.active{display:flex}
 .spin{width:48px;height:48px;border:3px solid rgba(59,130,246,.15);border-top-color:#3B82F6;border-right-color:#06B6D4;border-radius:50%;animation:spin .8s linear infinite}
 @keyframes spin{to{transform:rotate(360deg)}}
