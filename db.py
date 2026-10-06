@@ -1,10 +1,11 @@
 """
-Cardinal DB v5.7
+Cardinal DB v6.0
 - Settings jadvali (ad_days)
-- topup_requests.seen (qayta chiqmaslik uchun)
+- topup_requests.seen
 - Soft delete kartalar
 - Karta holder
 - Cleanup: get_expired_ads + expire_ad
+- SOLD status (sotildi)
 """
 import asyncpg
 import json
@@ -71,6 +72,7 @@ class Database:
                     tariff INTEGER, status VARCHAR(20) DEFAULT 'PENDING',
                     views INTEGER DEFAULT 0, reject_reason TEXT,
                     channel_msg_id BIGINT, top_until TIMESTAMP, expires_at TIMESTAMP,
+                    sold_at TIMESTAMP,
                     created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
@@ -159,6 +161,16 @@ class Database:
                     updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # VIP requests
+            await c.execute("""
+                CREATE TABLE IF NOT EXISTS vip_requests (
+                    id SERIAL PRIMARY KEY,
+                    user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
+                    price BIGINT NOT NULL DEFAULT 49000,
+                    status VARCHAR(20) DEFAULT 'NEW',
+                    created_at TIMESTAMP DEFAULT NOW()
+                );
+            """)
 
         await self._migrate()
         await self._seed_cards()
@@ -174,6 +186,7 @@ class Database:
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS top_until TIMESTAMP",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'UZS'",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS account_data JSONB DEFAULT '{}'::jsonb",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS sold_at TIMESTAMP",
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS receipt_url TEXT",
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS matched_at TIMESTAMP",
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
@@ -375,7 +388,6 @@ class Database:
                 return False
 
     async def remove_card(self, card_id):
-        """Soft delete."""
         async with self.pool.acquire() as c:
             await c.execute("UPDATE cards SET is_active=FALSE WHERE id=$1", card_id)
             return True
@@ -466,6 +478,7 @@ class Database:
                 SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
                        a.currency, a.location, a.full_location, a.account_data, a.tariff,
                        a.status, a.views, a.reject_reason, a.top_until, a.expires_at,
+                       a.sold_at,
                        a.created_at, a.updated_at
                 FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE u.telegram_id=$1 ORDER BY a.created_at DESC LIMIT 50
@@ -493,6 +506,17 @@ class Database:
                 await c.execute("UPDATE ads SET status=$1, reject_reason=$2, updated_at=NOW() WHERE id=$3",
                                 status, reason, ad_id)
 
+    async def mark_ad_sold(self, ad_id, telegram_id):
+        """E'lonni SOLD qiladi. Faqat egasi o'zi belgilashi mumkin."""
+        async with self.pool.acquire() as c:
+            u = await self.get_user(telegram_id)
+            if not u: return False
+            r = await c.execute("""
+                UPDATE ads SET status='SOLD', sold_at=NOW(), updated_at=NOW()
+                WHERE id=$1 AND user_id=$2 AND status='ACTIVE'
+            """, ad_id, u["id"])
+            return r == "UPDATE 1"
+
     async def delete_ad(self, ad_id):
         async with self.pool.acquire() as c:
             await c.execute("DELETE FROM ads WHERE id=$1", ad_id)
@@ -502,10 +526,9 @@ class Database:
             await c.execute("UPDATE ads SET views=views+1 WHERE id=$1", ad_id)
 
     # ============================================================
-    # CLEANUP — muddati o'tgan reklamalar
+    # CLEANUP
     # ============================================================
     async def get_expired_ads(self):
-        """Muddati o'tgan aktiv reklamalarni oladi (kanal posti o'chirilishi uchun)."""
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
                 SELECT id, video_file_id, channel_msg_id, tariff
@@ -518,7 +541,6 @@ class Database:
             return [dict(r) for r in rows]
 
     async def expire_ad(self, ad_id):
-        """Reklamani EXPIRED qiladi va video_file_id ni tozalaydi."""
         async with self.pool.acquire() as c:
             await c.execute(
                 "UPDATE ads SET status='EXPIRED', video_file_id=NULL, updated_at=NOW() WHERE id=$1",
@@ -610,7 +632,6 @@ class Database:
             return dict(r) if r else None
 
     async def get_last_unseen_topup(self, telegram_id):
-        """Faqat 'seen=FALSE' va 'COMPLETED' bo'lgan oxirgi so'rov."""
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return None
@@ -630,16 +651,6 @@ class Database:
                 WHERE user_id=$1 AND status='COMPLETED' AND seen=FALSE
             """, u["id"])
             return True
-
-    async def get_topup_by_id(self, req_id):
-        async with self.pool.acquire() as c:
-            r = await c.fetchrow("""
-                SELECT t.*, c.holder AS card_holder
-                FROM topup_requests t
-                LEFT JOIN cards c ON c.id = t.card_id
-                WHERE t.id=$1
-            """, req_id)
-            return dict(r) if r else None
 
     async def expire_old_topups(self):
         async with self.pool.acquire() as c:
@@ -853,11 +864,6 @@ class Database:
             q += " ORDER BY id"
             return [dict(r) for r in await c.fetch(q)]
 
-    async def get_admin_contact(self, contact_id):
-        async with self.pool.acquire() as c:
-            r = await c.fetchrow("SELECT * FROM admin_contacts WHERE id=$1", contact_id)
-            return dict(r) if r else None
-
     async def delete_admin_contact(self, contact_id):
         async with self.pool.acquire() as c:
             await c.execute("DELETE FROM admin_contacts WHERE id=$1", contact_id)
@@ -870,3 +876,34 @@ class Database:
             new_state = not r["is_active"]
             await c.execute("UPDATE admin_contacts SET is_active=$1, updated_at=NOW() WHERE id=$2", new_state, contact_id)
             return new_state
+
+    # ============================================================
+    # VIP REQUESTS
+    # ============================================================
+    async def create_vip_request(self, telegram_id, price=49000):
+        async with self.pool.acquire() as c:
+            u = await self.get_user(telegram_id)
+            if not u: return None
+            if u["balance"] < price:
+                return None
+            async with c.transaction():
+                # Balansdan yechish
+                await c.execute("""
+                    UPDATE users SET balance=balance-$1, spent=spent+$1, updated_at=NOW()
+                    WHERE id=$2
+                """, price, u["id"])
+                await c.execute("""
+                    INSERT INTO transactions (user_id, amount, type, description, status)
+                    VALUES ($1, $2, 'spend', 'VIP xizmat', 'APPROVED')
+                """, u["id"], price)
+                rid = await c.fetchval("""
+                    INSERT INTO vip_requests (user_id, price, status)
+                    VALUES ($1, $2, 'NEW') RETURNING id
+                """, u["id"], price)
+            fresh = await self.get_user(telegram_id)
+            return {
+                "id": rid,
+                "balance": fresh["balance"] if fresh else (u["balance"] - price),
+                "price": price,
+                "user": u,
+            }
