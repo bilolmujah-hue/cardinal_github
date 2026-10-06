@@ -10,9 +10,6 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700;800&family=Space+Grotesk:wght@500;600;700&display=swap" rel="stylesheet">
 <style>
-/* ============================================================
-   RESET
-   ============================================================ */
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;-webkit-tap-highlight-color:transparent}
 html,body{width:100%;min-height:100%;overflow-x:hidden}
 body{font-family:'Manrope',-apple-system,system-ui,sans-serif;background:var(--bg);color:var(--text);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased;padding-bottom:calc(96px + env(safe-area-inset-bottom,0));transition:background .3s,color .3s;position:relative;min-height:100vh}
@@ -26,9 +23,6 @@ input,select,textarea{outline:0;border:0;background:none}
 img,video{display:block;max-width:100%}
 a{color:inherit;text-decoration:none}
 
-/* ============================================================
-   THEME VARS
-   ============================================================ */
 :root{
   --bg:#F5F7FB;--bg-2:rgba(255,255,255,.85);--surface:#FFFFFF;--surface-2:#F3F5FA;--surface-3:#E5E9F2;
   --border:rgba(15,23,42,.08);--border-2:rgba(15,23,42,.14);--border-3:rgba(15,23,42,.24);
@@ -52,42 +46,12 @@ svg.ico{width:20px;height:20px;stroke-width:2;stroke:currentColor;fill:none;stro
 svg.ico-sm{width:14px;height:14px;stroke-width:2.2}
 svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 
-/* ============================================================
-   ANIMATIONS — FLOATING / SHAKE / PRESS
-   ============================================================ */
-@keyframes floatSoft{
-  0%   {transform:translateY(0) rotate(0deg)}
-  25%  {transform:translateY(-2px) rotate(-1.2deg)}
-  50%  {transform:translateY(-4px) rotate(0deg)}
-  75%  {transform:translateY(-2px) rotate(1.2deg)}
-  100% {transform:translateY(0) rotate(0deg)}
-}
-@keyframes floatIcon{
-  0%   {transform:translateY(0) rotate(0deg) scale(1)}
-  30%  {transform:translateY(-2.5px) rotate(-2deg) scale(1.03)}
-  60%  {transform:translateY(-3.5px) rotate(2deg) scale(1.04)}
-  100% {transform:translateY(0) rotate(0deg) scale(1)}
-}
-@keyframes pulseGlow{
-  0%,100%{box-shadow:0 8px 24px rgba(59,130,246,.35),0 0 0 0 rgba(59,130,246,.35)}
-  50%    {box-shadow:0 8px 28px rgba(59,130,246,.5),0 0 0 8px rgba(59,130,246,0)}
-}
-@keyframes shimmer{
-  0%  {transform:translateX(-100%)}
-  55%,100%{transform:translateX(200%)}
-}
-@keyframes floatNav{
-  0%,100%{transform:translateY(0)}
-  50%    {transform:translateY(-2px)}
-}
-@keyframes iconWiggle{
-  0%,100%{transform:rotate(0deg) scale(1)}
-  25%    {transform:rotate(-6deg) scale(1.05)}
-  75%    {transform:rotate(6deg) scale(1.05)}
-}
-@keyframes rippleAnim{
-  to{transform:scale(4);opacity:0}
-}
+@keyframes floatSoft{0%{transform:translateY(0) rotate(0deg)}25%{transform:translateY(-2px) rotate(-1.2deg)}50%{transform:translateY(-4px) rotate(0deg)}75%{transform:translateY(-2px) rotate(1.2deg)}100%{transform:translateY(0) rotate(0deg)}}
+@keyframes floatIcon{0%{transform:translateY(0) rotate(0deg) scale(1)}30%{transform:translateY(-2.5px) rotate(-2deg) scale(1.03)}60%{transform:translateY(-3.5px) rotate(2deg) scale(1.04)}100%{transform:translateY(0) rotate(0deg) scale(1)}}
+@keyframes pulseGlow{0%,100%{box-shadow:0 8px 24px rgba(59,130,246,.35),0 0 0 0 rgba(59,130,246,.35)}50%{box-shadow:0 8px 28px rgba(59,130,246,.5),0 0 0 8px rgba(59,130,246,0)}}
+@keyframes shimmer{0%{transform:translateX(-100%)}55%,100%{transform:translateX(200%)}}
+@keyframes iconWiggle{0%,100%{transform:rotate(0deg) scale(1)}25%{transform:rotate(-6deg) scale(1.05)}75%{transform:rotate(6deg) scale(1.05)}}
+@keyframes rippleAnim{to{transform:scale(4);opacity:0}}
 @keyframes spin{to{transform:rotate(360deg)}}
 @keyframes pulseSoft{0%,100%{transform:scale(1)}50%{transform:scale(1.06)}}
 @keyframes splashBar{0%{transform:translateX(-100%)}100%{transform:translateX(100%)}}
@@ -107,70 +71,23 @@ svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.6}}
 @keyframes splashGlow{0%{opacity:.7}100%{opacity:1}}
 
-/* Apply float to topbar elements */
 .tb-theme{animation:floatSoft 3.4s ease-in-out infinite}
 .tb-balance-icon{animation:floatIcon 3.8s ease-in-out infinite}
 .tb-topup-btn{animation:floatSoft 3.2s ease-in-out infinite .4s}
 .tb-avatar{animation:floatSoft 4.2s ease-in-out infinite .8s}
-
-/* Nav buttons — subtle float */
 .nav-btn.nav-create .nav-icon{animation:floatIcon 3.6s ease-in-out infinite .2s}
 .nav-btn[data-nav="pageDashboard"] .nav-icon{animation:floatIcon 3.9s ease-in-out infinite .5s}
 .nav-btn[data-nav="pageSaved"] .nav-icon{animation:floatIcon 4.1s ease-in-out infinite 1s}
 .nav-btn[data-nav="pageMyAds"] .nav-icon{animation:floatIcon 3.7s ease-in-out infinite 1.4s}
 .nav-btn[data-nav="pageProfile"] .nav-icon{animation:floatIcon 4.3s ease-in-out infinite 1.8s}
-
-/* Category buttons — subtle float */
 .cat svg{animation:floatIcon 3.5s ease-in-out infinite .3s}
-.cat:nth-child(2) svg{animation-delay:.7s}
-.cat:nth-child(3) svg{animation-delay:1.1s}
-.cat:nth-child(4) svg{animation-delay:1.5s}
-
-/* Menu icons float */
 .menu-ic{animation:floatIcon 3.8s ease-in-out infinite .2s}
-.menu-item:nth-child(2) .menu-ic{animation-delay:.6s}
-.menu-item:nth-child(3) .menu-ic{animation-delay:1s}
-.menu-item:nth-child(4) .menu-ic{animation-delay:1.4s}
-.menu-item:nth-child(5) .menu-ic{animation-delay:1.8s}
-.menu-item:nth-child(6) .menu-ic{animation-delay:2.2s}
-.menu-item:nth-child(7) .menu-ic{animation-delay:2.6s}
-.menu-item:nth-child(8) .menu-ic{animation-delay:3s}
-
-/* Card box icons */
 .card-box-ic{animation:floatIcon 4s ease-in-out infinite .3s}
-.card-box:nth-child(2) .card-box-ic{animation-delay:.7s}
-.card-box:nth-child(3) .card-box-ic{animation-delay:1.1s}
-.card-box:nth-child(4) .card-box-ic{animation-delay:1.5s}
-.card-box:nth-child(5) .card-box-ic{animation-delay:1.9s}
-
-/* Profile badge */
 .profile-av-badge{animation:floatIcon 3.4s ease-in-out infinite .5s}
-
-/* Navbar icons — wiggle on active */
 .nav-btn.active .nav-icon svg{animation:iconWiggle 2.5s ease-in-out infinite}
 
-/* Balance icon pulse on hover */
-.tb-balance-icon:hover{animation:floatIcon 1.6s ease-in-out infinite}
-
-/* Ripple effect */
 .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.55);transform:scale(0);animation:rippleAnim .6s ease-out;pointer-events:none;z-index:0}
 
-/* Animated button shimmer */
-.btn-anim{position:relative;overflow:hidden;isolation:isolate}
-.btn-anim::before{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-100%);animation:shimmer 3.2s ease-in-out infinite;pointer-events:none;z-index:1}
-.btn-anim > *{position:relative;z-index:2}
-
-/* Press animation — universal */
-.btn:active,.icon-btn:active,.cat:active,.nav-btn:active .nav-icon,
-.menu-item:active,.tb-theme:active,.tb-topup-btn:active,.tb-balance-card:active,
-.ac-btn:active,.contact-btn:active,.admin-tab:active,.quick-amount:active,
-.card-item .icon-btn:active,.ac-card:active{
-  transition:transform .15s cubic-bezier(.34,1.56,.64,1)
-}
-
-/* ============================================================
-   SPLASH
-   ============================================================ */
 #splash{position:fixed;inset:0;z-index:10000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;overflow:hidden;transition:opacity .6s ease, visibility .6s ease}
 #splash::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 35%,rgba(96,165,250,.20),transparent 55%),radial-gradient(circle at 80% 80%,rgba(34,211,238,.14),transparent 55%),radial-gradient(circle at 20% 90%,rgba(139,92,246,.12),transparent 60%);pointer-events:none;animation:splashGlow 6s ease-in-out infinite alternate}
 #splash.hide{opacity:0;visibility:hidden;pointer-events:none}
@@ -185,9 +102,6 @@ svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 .splash-bar{margin-top:22px;width:180px;height:3px;border-radius:10px;background:var(--surface-3);overflow:hidden;position:relative;animation:splashLoadIn 1s .7s cubic-bezier(.16,1,.3,1) both}
 .splash-bar::after{content:"";position:absolute;inset:0;background:linear-gradient(90deg,transparent,#3B82F6,#06B6D4,transparent);animation:splashBar 1.6s ease-in-out infinite}
 
-/* ============================================================
-   TOPBAR
-   ============================================================ */
 .topbar{position:sticky;top:0;z-index:50;background:var(--bg-2);backdrop-filter:blur(24px) saturate(150%);-webkit-backdrop-filter:blur(24px) saturate(150%);border-bottom:1px solid var(--border);padding:14px 16px 12px}
 .topbar-in{max-width:1200px;margin:0 auto;display:flex;flex-direction:column;gap:12px}
 .tb-row-1{display:flex;align-items:center;gap:12px}
@@ -198,27 +112,21 @@ svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 .tb-hello{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--text-3);text-transform:uppercase;margin-bottom:2px}
 .tb-name{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:800;color:var(--text);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
 .tb-theme{width:42px;height:42px;flex-shrink:0;border-radius:14px;background:linear-gradient(135deg,rgba(139,92,246,.14),rgba(59,130,246,.10));border:1.5px solid rgba(139,92,246,.32);display:flex;align-items:center;justify-content:center;color:#A78BFA;transition:all .25s cubic-bezier(.16,1,.3,1);position:relative;overflow:hidden}
-.tb-theme::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 50%,rgba(139,92,246,.35),transparent 70%);opacity:0;transition:opacity .25s}
-.tb-theme:active{transform:scale(.9) rotate(-15deg)}
-.tb-theme:active::before{opacity:1}
 .tb-theme svg{width:20px;height:20px;stroke-width:2.2;position:relative;z-index:1;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
 .tb-theme svg.spin-once{transform:rotate(360deg)}
 body.dark .tb-theme{background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(245,158,11,.08));border-color:rgba(251,191,36,.32);color:#FBBF24}
 .tb-balance-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(59,130,246,.10),rgba(6,182,212,.05));border:1.5px solid var(--border-2);border-radius:20px;backdrop-filter:blur(12px);position:relative;overflow:hidden;transition:all .25s}
 body.dark .tb-balance-card{background:linear-gradient(135deg,rgba(96,165,250,.12),rgba(34,211,238,.06));border-color:rgba(148,163,184,.20)}
-.tb-balance-card::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 20% 50%,rgba(59,130,246,.10),transparent 60%);pointer-events:none}
-.tb-balance-icon{width:44px;height:44px;flex-shrink:0;border-radius:14px;background:linear-gradient(135deg,#3B82F6,#2563EB);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 8px 20px rgba(59,130,246,.35);position:relative;z-index:1}
+.tb-balance-icon{width:44px;height:44px;flex-shrink:0;border-radius:14px;background:linear-gradient(135deg,#3B82F6,#2563EB);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 8px 20px rgba(59,130,246,.35)}
 .tb-balance-icon svg{width:22px;height:22px;stroke-width:2.2}
-.tb-balance-info{flex:1;min-width:0;position:relative;z-index:1}
+.tb-balance-info{flex:1;min-width:0}
 .tb-balance-lbl{font-size:9.5px;font-weight:800;letter-spacing:.16em;color:var(--text-3);text-transform:uppercase;margin-bottom:3px}
 .tb-balance-val{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:800;color:var(--text);line-height:1.1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tb-balance-val small{font-size:12px;font-weight:700;color:var(--text-2);margin-left:3px}
-.tb-topup-btn{padding:12px 18px;border-radius:14px;background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;box-shadow:0 8px 20px rgba(59,130,246,.40);transition:all .22s cubic-bezier(.16,1,.3,1);position:relative;z-index:1;flex-shrink:0;border:1px solid rgba(255,255,255,.15)}
-.tb-topup-btn::before{content:"";position:absolute;inset:0;border-radius:14px;background:linear-gradient(135deg,rgba(255,255,255,.2),transparent 50%);opacity:.6;pointer-events:none}
+.tb-topup-btn{padding:12px 18px;border-radius:14px;background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;font-size:13px;font-weight:700;display:flex;align-items:center;gap:7px;box-shadow:0 8px 20px rgba(59,130,246,.40);transition:all .22s;border:1px solid rgba(255,255,255,.15)}
 .tb-topup-btn svg{width:15px;height:15px;stroke-width:2.5}
-.tb-topup-btn:active{transform:scale(.95);box-shadow:0 4px 12px rgba(59,130,246,.5)}
+.tb-topup-btn:active{transform:scale(.95)}
 
-/* LAYOUT */
 .container{width:100%;max-width:1200px;margin:0 auto;padding:0 16px}
 .page{display:none}
 .page.active{display:block;animation:pageIn .35s cubic-bezier(.16,1,.3,1)}
@@ -247,36 +155,41 @@ body.dark .nav-in{background:rgba(36,47,68,.95);backdrop-filter:blur(24px);box-s
 
 .cats{display:flex;gap:8px;overflow-x:auto;padding:16px 0 4px;margin:0 -16px;padding-left:16px;padding-right:16px;scrollbar-width:none}
 .cats::-webkit-scrollbar{display:none}
-.cat{flex-shrink:0;padding:11px 18px;background:linear-gradient(135deg,rgba(255,255,255,.55),rgba(255,255,255,.20));backdrop-filter:blur(12px);border:1.5px solid var(--border-2);border-radius:15px;color:var(--text-2);font-size:13px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:7px;transition:all .22s cubic-bezier(.16,1,.3,1);box-shadow:0 2px 10px rgba(15,23,42,.04),inset 0 1px 0 rgba(255,255,255,.65)}
-body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02));box-shadow:0 2px 10px rgba(0,0,0,.2),inset 0 1px 0 rgba(255,255,255,.04)}
+.cat{flex-shrink:0;padding:11px 18px;background:linear-gradient(135deg,rgba(255,255,255,.55),rgba(255,255,255,.20));backdrop-filter:blur(12px);border:1.5px solid var(--border-2);border-radius:15px;color:var(--text-2);font-size:13px;font-weight:700;white-space:nowrap;display:flex;align-items:center;gap:7px;transition:all .22s}
+body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,255,255,.02))}
 .cat svg{width:15px;height:15px;stroke-width:2.2}
 .cat:active{transform:scale(.93)}
-.cat.active{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;border-color:transparent;box-shadow:0 8px 24px rgba(59,130,246,.45),inset 0 1px 0 rgba(255,255,255,.2);font-weight:800}
+.cat.active{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;border-color:transparent;box-shadow:0 8px 24px rgba(59,130,246,.45);font-weight:800}
 .cat.active svg{stroke:#fff}
 
 .grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px;margin-top:16px}
 @media(min-width:640px){.grid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:960px){.grid{grid-template-columns:repeat(4,1fr)}}
 
-.ad{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .18s,box-shadow .18s}
+.ad{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;cursor:pointer;display:flex;flex-direction:column;transition:transform .18s}
 .ad:active{transform:scale(.97)}
 .ad-media{position:relative;aspect-ratio:1/1;background:var(--surface-2);overflow:hidden}
 .ad-media video,.ad-media img{width:100%;height:100%;object-fit:cover}
 .ad-media .placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-4)}
 .ad-media .placeholder svg{width:50px;height:50px}
-.ad-badge{position:absolute;top:10px;left:10px;padding:5px 10px;border-radius:9px;font-size:10px;font-weight:800;letter-spacing:.3px;text-transform:uppercase;display:flex;align-items:center;gap:4px}
-.ad-badge svg{width:11px;height:11px;stroke-width:2.5}
-.ad-badge.vip{background:linear-gradient(135deg,#8B5CF6,#7C3AED);color:#fff}
-.ad-badge.rare{background:linear-gradient(135deg,#06B6D4,#0EA5E9);color:#fff}
-.ad-badge.std{background:rgba(255,255,255,.95);color:#3B82F6}
-body.dark .ad-badge.std{background:rgba(36,47,68,.92);color:#93C5FD}
-.ad-heart{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:12px;background:rgba(255,255,255,.9);border:1px solid rgba(0,0,0,.06);display:flex;align-items:center;justify-content:center;z-index:5}
-body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,.12)}
-.ad-heart svg{width:18px;height:18px;stroke:#64748B;stroke-width:2;fill:none;transition:all .25s}
-.ad-heart.saved svg{fill:var(--heart);stroke:var(--heart)}
-.ad-heart:active{transform:scale(.85)}
-.ad-admin-del{position:absolute;top:54px;right:10px;width:36px;height:36px;border-radius:12px;background:rgba(239,68,68,.95);display:flex;align-items:center;justify-content:center;z-index:5;color:#fff}
-.ad-admin-del svg{width:18px;height:18px;stroke-width:2}
+/* Yurakcha — fon yo'q, faqat ikonka */
+.ad-heart{
+  position:absolute;top:8px;right:8px;
+  width:38px;height:38px;border-radius:50%;
+  background:transparent;border:none;
+  display:flex;align-items:center;justify-content:center;
+  z-index:5;padding:0;
+}
+.ad-heart svg{
+  width:26px;height:26px;
+  stroke:#fff;stroke-width:2.2;fill:none;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.55));
+  transition:all .25s cubic-bezier(.34,1.56,.64,1);
+}
+.ad-heart.saved svg{fill:var(--heart);stroke:var(--heart);filter:drop-shadow(0 2px 8px rgba(255,59,107,.6))}
+.ad-heart:active svg{transform:scale(.85)}
+.ad-admin-del{position:absolute;top:52px;right:8px;width:34px;height:34px;border-radius:12px;background:rgba(239,68,68,.95);display:flex;align-items:center;justify-content:center;z-index:5;color:#fff}
+.ad-admin-del svg{width:17px;height:17px;stroke-width:2}
 .ad-body{padding:12px;display:flex;flex-direction:column;gap:5px}
 .ad-title{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ad-meta{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:4px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -284,25 +197,24 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .ad-price{font-size:15px;font-weight:800;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 
 .empty{grid-column:1/-1;padding:60px 20px;text-align:center;color:var(--text-3)}
-.empty-icon{width:72px;height:72px;margin:0 auto 16px;border-radius:22px;background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(6,182,212,.05));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue);animation:floatIcon 4s ease-in-out infinite}
+.empty-icon{width:72px;height:72px;margin:0 auto 16px;border-radius:22px;background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(6,182,212,.05));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue)}
 .empty-icon svg{width:34px;height:34px;stroke-width:1.6}
 .empty h3{font-size:15px;font-weight:700;color:var(--text);margin-bottom:6px}
 .empty p{font-size:12.5px;color:var(--text-3);max-width:280px;margin:0 auto}
 
-.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:14px;font-size:13.5px;font-weight:700;transition:transform .18s cubic-bezier(.16,1,.3,1),box-shadow .18s;white-space:nowrap;position:relative;overflow:hidden}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:13px 20px;border-radius:14px;font-size:13.5px;font-weight:700;transition:transform .18s,box-shadow .18s;white-space:nowrap;position:relative;overflow:hidden}
 .btn svg{width:16px;height:16px}
 .btn:active{transform:scale(.95) rotate(-1deg)}
 .btn:disabled{opacity:.4;cursor:not-allowed}
 .btn-block{width:100%}
 .btn-primary{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;box-shadow:0 8px 24px rgba(59,130,246,.35)}
-.btn-primary:active{box-shadow:0 4px 14px rgba(59,130,246,.5)}
 .btn-secondary{background:var(--surface-2);border:1px solid var(--border-2);color:var(--text)}
 .btn-success{background:linear-gradient(135deg,#10B981,#059669);color:#fff}
 .btn-danger{background:linear-gradient(135deg,#EF4444,#DC2626);color:#fff}
 .btn-purple{background:linear-gradient(135deg,#8B5CF6,#7C3AED);color:#fff}
 .btn-ghost{background:rgba(59,130,246,.08);border:1px solid var(--border-2);color:var(--blue)}
 
-.icon-btn{width:44px;height:44px;flex-shrink:0;border-radius:14px;background:var(--surface-2);border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;transition:transform .18s cubic-bezier(.16,1,.3,1)}
+.icon-btn{width:44px;height:44px;flex-shrink:0;border-radius:14px;background:var(--surface-2);border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;transition:transform .18s}
 .icon-btn:active{transform:scale(.88) rotate(-5deg)}
 .icon-btn svg{width:20px;height:20px;stroke-width:2}
 .icon-btn.small{width:40px;height:40px;border-radius:12px}
@@ -311,7 +223,7 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .page-head{display:flex;align-items:center;gap:12px;padding:20px 0 8px}
 .page-head-txt{flex:1;min-width:0}
 .page-head h1{font-size:22px;font-weight:700;line-height:1.2;display:flex;align-items:center;gap:8px;color:var(--text)}
-.page-head h1 svg{width:22px;height:22px;color:var(--icon-color);animation:floatIcon 4s ease-in-out infinite}
+.page-head h1 svg{width:22px;height:22px;color:var(--icon-color)}
 .page-head p{font-size:12.5px;color:var(--text-3);margin-top:2px;font-weight:500}
 
 .field{margin-bottom:16px}
@@ -337,18 +249,21 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .dyn-row .input{flex:1;min-width:0}
 .dyn-del{width:46px;flex-shrink:0;background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.2);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#F87171}
 .dyn-del svg{width:16px;height:16px}
-.dyn-del:active{transform:scale(.88) rotate(-8deg)}
 
+/* ============================================================
+   CHIPS — Ulangan tarmoqlar (haqiqiy ikonkalar bilan)
+   ============================================================ */
 .chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
-.chip{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface-2);border:1.5px solid var(--border-2);border-radius:13px;font-size:12.5px;font-weight:600;color:var(--text-2);text-align:left;transition:transform .15s}
+.chip{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface-2);border:1.5px solid var(--border-2);border-radius:13px;font-size:12.5px;font-weight:600;color:var(--text-2);text-align:left;transition:all .18s}
 .chip.active{background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border-color:#3B82F6;color:var(--blue)}
 .chip:active{transform:scale(.95)}
 .chip-check{width:18px;height:18px;flex-shrink:0;border:2px solid var(--border-3);border-radius:6px;display:flex;align-items:center;justify-content:center}
 .chip.active .chip-check{background:#3B82F6;border-color:#3B82F6}
 .chip-check svg{width:11px;height:11px;stroke:#fff;stroke-width:3.5;opacity:0}
 .chip.active .chip-check svg{opacity:1}
-.chip-emoji{font-size:18px;line-height:1;flex-shrink:0}
-.chip.active .chip-emoji{animation:iconWiggle 2s ease-in-out infinite}
+.chip-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
+.chip-icon svg{width:20px;height:20px;display:block}
+.chip-icon svg.ico-style{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
 
 .cur-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .cur{padding:14px 8px;border-radius:14px;background:var(--surface-2);border:1.5px solid var(--border-2);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--text-2);transition:transform .15s}
@@ -358,9 +273,8 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .cur-sym{font-size:11px;font-weight:600;color:var(--text-4)}
 .cur.active{background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(6,182,212,.1));border-color:#3B82F6}
 .cur.active .cur-name{color:var(--blue)}
-.cur.active .cur-flag{animation:iconWiggle 2.2s ease-in-out infinite}
 
-.tariff{position:relative;padding:20px;background:var(--surface);border:2px solid var(--border-2);border-radius:var(--radius-lg);cursor:pointer;margin-bottom:12px;overflow:hidden;transition:all .25s cubic-bezier(.16,1,.3,1)}
+.tariff{position:relative;padding:20px;background:var(--surface);border:2px solid var(--border-2);border-radius:var(--radius-lg);cursor:pointer;margin-bottom:12px;overflow:hidden;transition:all .25s}
 .tariff:active{transform:scale(.98)}
 .tariff.selected{border-color:#3B82F6;box-shadow:0 20px 60px rgba(59,130,246,.25),0 0 0 4px rgba(59,130,246,.08)}
 .tariff-tag{position:absolute;top:0;right:0;padding:6px 14px;border-radius:0 var(--radius-lg) 0 14px;font-size:10px;font-weight:800;letter-spacing:.5px;text-transform:uppercase;color:#fff;display:flex;align-items:center;gap:4px}
@@ -387,7 +301,7 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 
 .upload{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;padding:44px 24px;background:var(--surface);border:2px dashed var(--border-3);border-radius:var(--radius-lg);text-align:center;cursor:pointer;transition:transform .2s}
 .upload:active{transform:scale(.98)}
-.upload-ic{width:60px;height:60px;border-radius:20px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue);animation:floatIcon 3.6s ease-in-out infinite}
+.upload-ic{width:60px;height:60px;border-radius:20px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue)}
 .upload-ic svg{width:28px;height:28px}
 .upload strong{font-size:14px;font-weight:700;color:var(--text)}
 .upload span{font-size:12px;color:var(--text-3)}
@@ -412,7 +326,7 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .pstat-lbl svg{width:10px;height:10px;stroke-width:2.5}
 
 .menu{display:flex;flex-direction:column;gap:8px}
-.menu-item{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;text-align:left;width:100%;color:var(--text);transition:transform .18s cubic-bezier(.16,1,.3,1)}
+.menu-item{display:flex;align-items:center;gap:14px;padding:14px 16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;text-align:left;width:100%;color:var(--text);transition:transform .18s}
 .menu-item:active{transform:scale(.97)}
 .menu-ic{width:42px;height:42px;flex-shrink:0;border-radius:13px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue)}
 .menu-ic svg{width:20px;height:20px;stroke-width:2}
@@ -423,8 +337,7 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .menu-txt{flex:1;min-width:0}
 .menu-txt strong{display:block;font-size:13.5px;font-weight:700;color:var(--text)}
 .menu-txt span{display:block;font-size:11.5px;color:var(--text-3);margin-top:2px;font-weight:500}
-.menu-arrow{color:var(--text-4);flex-shrink:0;transition:transform .25s}
-.menu-item:active .menu-arrow{transform:translateX(4px)}
+.menu-arrow{color:var(--text-4);flex-shrink:0}
 .menu-arrow svg{width:18px;height:18px;stroke-width:2.5}
 
 .modal{position:fixed;inset:0;z-index:500;background:rgba(15,23,42,.6);backdrop-filter:blur(8px);display:none;align-items:flex-end;justify-content:center}
@@ -440,7 +353,7 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 
 .confirm-pop{align-items:center;justify-content:center;padding:20px}
 .confirm-modal-in{max-width:380px;width:100%;background:var(--bg-2);border-radius:24px;padding:26px 22px 20px;text-align:center;animation:popIn .32s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(24px)}
-.confirm-modal-ic{width:64px;height:64px;margin:0 auto 16px;border-radius:20px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(220,38,38,.06));border:1px solid rgba(239,68,68,.25);display:flex;align-items:center;justify-content:center;color:#EF4444;animation:floatIcon 3s ease-in-out infinite}
+.confirm-modal-ic{width:64px;height:64px;margin:0 auto 16px;border-radius:20px;background:linear-gradient(135deg,rgba(239,68,68,.15),rgba(220,38,38,.06));border:1px solid rgba(239,68,68,.25);display:flex;align-items:center;justify-content:center;color:#EF4444}
 .confirm-modal-ic svg{width:30px;height:30px;stroke-width:2.4}
 .confirm-modal-in h3{font-size:17px;font-weight:800;margin-bottom:8px;color:var(--text);font-family:'Space Grotesk',sans-serif}
 .confirm-modal-in p{font-size:13.5px;color:var(--text-2);line-height:1.55;margin-bottom:20px}
@@ -451,77 +364,81 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .detail-title{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--text);margin-bottom:8px}
 .detail-price{font-size:26px;font-weight:800;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:18px}
 .detail-section{margin-bottom:16px}
-.detail-section-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--text-2)}
-.detail-section-title .icon-sm{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue);animation:floatIcon 3.5s ease-in-out infinite}
+/* Sarlavha — qutida */
+.detail-section-title{
+  font-size:13px;font-weight:700;
+  display:flex;align-items:center;gap:8px;
+  margin-bottom:10px;color:var(--text-2);
+}
+.detail-section-title .icon-sm{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue)}
 .detail-section-title .icon-sm svg{width:14px;height:14px}
 .detail-section-title .count{margin-left:auto;padding:3px 8px;border-radius:8px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.2);font-size:10px;font-weight:700;color:var(--blue)}
-.detail-list{display:flex;flex-direction:column;gap:6px}
-.detail-item{padding:11px 13px;background:var(--surface);border:1px solid var(--border);border-radius:11px;font-size:12.5px;font-weight:600;display:flex;align-items:center;gap:8px;color:var(--text)}
-.detail-item svg{width:14px;height:14px;color:var(--icon-color);flex-shrink:0;animation:floatIcon 4s ease-in-out infinite}
-.detail-item:nth-child(2) svg{animation-delay:.3s}
-.detail-item:nth-child(3) svg{animation-delay:.6s}
-.detail-item:nth-child(4) svg{animation-delay:.9s}
+/* Elementlar — ODDIY matn, chegara/fon yo'q */
+.detail-list{display:flex;flex-direction:column;gap:0}
+.detail-item{
+  padding:7px 4px;
+  background:transparent;
+  border:none;
+  font-size:13px;
+  font-weight:500;
+  display:flex;align-items:center;gap:8px;
+  color:var(--text);
+}
+.detail-item svg{width:15px;height:15px;color:var(--icon-color);flex-shrink:0}
 .detail-info-row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);font-size:13px}
 .detail-info-row:last-child{border-bottom:0}
 .detail-info-row .k{color:var(--text-3);font-weight:500;display:flex;align-items:center;gap:6px}
 .detail-info-row .k svg{width:13px;height:13px}
 .detail-info-row .v{font-weight:700;text-align:right;color:var(--text)}
 
-/* CONTACT BOX */
 .contact-box{background:linear-gradient(135deg,var(--surface),var(--surface-2));border:1.5px solid var(--border-2);border-radius:20px;padding:18px;margin-top:18px;position:relative;overflow:hidden}
-.contact-box::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 0% 0%,rgba(59,130,246,.10),transparent 55%);pointer-events:none}
-.contact-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:16px;position:relative;z-index:1}
-.contact-title svg{width:16px;height:16px;color:var(--icon-color);animation:iconWiggle 2.4s ease-in-out infinite}
-.contact-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;border-radius:16px;font-size:14px;font-weight:800;width:100%;margin-bottom:12px;color:#fff;position:relative;overflow:hidden;transition:transform .25s cubic-bezier(.16,1,.3,1),box-shadow .25s;border:1px solid rgba(255,255,255,.15);z-index:1;letter-spacing:.02em}
+.contact-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:16px}
+.contact-title svg{width:16px;height:16px;color:var(--icon-color)}
+.contact-btn{display:flex;align-items:center;justify-content:center;gap:10px;padding:16px;border-radius:16px;font-size:14px;font-weight:800;width:100%;margin-bottom:12px;color:#fff;position:relative;overflow:hidden;transition:transform .25s;border:1px solid rgba(255,255,255,.15);letter-spacing:.02em}
 .contact-btn:last-child{margin-bottom:0}
-.contact-btn svg{width:20px;height:20px;stroke-width:2.4;transition:transform .3s cubic-bezier(.34,1.56,.64,1)}
-.contact-btn::before{content:"";position:absolute;inset:0;background:linear-gradient(105deg,transparent 30%,rgba(255,255,255,.35) 50%,transparent 70%);transform:translateX(-100%);animation:shimmer 3.4s ease-in-out infinite;pointer-events:none;z-index:0}
-.contact-btn > *{position:relative;z-index:2}
-.contact-btn::after{content:"";position:absolute;inset:-2px;border-radius:16px;background:inherit;filter:blur(14px);opacity:.5;z-index:-1;transition:opacity .3s}
+.contact-btn svg{width:20px;height:20px;stroke-width:2.4;transition:transform .3s}
 .contact-btn:active{transform:scale(.95) rotate(-1deg)}
 .contact-btn:active svg{transform:scale(1.15) rotate(-8deg)}
-.contact-btn:active::after{opacity:.9}
 .contact-btn.call{background:linear-gradient(135deg,#10B981,#059669);box-shadow:0 8px 24px rgba(16,185,129,.40)}
 .contact-btn.message{background:linear-gradient(135deg,#3B82F6,#2563EB);box-shadow:0 8px 24px rgba(59,130,246,.40)}
-.contact-phone{text-align:center;font-family:'Space Grotesk',monospace;font-size:16px;font-weight:800;letter-spacing:1.2px;color:#10B981;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.06));border:1.5px solid rgba(16,185,129,.28);border-radius:14px;padding:13px;margin-bottom:12px;position:relative;z-index:1;box-shadow:inset 0 1px 0 rgba(255,255,255,.15)}
+.contact-phone{text-align:center;font-family:'Space Grotesk',monospace;font-size:16px;font-weight:800;letter-spacing:1.2px;color:#10B981;background:linear-gradient(135deg,rgba(16,185,129,.12),rgba(16,185,129,.06));border:1.5px solid rgba(16,185,129,.28);border-radius:14px;padding:13px;margin-bottom:12px}
 
-/* TOPUP */
 .amount-wrap{position:relative;margin-bottom:14px}
 .amount-input{width:100%;padding:22px 66px 22px 22px;background:var(--surface);border:2px solid var(--border-2);border-radius:18px;font-size:24px;font-weight:800;text-align:center;color:var(--text);font-family:'Space Grotesk',sans-serif}
 .amount-input:focus{border-color:#3B82F6;box-shadow:0 0 0 5px rgba(59,130,246,.1)}
 .amount-cur{position:absolute;right:22px;top:50%;transform:translateY(-50%);font-size:14px;font-weight:700;color:var(--text-3)}
 .quick-amounts{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
-.quick-amount{padding:12px 8px;border-radius:13px;background:var(--surface-2);border:1.5px solid var(--border-2);font-size:12.5px;font-weight:700;color:var(--text-2);transition:transform .15s,background .2s}
+.quick-amount{padding:12px 8px;border-radius:13px;background:var(--surface-2);border:1.5px solid var(--border-2);font-size:12.5px;font-weight:700;color:var(--text-2);transition:transform .15s}
 .quick-amount:active{transform:scale(.92)}
 .quick-amount.active{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;border-color:transparent}
 .pay-card{padding:22px;border-radius:18px;background:linear-gradient(135deg,#0F172A,#1E293B);color:#fff;position:relative;overflow:hidden}
 .pay-card-lbl{font-size:10.5px;font-weight:700;letter-spacing:1.2px;text-transform:uppercase;margin-bottom:8px;opacity:.7;display:flex;align-items:center;gap:6px}
-.pay-card-lbl svg{width:12px;height:12px;animation:iconWiggle 3s ease-in-out infinite}
+.pay-card-lbl svg{width:12px;height:12px}
 .pay-card-num{font-size:20px;font-weight:800;font-family:'Space Grotesk',monospace;letter-spacing:1.5px;color:#93C5FD;word-break:break-all}
 .pay-card-holder{margin-top:10px;font-size:12.5px;font-weight:600;letter-spacing:.5px;color:#E2E8F0;display:flex;align-items:center;gap:6px;text-transform:uppercase;opacity:.85}
 .pay-card-holder svg{width:14px;height:14px;opacity:.7}
 .pay-card-holder b{color:#fff;font-weight:700}
 .pay-card-amt{margin-top:12px;padding-top:12px;border-top:1px solid rgba(255,255,255,.15);font-size:13px;opacity:.85}
 .pay-card-amt b{color:#fff;font-family:'Space Grotesk',sans-serif}
-.pay-timer{margin-top:16px;font-size:32px;font-weight:800;text-align:center;color:#3B82F6;font-family:'Space Grotesk',sans-serif;letter-spacing:.05em}
+.pay-timer{margin-top:16px;font-size:32px;font-weight:800;text-align:center;color:#3B82F6;font-family:'Space Grotesk',sans-serif}
 .pay-timer.warn{color:#EF4444;animation:pulse 1s ease-in-out infinite}
 .pay-note{margin-top:12px;padding:12px 14px;background:rgba(16,185,129,.08);border:1px solid rgba(16,185,129,.2);border-radius:12px;font-size:12px;color:#10B981;font-weight:600;line-height:1.5;text-align:center;display:flex;align-items:center;justify-content:center;gap:8px}
-.pay-note svg{width:16px;height:16px;flex-shrink:0;animation:iconWiggle 2.6s ease-in-out infinite}
+.pay-note svg{width:16px;height:16px;flex-shrink:0}
 
-.receipt-upload{border:2px dashed var(--border-3);border-radius:18px;padding:32px 20px;background:var(--surface);text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;margin-top:16px;min-height:160px;transition:transform .2s}
-.receipt-upload:active{transform:scale(.98)}
-.receipt-upload svg{width:48px;height:48px;color:var(--icon-color);stroke-width:1.5;animation:floatIcon 3.4s ease-in-out infinite}
+.receipt-upload{border:2px dashed var(--border-3);border-radius:18px;padding:32px 20px;background:var(--surface);text-align:center;cursor:pointer;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px;margin-top:16px;min-height:160px}
+.receipt-upload svg{width:48px;height:48px;color:var(--icon-color);stroke-width:1.5}
 .receipt-upload strong{font-size:14px;font-weight:700;color:var(--text)}
 .receipt-upload span{font-size:12px;color:var(--text-3)}
 .receipt-preview{position:relative;border-radius:18px;overflow:hidden;margin-top:12px}
 .receipt-preview img{width:100%;max-height:400px;object-fit:contain;background:#000;border-radius:18px}
-.receipt-remove{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:12px;background:rgba(239,68,68,.95);color:#fff;display:flex;align-items:center;justify-content:center;transition:transform .2s}
-.receipt-remove:active{transform:scale(.85) rotate(-90deg)}
+.receipt-remove{position:absolute;top:10px;right:10px;width:36px;height:36px;border-radius:12px;background:rgba(239,68,68,.95);color:#fff;display:flex;align-items:center;justify-content:center}
 .receipt-remove svg{width:18px;height:18px;stroke-width:2.5}
 
-.my-ad{display:flex;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:10px}
-.my-ad-thumb{width:80px;height:80px;flex-shrink:0;border-radius:14px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--icon-color)}
-.my-ad-thumb svg{width:32px;height:32px;animation:floatIcon 3.8s ease-in-out infinite}
+.my-ad{display:flex;gap:12px;padding:12px;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:10px;transition:transform .18s;position:relative}
+.my-ad:active{transform:scale(.98)}
+.my-ad-thumb{width:80px;height:80px;flex-shrink:0;border-radius:14px;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--icon-color);overflow:hidden}
+.my-ad-thumb video,.my-ad-thumb img{width:100%;height:100%;object-fit:cover}
+.my-ad-thumb svg{width:32px;height:32px}
 .my-ad-body{flex:1;min-width:0;display:flex;flex-direction:column;gap:4px}
 .my-ad-title{font-size:13.5px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text)}
 .my-ad-price{font-size:13px;font-weight:700;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text}
@@ -533,6 +450,18 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .my-ad-status.pending{background:rgba(245,158,11,.12);color:#F59E0B}
 .my-ad-status.rejected{background:rgba(239,68,68,.12);color:#EF4444}
 .my-ad-status.expired{background:rgba(148,163,184,.12);color:var(--text-3)}
+/* "Sotildi" tugmasi */
+.sold-btn{
+  display:inline-flex;align-items:center;gap:6px;
+  padding:8px 14px;border-radius:12px;
+  background:linear-gradient(135deg,#10B981,#059669);
+  color:#fff;font-size:11.5px;font-weight:800;
+  box-shadow:0 6px 18px rgba(16,185,129,.4);
+  margin-top:6px;align-self:flex-start;
+  transition:transform .18s;border:none;
+}
+.sold-btn:active{transform:scale(.94)}
+.sold-btn svg{width:13px;height:13px;stroke-width:2.6}
 
 .feedback-card{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px}
 .feedback-head{display:flex;align-items:center;gap:12px;margin-bottom:10px}
@@ -543,22 +472,18 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .feedback-stars{display:flex;gap:2px;margin-bottom:8px}
 .feedback-stars svg{width:14px;height:14px}
 .feedback-text{font-size:13px;color:var(--text-2);line-height:1.6}
-.feedback-del{margin-left:auto;width:32px;height:32px;border-radius:10px;background:rgba(239,68,68,.1);display:flex;align-items:center;justify-content:center;color:#F87171;transition:transform .18s}
-.feedback-del:active{transform:scale(.85) rotate(-8deg)}
+.feedback-del{margin-left:auto;width:32px;height:32px;border-radius:10px;background:rgba(239,68,68,.1);display:flex;align-items:center;justify-content:center;color:#F87171}
 .feedback-del svg{width:15px;height:15px}
 .rate-row{display:flex;gap:8px;margin-top:8px}
 .rate-btn{width:48px;height:48px;border-radius:14px;background:var(--surface-2);border:1.5px solid var(--border-2);display:flex;align-items:center;justify-content:center;cursor:pointer;transition:transform .2s}
 .rate-btn:active{transform:scale(.88) rotate(-6deg)}
-.rate-btn svg{width:22px;height:22px;stroke:var(--text-3);stroke-width:2;fill:none;transition:transform .3s}
+.rate-btn svg{width:22px;height:22px;stroke:var(--text-3);stroke-width:2;fill:none}
 .rate-btn.on{background:linear-gradient(135deg,#3B82F6,#06B6D4);border-color:transparent}
-.rate-btn.on svg{stroke:#fff;fill:#fff;animation:iconWiggle 2s ease-in-out infinite}
+.rate-btn.on svg{stroke:#fff;fill:#fff}
 
 .admin-stat-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px}
 .admin-stat{padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:16px}
-.admin-stat-ic{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));display:flex;align-items:center;justify-content:center;color:var(--blue);margin-bottom:10px;animation:floatIcon 4s ease-in-out infinite}
-.admin-stat:nth-child(2) .admin-stat-ic{animation-delay:.4s}
-.admin-stat:nth-child(3) .admin-stat-ic{animation-delay:.8s}
-.admin-stat:nth-child(4) .admin-stat-ic{animation-delay:1.2s}
+.admin-stat-ic{width:36px;height:36px;border-radius:11px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));display:flex;align-items:center;justify-content:center;color:var(--blue);margin-bottom:10px}
 .admin-stat-ic svg{width:18px;height:18px}
 .admin-stat-val{font-size:24px;font-weight:800;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;line-height:1}
 .admin-stat-lbl{font-size:11px;color:var(--text-3);font-weight:600;margin-top:6px}
@@ -568,11 +493,11 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .admin-tab:active{transform:scale(.93)}
 .admin-tab svg{width:13px;height:13px}
 .admin-tab.active{background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;border-color:transparent}
-.admin-tab.active svg{animation:iconWiggle 2.2s ease-in-out infinite}
 .mod-card{padding:14px;background:var(--surface);border:1px solid var(--border);border-radius:16px;margin-bottom:10px}
 .mod-head{display:flex;gap:10px;margin-bottom:10px}
-.mod-thumb{width:64px;height:64px;border-radius:12px;flex-shrink:0;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--icon-color)}
-.mod-thumb svg{width:26px;height:26px;animation:floatIcon 3.6s ease-in-out infinite}
+.mod-thumb{width:64px;height:64px;border-radius:12px;flex-shrink:0;background:var(--surface-2);display:flex;align-items:center;justify-content:center;color:var(--icon-color);overflow:hidden}
+.mod-thumb video,.mod-thumb img{width:100%;height:100%;object-fit:cover}
+.mod-thumb svg{width:26px;height:26px}
 .mod-body{flex:1;min-width:0}
 .mod-title{font-size:13.5px;font-weight:700;margin-bottom:4px;color:var(--text)}
 .mod-meta{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:4px;margin-top:2px}
@@ -609,18 +534,12 @@ body.dark .ad-heart{background:rgba(36,47,68,.75);border-color:rgba(255,255,255,
 .stat-card-value{font-size:20px;font-weight:800;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-top:8px}
 .stat-chart{display:flex;align-items:flex-end;gap:6px;height:140px;padding:20px 8px 28px;background:var(--surface);border:1px solid var(--border);border-radius:18px;position:relative;margin-bottom:14px}
 .stat-bar-wrap{flex:1;display:flex;flex-direction:column;align-items:center;height:100%;justify-content:flex-end;position:relative}
-.stat-bar{width:100%;background:linear-gradient(180deg,#3B82F6,#2563EB);border-radius:8px 8px 4px 4px;min-height:4px;position:relative;animation:floatNav 3s ease-in-out infinite}
-.stat-bar-wrap:nth-child(2) .stat-bar{animation-delay:.3s}
-.stat-bar-wrap:nth-child(3) .stat-bar{animation-delay:.6s}
-.stat-bar-wrap:nth-child(4) .stat-bar{animation-delay:.9s}
-.stat-bar-wrap:nth-child(5) .stat-bar{animation-delay:1.2s}
-.stat-bar-wrap:nth-child(6) .stat-bar{animation-delay:1.5s}
-.stat-bar-wrap:nth-child(7) .stat-bar{animation-delay:1.8s}
+.stat-bar{width:100%;background:linear-gradient(180deg,#3B82F6,#2563EB);border-radius:8px 8px 4px 4px;min-height:4px;position:relative}
 .stat-bar::after{content:attr(data-val);position:absolute;top:-18px;left:50%;transform:translateX(-50%);font-size:9px;color:var(--blue);font-weight:700;white-space:nowrap}
 .stat-bar-label{position:absolute;bottom:-22px;font-size:10px;color:var(--text-3);font-weight:600}
 
 .user-detail-head{display:flex;flex-direction:column;align-items:center;gap:10px;padding:12px 0 20px;border-bottom:1px solid var(--border);margin-bottom:16px}
-.user-detail-av{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#3B82F6,#06B6D4);padding:3px;animation:floatSoft 4s ease-in-out infinite}
+.user-detail-av{width:80px;height:80px;border-radius:50%;background:linear-gradient(135deg,#3B82F6,#06B6D4);padding:3px}
 .user-detail-av-in{width:100%;height:100%;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:32px;font-weight:800;color:var(--blue);overflow:hidden;font-family:'Space Grotesk',sans-serif}
 .user-detail-av-in img{width:100%;height:100%;object-fit:cover}
 .user-detail-name{font-size:18px;font-weight:700;display:flex;align-items:center;gap:6px;color:var(--text)}
@@ -660,7 +579,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
 .confirm-card h3{font-size:18px;font-weight:700;margin-bottom:10px;color:var(--text);position:relative}
 .confirm-amount{font-size:26px;font-weight:800;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:16px}
 .confirm-timer-wrap{display:inline-flex;align-items:center;gap:8px;padding:10px 16px;background:var(--surface-2);border:1px solid var(--border-2);border-radius:12px;margin-bottom:16px}
-.confirm-timer-wrap svg{width:16px;height:16px;color:var(--blue);animation:iconWiggle 2.5s ease-in-out infinite}
+.confirm-timer-wrap svg{width:16px;height:16px;color:var(--blue)}
 .confirm-timer{font-size:16px;font-weight:800;color:var(--text);font-family:'Space Grotesk',sans-serif;letter-spacing:.5px}
 .confirm-status{display:flex;align-items:center;justify-content:center;gap:4px;font-size:14px;font-weight:700;color:var(--blue);background:linear-gradient(135deg,rgba(59,130,246,.12),rgba(6,182,212,.06));border:1px solid rgba(59,130,246,.25);border-radius:14px;padding:14px;position:relative}
 .confirm-dots{display:inline-flex;margin-left:2px}
@@ -683,7 +602,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
 
 .ac-card{display:flex;align-items:center;gap:14px;padding:16px;background:var(--surface);border:1px solid var(--border);border-radius:18px;margin-bottom:10px;transition:transform .2s;cursor:pointer}
 .ac-card:active{transform:scale(.97)}
-.ac-av{width:56px;height:56px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#3B82F6,#06B6D4);padding:2.5px;position:relative;animation:floatSoft 4.2s ease-in-out infinite}
+.ac-av{width:56px;height:56px;border-radius:50%;flex-shrink:0;background:linear-gradient(135deg,#3B82F6,#06B6D4);padding:2.5px;position:relative}
 .ac-av-in{width:100%;height:100%;border-radius:50%;background:var(--surface);display:flex;align-items:center;justify-content:center;font-size:22px;font-weight:800;color:var(--blue);font-family:'Space Grotesk',sans-serif}
 .ac-online{position:absolute;bottom:2px;right:2px;width:14px;height:14px;border-radius:50%;background:#10B981;border:2.5px solid var(--surface);animation:pulseGlow 2s ease-in-out infinite}
 .ac-body{flex:1;min-width:0}
@@ -710,10 +629,31 @@ body.dark .load{background:rgba(26,35,50,.88)}
 .ac-admin-actions button.danger{color:#F87171;border-color:rgba(239,68,68,.3);background:rgba(239,68,68,.08)}
 .ac-admin-actions button.active{color:#10B981;border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08)}
 .ac-admin-actions svg{width:15px;height:15px}
+
+/* VIP CONFIRM MODAL */
+.vip-modal-in{max-width:400px;width:100%;background:var(--bg-2);border-radius:24px;padding:26px 22px 20px;text-align:center;animation:popIn .32s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(24px)}
+.vip-modal-ic{width:72px;height:72px;margin:0 auto 16px;border-radius:22px;background:linear-gradient(135deg,#8B5CF6,#7C3AED);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 12px 32px rgba(139,92,246,.45)}
+.vip-modal-ic svg{width:36px;height:36px;stroke-width:2.4}
+.vip-modal-in h3{font-size:19px;font-weight:800;margin-bottom:10px;color:var(--text);font-family:'Space Grotesk',sans-serif}
+.vip-modal-in p{font-size:13.5px;color:var(--text-2);line-height:1.6;margin-bottom:14px}
+.vip-modal-info{background:var(--surface-2);border:1.5px solid var(--border-2);border-radius:14px;padding:14px;margin-bottom:18px;text-align:left}
+.vip-modal-info-row{display:flex;justify-content:space-between;font-size:12.5px;padding:6px 0}
+.vip-modal-info-row .k{color:var(--text-3);font-weight:500}
+.vip-modal-info-row .v{color:var(--text);font-weight:700}
+.vip-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.vip-modal-actions .btn{padding:13px;font-size:13px}
+
+/* FULLSCREEN VIDEO MODAL */
+.video-modal{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.95);display:none;align-items:center;justify-content:center;padding:20px}
+.video-modal.active{display:flex;animation:fadeIn .2s}
+.video-modal video{max-width:100%;max-height:90vh;border-radius:14px;background:#000}
+.video-modal-close{position:absolute;top:16px;right:16px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;z-index:1;backdrop-filter:blur(8px)}
+.video-modal-close svg{width:22px;height:22px;stroke-width:2.5}
 </style>
 </head>
 <body>
 
+<!-- SPLASH -->
 <div id="splash">
   <div class="splash-brand">CARDINAL <span class="c-blue">AKKAUNT</span></div>
   <div class="splash-sub">PUBG MOBILE</div>
@@ -724,6 +664,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
   <div class="splash-bar"></div>
 </div>
 
+<!-- ICONS -->
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
@@ -858,7 +799,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
         <label class="upload" for="videoInput" style="margin-top:16px">
           <div class="upload-ic"><svg><use href="#i-upload"/></svg></div>
           <strong>Video tanlash uchun bosing</strong>
-          <span>MP4 · 200 MB gacha · 10 daqiqa</span>
+          <span>Istalgan format · 200 MB gacha · 10 daqiqa</span>
         </label>
         <input type="file" id="videoInput" accept="video/*" hidden>
         <div id="videoPreview"></div>
@@ -1126,7 +1067,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-send"/></svg></div>Barchaga xabar</div>
           <textarea class="textarea" id="bcastText" placeholder="Xabar matnini yozing..."></textarea>
-          <button class="btn btn-primary btn-block mt-16 btn-anim" onclick="sendBroadcast()"><svg><use href="#i-send"/></svg>Yuborish</button>
+          <button class="btn btn-primary btn-block mt-16" onclick="sendBroadcast()"><svg><use href="#i-send"/></svg>Yuborish</button>
         </div>
       </div>
     </div>
@@ -1161,7 +1102,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
           </div>
         </div>
         <div class="pay-note"><svg><use href="#i-info"/></svg>To'lov <b style="margin:0 4px">10 daqiqa</b> ichida amalga oshirilishi kerak</div>
-        <button class="btn btn-primary btn-block mt-16 btn-anim" id="topupBtn" onclick="topupSend()" disabled><svg><use href="#i-chev-r"/></svg>Davom etish</button>
+        <button class="btn btn-primary btn-block mt-16" id="topupBtn" onclick="topupSend()" disabled><svg><use href="#i-chev-r"/></svg>Davom etish</button>
       </div>
 
       <div id="topupStep2" class="hidden">
@@ -1196,7 +1137,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
           </div>
         </div>
 
-        <button class="btn btn-success btn-block mt-16 btn-anim" id="submitReceiptBtn" onclick="submitReceipt()" disabled><svg><use href="#i-check"/></svg>Yuborish</button>
+        <button class="btn btn-success btn-block mt-16" id="submitReceiptBtn" onclick="submitReceipt()" disabled><svg><use href="#i-check"/></svg>Yuborish</button>
         <button class="btn btn-secondary btn-block mt-8" onclick="cancelTopup()"><svg><use href="#i-x"/></svg>Bekor qilish</button>
       </div>
 
@@ -1230,7 +1171,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
           <div class="result-ic"><svg><use href="#i-x"/></svg></div>
           <h3>To'lov rad etildi</h3>
           <p id="cfRejReason">Belgilangan vaqt ichida to'lov tasdiqlanmadi. Iltimos, admin bilan bog'laning.</p>
-          <button class="btn btn-primary btn-block btn-anim" onclick="go('pageAdminContacts')">
+          <button class="btn btn-primary btn-block" onclick="go('pageAdminContacts')">
             <svg><use href="#i-msg"/></svg>Admin bilan bog'lanish
           </button>
           <button class="btn btn-secondary btn-block mt-8" onclick="resetTopup()">
@@ -1245,7 +1186,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
           <h3>To'lov tasdiqlandi!</h3>
           <div class="result-amount" id="cfOkAmount">0 so'm</div>
           <p>Hisobingiz muvaffaqiyatli to'ldirildi 🎉</p>
-          <button class="btn btn-success btn-block btn-anim" onclick="closeTopup()">
+          <button class="btn btn-success btn-block" onclick="closeTopup()">
             <svg><use href="#i-check"/></svg>Yopish
           </button>
         </div>
@@ -1278,7 +1219,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
     <div class="modal-head"><h2><svg><use href="#i-edit"/></svg>Profilni tahrirlash</h2><button class="modal-close" onclick="closeModal('mProfile')"><svg><use href="#i-x"/></svg></button></div>
     <div class="field"><label class="label"><svg><use href="#i-user"/></svg>Ism</label><input class="input" id="pFirst" placeholder="Ismingiz"></div>
     <div class="field"><label class="label"><svg><use href="#i-user"/></svg>Familiya</label><input class="input" id="pLast" placeholder="Familiyangiz"></div>
-    <button class="btn btn-primary btn-block btn-anim" onclick="saveProfile()"><svg><use href="#i-check"/></svg>Saqlash</button>
+    <button class="btn btn-primary btn-block" onclick="saveProfile()"><svg><use href="#i-check"/></svg>Saqlash</button>
   </div>
 </div>
 
@@ -1297,7 +1238,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
       </div>
     </div>
     <div class="field"><label class="label"><svg><use href="#i-msg"/></svg>Fikringiz</label><textarea class="textarea" id="fbText" placeholder="Bot haqida fikringizni yozing..."></textarea></div>
-    <button class="btn btn-primary btn-block btn-anim" onclick="submitFeedback()"><svg><use href="#i-send"/></svg>Yuborish</button>
+    <button class="btn btn-primary btn-block" onclick="submitFeedback()"><svg><use href="#i-send"/></svg>Yuborish</button>
   </div>
 </div>
 
@@ -1321,6 +1262,52 @@ body.dark .load{background:rgba(26,35,50,.88)}
   </div>
 </div>
 
+<!-- VIP CONFIRM MODAL -->
+<div class="modal confirm-pop" id="mVipConfirm">
+  <div class="vip-modal-in">
+    <div class="vip-modal-ic"><svg><use href="#i-crown"/></svg></div>
+    <h3>PREMIUM VIP Xizmat</h3>
+    <p>Sizning akkauntingizga biz QR kod orqali kirib, akkauntni o'zimiz olib chiqamiz.</p>
+    <div class="vip-modal-info">
+      <div class="vip-modal-info-row">
+        <span class="k">Xizmat narxi</span>
+        <span class="v">49 000 so'm</span>
+      </div>
+      <div class="vip-modal-info-row">
+        <span class="k">Sizning balansingiz</span>
+        <span class="v" id="vipBalance">0 so'm</span>
+      </div>
+    </div>
+    <div class="vip-modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('mVipConfirm')">Bekor qilish</button>
+      <button class="btn btn-purple" id="vipConfirmBtn" onclick="confirmVip()">Davom etish</button>
+    </div>
+  </div>
+</div>
+
+<!-- VIP SUCCESS MODAL -->
+<div class="modal confirm-pop" id="mVipSuccess">
+  <div class="vip-modal-in">
+    <div class="result-ic" style="background:linear-gradient(135deg,#8B5CF6,#7C3AED);box-shadow:0 12px 32px rgba(139,92,246,.45);width:80px;height:80px;margin:0 auto 20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff">
+      <svg style="width:40px;height:40px;stroke-width:3"><use href="#i-check"/></svg>
+    </div>
+    <h3 style="font-size:19px;font-weight:800;margin-bottom:10px;color:var(--text);font-family:'Space Grotesk',sans-serif">So'rov qabul qilindi!</h3>
+    <p style="font-size:13.5px;color:var(--text-2);line-height:1.6;margin-bottom:18px">49 000 so'm balansingizdan yechildi. Admin tez orada siz bilan bog'lanadi.</p>
+    <button class="btn btn-primary btn-block" onclick="closeModal('mVipSuccess'); go('pageAdminContacts')">
+      <svg><use href="#i-msg"/></svg>Admin bilan bog'lanish
+    </button>
+    <button class="btn btn-secondary btn-block mt-8" onclick="closeModal('mVipSuccess'); go('pageDashboard')">
+      Yopish
+    </button>
+  </div>
+</div>
+
+<!-- VIDEO MODAL -->
+<div class="video-modal" id="videoModal" onclick="if(event.target.id==='videoModal')closeVideoModal()">
+  <button class="video-modal-close" onclick="closeVideoModal()"><svg><use href="#i-x"/></svg></button>
+  <video id="videoModalPlayer" controls playsinline></video>
+</div>
+
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="load" id="loadOverlay">
   <div class="load-text">
@@ -1331,6 +1318,9 @@ body.dark .load{background:rgba(26,35,50,.88)}
 </div>
 
 <script>
+/* ============================================================
+   CONFIG
+   ============================================================ */
 const API_URL = "https://cardinalgithub-production.up.railway.app";
 const BOT_LINK = "https://t.me/cardinal_akkaunt_bot";
 const USERBOT_BOT = "CardXabarBot";
@@ -1346,14 +1336,14 @@ const S = {
   balance:0, spent:0, avatar:"",
   ads:[], saved:[], myAds:[], feedbacks:[],
   category:"ALL",
-  step:1, tariff:null, videoData:null,
+  step:1, tariff:null, videoData:null, videoName:"",
   linked:[], currency:"UZS",
   topupTimer:null, topupPoll:null,
   pendingReceipt:null,
   fbRating:5,
+  vipTariff:null,
 };
 let UB_PHONE = null;
-let _videoObserver = null;
 
 const $ = id => document.getElementById(id);
 const esc = s => !s ? "" : String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
@@ -1426,16 +1416,13 @@ function fmtPrice(price, cur="UZS"){
   if(c.code === "RUB") return `${num(n)} ₽`;
   return `${num(n)} ${c.sym}`;
 }
-
 function priceInUZS(price, currency){ return (Number(price)||0) * (RATE[currency] || 1) }
-
 function getCategory(ad){
   const p = priceInUZS(ad.price, ad.currency || "UZS");
   if(p >= 8000000) return "PREMIUM";
   if(p >= 1600000) return "RARE";
   return "STANDARD";
 }
-
 function parseUTCDate(s){
   if(!s) return new Date();
   if(s instanceof Date) return s;
@@ -1443,7 +1430,6 @@ function parseUTCDate(s){
   if(/Z$|[+\-]\d{2}:?\d{2}$/.test(str)) return new Date(str);
   return new Date(str + "Z");
 }
-
 function formatTime(dateStr){
   if(!dateStr) return "";
   try{
@@ -1497,7 +1483,7 @@ function hideSplash(){
 }
 
 document.addEventListener("click", (e) => {
-  const btn = e.target.closest(".btn-anim, .tb-topup-btn, .contact-btn, .btn-primary, .btn-success, .btn-danger, .btn-purple");
+  const btn = e.target.closest(".btn-primary, .btn-success, .btn-danger, .btn-purple, .tb-topup-btn, .contact-btn");
   if(!btn) return;
   const rect = btn.getBoundingClientRect();
   const size = Math.max(rect.width, rect.height);
@@ -1511,26 +1497,6 @@ document.addEventListener("click", (e) => {
   btn.appendChild(ripple);
   setTimeout(() => ripple.remove(), 650);
 });
-
-function setupVideoObserver(){
-  if(!window.IntersectionObserver) return;
-  if(_videoObserver){ try { _videoObserver.disconnect(); } catch(e){} }
-  _videoObserver = new IntersectionObserver((entries) => {
-    entries.forEach(entry => {
-      const v = entry.target;
-      if(entry.isIntersecting){
-        if(v.dataset.loaded !== "1"){
-          v.dataset.loaded = "1";
-          try { v.preload = "metadata"; const p = v.play(); if(p && p.catch) p.catch(() => {}); } catch(e){}
-        } else { try { v.play().catch(() => {}); } catch(e){} }
-      } else { try { v.pause(); } catch(e){} }
-    });
-  }, { threshold: 0.3, rootMargin: "50px" });
-  document.querySelectorAll(".ad-media video").forEach(v => {
-    if(!v.dataset.loaded) v.dataset.loaded = "0";
-    _videoObserver.observe(v);
-  });
-}
 
 async function initAuth(){
   if(!tg || !tg.initDataUnsafe?.user){
@@ -1593,14 +1559,13 @@ function renderAds(){
     return;
   }
   g.innerHTML = arr.map(adCard).join("");
-  setTimeout(setupVideoObserver, 100);
 }
 
+/* ============================================================
+   AD CARD — badge yo'q, video qotib turadi (avtomatik ishlamaydi)
+   ============================================================ */
 function adCard(a){
   const acc = a.account_data || {};
-  const badge = a.ad_type==="PREMIUM" ? {c:"vip", t:"VIP", i:"crown"} :
-                a.ad_type==="RARE" ? {c:"rare", t:"NOYOB", i:"fire"} :
-                {c:"std", t:"STANDARD", i:"zap"};
   const isSaved = a.is_saved === true;
   const adminDel = IS_ADMIN ? `<button class="ad-admin-del" onclick="event.stopPropagation();adminDeleteAd(${a.id})">${ico("trash")}</button>` : "";
   const phone = acc.phone || "";
@@ -1610,9 +1575,8 @@ function adCard(a){
     <article class="ad" onclick="openAd(${a.id})">
       <div class="ad-media">
         ${a.video_file_id
-          ? `<video src="${API_URL}/api/ad/${a.id}/video" muted playsinline preload="none" data-loaded="0" onerror="this.style.display='none'"></video>`
+          ? `<video src="${API_URL}/api/ad/${a.id}/video" muted playsinline preload="metadata" onerror="this.style.display='none'"></video>`
           : `<div class="placeholder">${ico("play","ico-lg")}</div>`}
-        <div class="ad-badge ${badge.c}">${ico(badge.i,"ico-sm")}<span>${badge.t}</span></div>
         <button class="ad-heart ${isSaved?'saved':''}" onclick="event.stopPropagation();toggleSave(${a.id}, this)">${ico("heart")}</button>
         ${adminDel}
       </div>
@@ -1641,6 +1605,9 @@ async function adminDeleteAd(adId){
   hide();
 }
 
+/* ============================================================
+   AD DETAIL — elementlar oddiy matn ko'rinishida
+   ============================================================ */
 async function openAd(id){
   show();
   try{
@@ -1710,18 +1677,18 @@ async function openAd(id){
         <div class="contact-title">${ico("phone","ico-sm")}Sotuvchi bilan bog'lanish</div>`;
       if(username){
         const uname = username.replace("@", "");
-        html += `<button class="contact-btn message btn-anim" onclick="messageSeller('${esc(uname)}')">${ico("msg")}<span>Xabar yozish</span></button>`;
+        html += `<button class="contact-btn message" onclick="messageSeller('${esc(uname)}')">${ico("msg")}<span>Xabar yozish</span></button>`;
       }
       if(phone){
         const fullPhone = "+998" + phone.replace(/\D/g, "");
         html += `<div class="contact-phone">${fullPhone}</div>
-          <button class="contact-btn call btn-anim" onclick="callSeller('${fullPhone}')">${ico("phone")}<span>Qo'ng'iroq qilish</span></button>`;
+          <button class="contact-btn call" onclick="callSeller('${fullPhone}')">${ico("phone")}<span>Qo'ng'iroq qilish</span></button>`;
       }
       html += `</div>`;
     }
 
     if(IS_ADMIN){
-      html += `<button class="btn btn-danger btn-block mt-16 btn-anim" onclick="adminDeleteAd(${a.id}); closeModal('mAd');">${ico("trash")}E'lonni o'chirish</button>`;
+      html += `<button class="btn btn-danger btn-block mt-16" onclick="adminDeleteAd(${a.id}); closeModal('mAd');">${ico("trash")}E'lonni o'chirish</button>`;
     }
 
     $("mAdBody").innerHTML = html;
@@ -1769,7 +1736,6 @@ function renderSaved(){
     return;
   }
   g.innerHTML = S.saved.map(a => adCard({...a, is_saved:true})).join("");
-  setTimeout(setupVideoObserver, 100);
 }
 
 function renderProfile(){
@@ -1838,7 +1804,7 @@ async function loadFeedbacks(){
 function renderFeedbacks(){
   const c = $("feedbacksList");
   if(!S.feedbacks.length){
-    c.innerHTML = `<div class="empty"><div class="empty-icon">${ico("star","ico-lg")}</div><h3>Hali otziflar yo'q</h3><p>Birinchi bo'lib fikr qoldiring</p><button class="btn btn-primary mt-16 btn-anim" onclick="openFeedbackCompose()">${ico("plus")}Otzif qoldirish</button></div>`;
+    c.innerHTML = `<div class="empty"><div class="empty-icon">${ico("star","ico-lg")}</div><h3>Hali otziflar yo'q</h3><p>Birinchi bo'lib fikr qoldiring</p><button class="btn btn-primary mt-16" onclick="openFeedbackCompose()">${ico("plus")}Otzif qoldirish</button></div>`;
     return;
   }
   c.innerHTML = S.feedbacks.map(fb => feedbackCard(fb, IS_ADMIN)).join("");
@@ -1876,7 +1842,6 @@ function updateFbStars(){
     b.classList.toggle("on", +b.dataset.r <= S.fbRating);
   });
 }
-
 document.querySelectorAll("#fbStars .rate-btn").forEach(b => {
   b.onclick = () => { S.fbRating = +b.dataset.r; updateFbStars() };
 });
@@ -1909,26 +1874,32 @@ async function deleteFeedback(id){
   hide();
 }
 
+/* ============================================================
+   APP ICONS — haqiqiy SVG ikonkalar
+   ============================================================ */
 const LINKED_OPTIONS = [
-  {id:"google",   name:"Google",    emoji:"🔍"},
-  {id:"facebook", name:"Facebook",  emoji:"📘"},
-  {id:"twitter",  name:"Twitter/X", emoji:"𝕏"},
-  {id:"vk",       name:"VK",        emoji:"💙"},
-  {id:"email",    name:"Email",     emoji:"✉️"},
-  {id:"phone",    name:"Telefon",   emoji:"📱"},
-  {id:"apple",    name:"Apple ID",  emoji:"🍎"},
-  {id:"discord",  name:"Discord",   emoji:"🎮"},
+  {id:"google", name:"Google", svg:`<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>`},
+  {id:"facebook", name:"Facebook", svg:`<svg viewBox="0 0 24 24"><path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`},
+  {id:"twitter", name:"Twitter/X", svg:`<svg viewBox="0 0 24 24"><path fill="#000" d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z"/></svg>`},
+  {id:"vk", name:"VK", svg:`<svg viewBox="0 0 24 24"><path fill="#0077FF" d="M13.162 18.994c.609 0 .858-.406.851-.915-.031-1.917.714-2.949 2.059-1.604 1.488 1.488 1.796 2.519 3.603 2.519h3.2c.808 0 1.126-.26 1.126-.668 0-.863-1.421-2.386-2.625-3.504-1.686-1.565-1.765-1.602-.313-3.486 1.801-2.339 4.157-5.336 2.073-5.336h-3.981c-.772 0-.828.435-1.103 1.083-.995 2.347-2.886 5.387-3.604 4.922-.751-.485-.407-2.406-.35-5.261.015-.754.011-1.271-1.141-1.539-.629-.145-1.241-.205-1.809-.205-2.273 0-3.841.953-2.95 1.119 1.571.293 1.42 3.692 1.054 5.16-.638 2.556-3.036-2.024-4.035-4.305-.241-.548-.315-.974-1.175-.974H.695c-.492 0-.787.16-.787.516 0 .602 2.96 6.72 5.786 9.77 2.756 2.975 5.48 2.708 7.468 2.708z"/></svg>`},
+  {id:"email", name:"Email", svg:`<svg viewBox="0 0 24 24"><rect x="2" y="4" width="20" height="16" rx="2" fill="#EA4335"/><path d="M2 6l10 7 10-7" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`},
+  {id:"phone", name:"Telefon", svg:`<svg viewBox="0 0 24 24"><path fill="#10B981" d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07 19.5 19.5 0 0 1-6-6 19.79 19.79 0 0 1-3.07-8.67A2 2 0 0 1 4.11 2h3a2 2 0 0 1 2 1.72 12.84 12.84 0 0 0 .7 2.81 2 2 0 0 1-.45 2.11L8.09 9.91a16 16 0 0 0 6 6l1.27-1.27a2 2 0 0 1 2.11-.45 12.84 12.84 0 0 0 2.81.7A2 2 0 0 1 22 16.92z"/></svg>`},
+  {id:"apple", name:"Apple ID", svg:`<svg viewBox="0 0 24 24"><path fill="#000" d="M17.05 20.28c-.98.95-2.05.8-3.08.35-1.09-.46-2.09-.48-3.24 0-1.44.62-2.2.44-3.06-.35C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>`},
+  {id:"discord", name:"Discord", svg:`<svg viewBox="0 0 24 24"><path fill="#5865F2" d="M20.317 4.37a19.79 19.79 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.058a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg>`},
 ];
 
 const REGIONS = ["Toshkent","Samarqand","Buxoro","Namangan","Andijon","Farg'ona","Qashqadaryo","Surxondaryo","Xorazm","Navoiy","Jizzax","Sirdaryo","Toshkent viloyati","Qoraqalpog'iston"];
 
+/* ============================================================
+   TARIFFS — yangi narxlar
+   ============================================================ */
 const TARIFFS = [
-  {id:2, name:"KANAL", price:19000, desc:"Faqat kanalda chiqadi", badge:null,
+  {id:2, name:"KANAL", price:15000, desc:"Faqat kanalda chiqadi", badge:null,
    feats:[["yes","Kanalga joylash"],["yes","Butun umur kanalda turadi"],["no","Web App'da chiqmaydi"],["no","TOP'da turmaydi"]],
    showChannel:true},
   {id:1, name:"STANDART", price:9000, desc:"Faqat Web App'da chiqadi", badge:null,
    feats:[["yes","Web App'da joylash"],["yes","Admin belgilagan kun faol"],["no","Kanalga chiqmaydi"],["no","TOP'da turmaydi"]]},
-  {id:3, name:"RARE 10%", price:25000, desc:"Kanal + Web App + 10% skidka", badge:{t:"RARE", c:"rare"},
+  {id:3, name:"RARE 10%", price:22000, desc:"Kanal + Web App + 10% skidka", badge:{t:"RARE", c:"rare"},
    feats:[["yes","Web App'da joylash"],["yes","Kanalga joylash"],["yes","10% skidka keyingi"],["yes","Admin belgilagan kun faol"]]},
   {id:4, name:"PREMIUM VIP", price:49000, desc:"QR kod orqali akkauntni o'zimiz olamiz", badge:{t:"VIP", c:"vip"},
    feats:[["yes","Admin siz bilan bog'lanadi"],["yes","QR kod orqali kirish"],["yes","Akkauntni biz olib chiqamiz"],["yes","To'liq xizmat"]],
@@ -1970,16 +1941,62 @@ function renderTariffs(){
       $("tariffList").querySelectorAll(".tariff").forEach(x => x.classList.remove("selected"));
       el.classList.add("selected");
       S.tariff = +el.dataset.t;
+      // VIP — maxsus oqim
+      if(S.tariff === 4){
+        openVipFlow();
+        return;
+      }
       setTimeout(nextStep, 250);
     };
   });
+}
+
+/* ============================================================
+   VIP FLOW — avval balans, keyin adminga
+   ============================================================ */
+function openVipFlow(){
+  // To'ldirish bosqichlarini yopib, tarif ekranini ko'rsatamiz
+  $("tariffList").querySelectorAll(".tariff").forEach(x => x.classList.remove("selected"));
+
+  if(S.balance < 49000){
+    toast("Balansingizda 49 000 so'm yetarli emas. Iltimos, balansni to'ldiring.", "error");
+    return;
+  }
+
+  // Info modal
+  $("vipBalance").innerText = num(S.balance) + " so'm";
+  openModal("mVipConfirm");
+}
+
+async function confirmVip(){
+  closeModal("mVipConfirm");
+  show();
+  try{
+    // Serverda: balansdan 49 000 yechiladi, adminga xabar yuboriladi
+    const r = await api("/api/create-vip-request", "POST", {
+      telegram_id: USER.telegram_id,
+      account_data: {},
+    });
+    if(r.ok){
+      S.balance = r.balance ?? (S.balance - 49000);
+      updateTopbar(); renderProfile();
+      openModal("mVipSuccess");
+      setTimeout(() => go("pageDashboard"), 500);
+    } else {
+      toast(r.error || "Xatolik", "error");
+    }
+  }catch(e){
+    // API mavjud bo'lmasa — baribir adminga murojaat qilish varianti
+    toast(e.message, "error");
+  }
+  hide();
 }
 
 function renderLinked(){
   $("linkedGrid").innerHTML = LINKED_OPTIONS.map(l => `
     <button type="button" class="chip" data-l="${l.id}">
       <div class="chip-check">${ico("check","ico-sm")}</div>
-      <div class="chip-emoji">${l.emoji}</div>
+      <div class="chip-icon">${l.svg}</div>
       <div>${l.name}</div>
     </button>
   `).join("");
@@ -2038,7 +2055,7 @@ function addDyn(listId, cls, ph){
 }
 
 function startCreate(){
-  S.step = 1; S.tariff = null; S.videoData = null;
+  S.step = 1; S.tariff = null; S.videoData = null; S.videoName = "";
   S.linked = []; S.currency = "UZS";
   ["accLevel","accColl","accRP","accMythic","gunsCount","accFull","accPrice","accPhone","accUser"].forEach(id => {
     const el = $(id); if(el) el.value = "";
@@ -2082,12 +2099,6 @@ function validateStep(){
 
 function nextStep(){
   if(!validateStep()) return;
-  if(S.step === 1 && S.tariff === 4){
-    S.step = 3;
-    renderSteps();
-    window.scrollTo({top:0, behavior:"smooth"});
-    return;
-  }
   if(S.step === 4){ submitAd(); return }
   S.step++;
   if(S.step === 4) renderPreview();
@@ -2097,36 +2108,35 @@ function nextStep(){
 
 function prevStep(){
   if(S.step === 1){ go("pageDashboard"); return }
-  if(S.step === 3 && S.tariff === 4){ S.step = 1; renderSteps(); return }
   S.step--;
   renderSteps();
   window.scrollTo({top:0, behavior:"smooth"});
 }
 
+/* ============================================================
+   VIDEO UPLOAD — barcha formatlar, hech qanday format tekshiruvi yo'q
+   ============================================================ */
 $("videoInput").addEventListener("change", e => {
   const f = e.target.files[0];
   if(!f) return;
-  if(!f.type.startsWith("video/")){ toast("Faqat video", "error"); return }
-  if(f.size > 200*1024*1024){ toast("Max 200 MB", "error"); return }
-  const v = document.createElement("video");
-  v.preload = "metadata";
-  v.onloadedmetadata = () => {
-    URL.revokeObjectURL(v.src);
-    if(v.duration/60 > 10){ toast("Video max 10 daqiqa", "error"); return }
-    const r = new FileReader();
-    r.onload = ev => {
-      S.videoData = ev.target.result;
-      $("videoPreview").innerHTML = `<video class="preview-video" src="${ev.target.result}" controls playsinline></video><button class="btn btn-secondary btn-block mt-8" onclick="removeVideo()">${ico("trash")}Videoni o'chirish</button>`;
-      toast("Video yuklandi", "success");
-    };
-    r.readAsDataURL(f);
+  if(f.size > 200*1024*1024){ toast("Video 200 MB dan katta", "error"); return }
+
+  const r = new FileReader();
+  r.onload = ev => {
+    S.videoData = ev.target.result;
+    S.videoName = f.name || "video";
+    $("videoPreview").innerHTML = `
+      <video class="preview-video" src="${ev.target.result}" controls playsinline preload="metadata"></video>
+      <button class="btn btn-secondary btn-block mt-8" onclick="removeVideo()">${ico("trash")}Videoni o'chirish</button>
+    `;
+    toast("Video yuklandi", "success");
   };
-  v.onerror = () => toast("Video o'qilmadi", "error");
-  v.src = URL.createObjectURL(f);
+  r.onerror = () => toast("Videoni o'qib bo'lmadi", "error");
+  r.readAsDataURL(f);
 });
 
 function removeVideo(){
-  S.videoData = null;
+  S.videoData = null; S.videoName = "";
   $("videoPreview").innerHTML = "";
   $("videoInput").value = "";
 }
@@ -2154,7 +2164,7 @@ function renderPreview(){
   const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
   $("previewBox").innerHTML = `
     <div class="card-box">
-      ${S.videoData ? `<video class="detail-video" src="${S.videoData}" controls playsinline></video>` : ""}
+      ${S.videoData ? `<video class="detail-video" src="${S.videoData}" controls playsinline preload="metadata"></video>` : ""}
       <h2 class="detail-title" style="font-size:18px;margin-top:8px">PUBG Mobile · ${esc(acc.level)} LVL</h2>
       <div class="detail-price" style="font-size:22px">${fmtPrice(price, S.currency)}</div>
       <div class="detail-info-row"><span class="k">${ico("target")}Kolleksiya</span><span class="v">${esc(acc.collection)}</span></div>
@@ -2177,22 +2187,6 @@ async function submitAd(){
   show();
   try{
     const acc = collectAd();
-    if(S.tariff === 4){
-      const r = await api("/api/create-vip-request", "POST", {
-        telegram_id: USER.telegram_id,
-        account_data: acc,
-      });
-      if(r.ok){
-        S.balance = r.balance;
-        updateTopbar(); renderProfile();
-        toast("So'rov qabul qilindi! Admin tez orada bog'lanadi", "success");
-        setTimeout(() => go("pageDashboard"), 700);
-      } else {
-        toast(r.error || "Xatolik", "error");
-      }
-      hide();
-      return;
-    }
     const adData = {
       title: `PUBG Mobile - ${acc.level} LVL`,
       video_url: S.videoData,
@@ -2213,6 +2207,9 @@ async function submitAd(){
   hide();
 }
 
+/* ============================================================
+   MY ADS — "Sotildi" tugmasi faqat faol reklamalarda
+   ============================================================ */
 async function loadMyAds(){
   if(!USER) return;
   try{ S.myAds = await api(`/api/my-ads/${USER.telegram_id}`) }
@@ -2222,7 +2219,7 @@ async function loadMyAds(){
 function renderMyAds(){
   const c = $("myAdsList");
   if(!S.myAds.length){
-    c.innerHTML = `<div class="empty"><div class="empty-icon">${ico("mega","ico-lg")}</div><h3>Reklama yo'q</h3><p>Birinchi reklamangizni joylang</p><button class="btn btn-primary mt-16 btn-anim" onclick="startCreate()">${ico("plus")}Reklama berish</button></div>`;
+    c.innerHTML = `<div class="empty"><div class="empty-icon">${ico("mega","ico-lg")}</div><h3>Reklama yo'q</h3><p>Birinchi reklamangizni joylang</p><button class="btn btn-primary mt-16" onclick="startCreate()">${ico("plus")}Reklama berish</button></div>`;
     return;
   }
   c.innerHTML = S.myAds.map(a => {
@@ -2230,21 +2227,139 @@ function renderMyAds(){
                a.status === "PENDING" ? {c:"pending", t:"Tasdiqlanmoqda", i:"clock"} :
                a.status === "REJECTED" ? {c:"rejected", t:"Rad etilgan", i:"x"} :
                {c:"expired", t:"Tugagan", i:"clock"};
+    const isActive = a.status === "ACTIVE";
     return `
-      <div class="my-ad">
-        <div class="my-ad-thumb">${ico("play")}</div>
+      <div class="my-ad" onclick="openMyAd(${a.id})" style="cursor:pointer">
+        <div class="my-ad-thumb">
+          ${a.video_file_id
+            ? `<video src="${API_URL}/api/ad/${a.id}/video" muted playsinline preload="metadata" onerror="this.style.display='none'"></video>`
+            : ico("play")}
+        </div>
         <div class="my-ad-body">
           <div class="my-ad-title">${esc(a.title)}</div>
           <div class="my-ad-price">${fmtPrice(a.price, a.currency)}</div>
           <div class="my-ad-meta">${ico("map","ico-sm")}<span>${esc(a.location||"-")}</span></div>
           <div class="my-ad-status ${st.c}">${ico(st.i,"ico-sm")}${st.t}</div>
           ${a.reject_reason ? `<div style="font-size:11px;color:#EF4444;margin-top:4px;display:flex;align-items:center;gap:4px">${ico("alert","ico-sm")}<span>${esc(a.reject_reason)}</span></div>` : ""}
+          ${isActive ? `<button class="sold-btn" onclick="event.stopPropagation();markSold(${a.id})">${ico("check-circle","ico-sm")}Sotildi deb belgilash</button>` : ""}
         </div>
       </div>
     `;
   }).join("");
 }
 
+async function openMyAd(adId){
+  show();
+  try{
+    const a = await api(`/api/ad/${adId}${USER ? "?telegram_id="+USER.telegram_id : ""}`, "GET", null, false);
+    const acc = a.account_data || {};
+    const cur = a.currency || "UZS";
+    const linked = Array.isArray(acc.linked) ? acc.linked : [];
+    const linkNames = {google:"Google", facebook:"Facebook", twitter:"Twitter/X", vk:"VKontakte", email:"Email", phone:"Telefon", apple:"Apple ID", discord:"Discord"};
+    const linkedTxt = linked.map(x => linkNames[x] || x).join(", ") || "-";
+    const skins = Array.isArray(acc.rare_skins) ? acc.rare_skins : [];
+    const xc = Array.isArray(acc.x_costume) ? acc.x_costume : [];
+    const guns = Array.isArray(acc.guns) ? acc.guns : [];
+    const cars = Array.isArray(acc.supar_car) ? acc.supar_car : [];
+    const isActive = a.status === "ACTIVE";
+
+    let html = "";
+    if(a.video_file_id){
+      html += `<video class="detail-video" src="${API_URL}/api/ad/${adId}/video" controls playsinline preload="metadata"></video>`;
+    }
+    html += `<h2 class="detail-title">PUBG Mobile · ${esc(acc.level||"?")} LVL</h2>`;
+    html += `<div class="detail-price">${fmtPrice(a.price, cur)}</div>`;
+
+    html += `<div class="detail-section">
+      <div class="detail-section-title"><span class="icon-sm">${ico("chart")}</span>Asosiy ma'lumotlar</div>
+      <div class="detail-info-row"><span class="k">${ico("trending")}LVL</span><span class="v">${esc(acc.level||"-")}</span></div>
+      <div class="detail-info-row"><span class="k">${ico("target")}Kolleksiya</span><span class="v">${esc(acc.collection||"-")}</span></div>
+      <div class="detail-info-row"><span class="k">${ico("award")}RP</span><span class="v">${esc(acc.rp||"-")}</span></div>
+      <div class="detail-info-row"><span class="k">${ico("shirt")}Mifik kiyimlar</span><span class="v">${num(acc.mythic_clothes||0)} ta</span></div>
+    </div>`;
+
+    if(xc.length){
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${ico("gift")}</span>X-KOSTYUM<span class="count">${xc.length}</span></div>
+        <div class="detail-list">${xc.map(s => `<div class="detail-item">${ico("gift","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>
+      </div>`;
+    }
+    if(cars.length){
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${ico("car")}</span>SUPAR-CAR<span class="count">${cars.length}</span></div>
+        <div class="detail-list">${cars.map(s => `<div class="detail-item">${ico("car","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>
+      </div>`;
+    }
+    if(skins.length){
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${ico("fire")}</span>Redkiy skinlar<span class="count">${skins.length}</span></div>
+        <div class="detail-list">${skins.map(s => `<div class="detail-item">${ico("fire","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>
+      </div>`;
+    }
+    if(guns.length || acc.guns_count){
+      const count = acc.guns_count || guns.length;
+      html += `<div class="detail-section">
+        <div class="detail-section-title"><span class="icon-sm">${ico("target")}</span>Kuchaytirilgan qurollar<span class="count">${count}</span></div>
+        ${guns.length ? `<div class="detail-list">${guns.map(s => `<div class="detail-item">${ico("target","ico-sm")}<span>${esc(s)}</span></div>`).join("")}</div>` : ""}
+      </div>`;
+    }
+
+    html += `<div class="detail-section">
+      <div class="detail-section-title"><span class="icon-sm">${ico("info")}</span>Qo'shimcha</div>
+      <div class="detail-info-row"><span class="k">${ico("link")}Ulangan</span><span class="v">${esc(linkedTxt)}</span></div>
+      <div class="detail-info-row"><span class="k">${ico("map")}Manzil</span><span class="v">${esc(a.location||"-")}</span></div>
+      ${a.full_location ? `<div class="detail-info-row"><span class="k">${ico("map")}To'liq</span><span class="v">${esc(a.full_location)}</span></div>` : ""}
+      <div class="detail-info-row"><span class="k">${ico("info")}Holat</span><span class="v">${esc(a.status||"-")}</span></div>
+    </div>`;
+
+    const phone = (acc.phone || "").trim();
+    const username = (acc.username || "").trim();
+    if(phone || username){
+      html += `<div class="contact-box">
+        <div class="contact-title">${ico("phone","ico-sm")}Sotuvchi bilan bog'lanish</div>`;
+      if(username){
+        const uname = username.replace("@", "");
+        html += `<button class="contact-btn message" onclick="messageSeller('${esc(uname)}')">${ico("msg")}<span>Xabar yozish</span></button>`;
+      }
+      if(phone){
+        const fullPhone = "+998" + phone.replace(/\D/g, "");
+        html += `<div class="contact-phone">${fullPhone}</div>
+          <button class="contact-btn call" onclick="callSeller('${fullPhone}')">${ico("phone")}<span>Qo'ng'iroq qilish</span></button>`;
+      }
+      html += `</div>`;
+    }
+
+    if(isActive){
+      html += `<button class="btn btn-success btn-block mt-16" onclick="markSold(${adId}); closeModal('mAd');">${ico("check-circle")}Sotildi deb belgilash</button>`;
+    }
+    if(IS_ADMIN){
+      html += `<button class="btn btn-danger btn-block mt-16" onclick="adminDeleteAd(${adId}); closeModal('mAd');">${ico("trash")}E'lonni o'chirish</button>`;
+    }
+
+    $("mAdBody").innerHTML = html;
+    openModal("mAd");
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+async function markSold(adId){
+  const ok = await customConfirm("Sotildi deb belgilash", "Bu e'lonni 'Sotildi' deb belgilaysizmi? Keyin Web App'da ko'rinmaydi.", {icon:"check-circle", danger:false, yesText:"Ha, sotildi"});
+  if(!ok) return;
+  show();
+  try{
+    await api("/api/mark-sold", "POST", { ad_id: adId, telegram_id: USER.telegram_id });
+    toast("E'lon sotildi deb belgilandi", "success");
+    await loadMyAds();
+    renderMyAds();
+    await loadAds();
+    renderAds();
+  }catch(e){ toast(e.message, "error") }
+  hide();
+}
+
+/* ============================================================
+   TOPUP
+   ============================================================ */
 function showTopupStep(step){
   ["topupStep1","topupStep2","topupStep3","topupRejected","topupSuccess"].forEach(id => {
     const el = $(id); if(el) el.classList.add("hidden");
@@ -2272,7 +2387,7 @@ async function checkExistingTopup(){
   try{
     const r = await api(`/api/topup/status?telegram_id=${USER.telegram_id}`);
     handleTopupStatus(r, true);
-  }catch(e){ /* ignore */ }
+  }catch(e){}
 }
 
 function setPayCardInfo(cardNumber, holder){
@@ -2478,11 +2593,7 @@ async function submitReceipt(){
 }
 
 async function cancelTopup(){
-  const ok = await customConfirm(
-    "To'lovni bekor qilish",
-    "Hozirgi to'lov sessiyasi bekor qilinadi. Davom etilsinmi?",
-    { icon:"alert", yesText:"Ha, bekor qilish" }
-  );
+  const ok = await customConfirm("To'lovni bekor qilish","Hozirgi to'lov sessiyasi bekor qilinadi. Davom etilsinmi?", { icon:"alert", yesText:"Ha, bekor qilish" });
   if(!ok) return;
   show();
   try{
@@ -2553,29 +2664,13 @@ async function renderAdminContactsAdmin(){
     c.innerHTML = `
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("plus-circle")}</div>Yangi admin qo'shish</div>
-        <div class="field">
-          <label class="label">${ico("user")}Telegram Chat ID</label>
-          <input class="input" id="acChatId" inputmode="numeric" placeholder="Masalan: 7038296036" style="font-family:monospace">
-        </div>
-        <div class="field">
-          <label class="label">${ico("msg")}Username</label>
-          <input class="input" id="acUsername" placeholder="@username (ixtiyoriy)">
-        </div>
-        <div class="field">
-          <label class="label">${ico("user")}Ism</label>
-          <input class="input" id="acFirst" placeholder="Ism">
-        </div>
-        <div class="field">
-          <label class="label">${ico("user")}Familiya</label>
-          <input class="input" id="acLast" placeholder="Familiya">
-        </div>
-        <div class="field">
-          <label class="label">${ico("info")}Qisqacha ma'lumot</label>
-          <textarea class="textarea" id="acInfo" placeholder="Masalan: Savol va yordam uchun"></textarea>
-        </div>
-        <button class="btn btn-primary btn-block btn-anim" onclick="adminAddContact()">${ico("plus")}Qo'shish</button>
+        <div class="field"><label class="label">${ico("user")}Telegram Chat ID</label><input class="input" id="acChatId" inputmode="numeric" placeholder="Masalan: 7038296036" style="font-family:monospace"></div>
+        <div class="field"><label class="label">${ico("msg")}Username</label><input class="input" id="acUsername" placeholder="@username (ixtiyoriy)"></div>
+        <div class="field"><label class="label">${ico("user")}Ism</label><input class="input" id="acFirst" placeholder="Ism"></div>
+        <div class="field"><label class="label">${ico("user")}Familiya</label><input class="input" id="acLast" placeholder="Familiya"></div>
+        <div class="field"><label class="label">${ico("info")}Qisqacha ma'lumot</label><textarea class="textarea" id="acInfo" placeholder="Masalan: Savol va yordam uchun"></textarea></div>
+        <button class="btn btn-primary btn-block" onclick="adminAddContact()">${ico("plus")}Qo'shish</button>
       </div>
-
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("users")}</div>Adminlar ro'yxati (${list.length})</div>
         ${list.length ? list.map(a => `
@@ -2669,8 +2764,8 @@ async function renderAdmin(){
             </div>
           </div>
           <div class="mod-actions">
-            <button class="btn btn-success btn-anim" onclick="adminApprove(${a.id})">${ico("check")}Tasdiq</button>
-            <button class="btn btn-danger btn-anim" onclick="adminReject(${a.id})">${ico("x")}Rad</button>
+            <button class="btn btn-success" onclick="adminApprove(${a.id})">${ico("check")}Tasdiq</button>
+            <button class="btn btn-danger" onclick="adminReject(${a.id})">${ico("x")}Rad</button>
           </div>
         </div>
       `).join("");
@@ -2679,17 +2774,9 @@ async function renderAdmin(){
     $("atCards").innerHTML = `
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("credit")}</div>Kartalar</div>
-        <div class="field">
-          <label class="label">${ico("credit")}Karta raqami</label>
-          <input class="input" id="newCardNum" placeholder="5614 6821 1072 5894" maxlength="19" inputmode="numeric" style="font-family:monospace;letter-spacing:1px">
-        </div>
-        <div class="field">
-          <label class="label">${ico("user")}Karta egasi (ism-familiya)</label>
-          <input class="input" id="newCardHolder" placeholder="Masalan: CARDINAL ADMIN" maxlength="100" style="text-transform:uppercase">
-        </div>
-        <button class="btn btn-primary btn-block btn-anim" onclick="adminAddCard()" style="margin-bottom:14px">
-          ${ico("plus")}Karta qo'shish
-        </button>
+        <div class="field"><label class="label">${ico("credit")}Karta raqami</label><input class="input" id="newCardNum" placeholder="5614 6821 1072 5894" maxlength="19" inputmode="numeric" style="font-family:monospace;letter-spacing:1px"></div>
+        <div class="field"><label class="label">${ico("user")}Karta egasi (ism-familiya)</label><input class="input" id="newCardHolder" placeholder="Masalan: CARDINAL ADMIN" maxlength="100" style="text-transform:uppercase"></div>
+        <button class="btn btn-primary btn-block" onclick="adminAddCard()" style="margin-bottom:14px">${ico("plus")}Karta qo'shish</button>
         ${cards.length ? cards.map(c => `
           <div class="card-item" data-cid="${c.id}">
             <div class="user-av">${ico("credit")}</div>
@@ -2745,11 +2832,8 @@ async function renderAdmin(){
         <div class="pay-note" style="text-align:left;margin-bottom:14px;background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.2);color:var(--blue)">
           ${ico("info")}<span>Chat ID kiriting — foydalanuvchi darhol admin bo'ladi</span>
         </div>
-        <div class="field">
-          <label class="label">${ico("user")}Telegram Chat ID</label>
-          <input class="input" id="newAdminId" inputmode="numeric" placeholder="Masalan: 7038296036" style="font-family:monospace">
-        </div>
-        <button class="btn btn-purple btn-block btn-anim" onclick="addNewAdmin()">${ico("shield")}Admin qilish</button>
+        <div class="field"><label class="label">${ico("user")}Telegram Chat ID</label><input class="input" id="newAdminId" inputmode="numeric" placeholder="Masalan: 7038296036" style="font-family:monospace"></div>
+        <button class="btn btn-purple btn-block" onclick="addNewAdmin()">${ico("shield")}Admin qilish</button>
       </div>
     `;
 
@@ -2807,7 +2891,7 @@ async function renderSettings(){
             <div class="input-prefix">kun</div>
           </div>
         </div>
-        <button class="btn btn-primary btn-block btn-anim" onclick="saveDays()">${ico("check")}Saqlash</button>
+        <button class="btn btn-primary btn-block" onclick="saveDays()">${ico("check")}Saqlash</button>
       </div>
     `;
   }catch(e){
@@ -2895,15 +2979,8 @@ async function openUserDetail(tgId){
     const isBlocked = !!u.is_blocked;
     $("mUserDetailBody").innerHTML = `
       <div class="user-detail-head">
-        <div class="user-detail-av">
-          <div class="user-detail-av-in">
-            ${u.avatar ? `<img src="${u.avatar}">` : (u.first_name||"U")[0].toUpperCase()}
-          </div>
-        </div>
-        <div class="user-detail-name">
-          ${esc(u.first_name||"")} ${esc(u.last_name||"")}
-          ${isAdmin ? ico("check","ico-sm") : ""}
-        </div>
+        <div class="user-detail-av"><div class="user-detail-av-in">${u.avatar ? `<img src="${u.avatar}">` : (u.first_name||"U")[0].toUpperCase()}</div></div>
+        <div class="user-detail-name">${esc(u.first_name||"")} ${esc(u.last_name||"")} ${isAdmin ? ico("check","ico-sm") : ""}</div>
         <div class="user-detail-id">${ico("user","ico-sm")}<span>${u.telegram_id}</span></div>
       </div>
       <div class="detail-info-row"><span class="k">${ico("phone")}Telefon</span><span class="v">${u.phone ? "+998 " + esc(u.phone) : "-"}</span></div>
@@ -2914,21 +2991,16 @@ async function openUserDetail(tgId){
       <div class="detail-info-row"><span class="k">${ico("calendar")}Ro'yxatdan</span><span class="v">${formatTime(u.created_at)}</span></div>
       <div class="detail-info-row"><span class="k">${ico("info")}Holat</span><span class="v" style="color:${isBlocked?'#EF4444':'#10B981'}">${isBlocked ? "Bloklangan" : "Faol"}</span></div>
       <div class="user-detail-actions">
-        <button class="btn ${isBlocked?'btn-success':'btn-danger'} btn-anim" onclick="toggleUserBlock(${u.telegram_id}, ${isBlocked})">
+        <button class="btn ${isBlocked?'btn-success':'btn-danger'}" onclick="toggleUserBlock(${u.telegram_id}, ${isBlocked})">
           ${ico(isBlocked ? "unlock" : "lock")}${isBlocked ? 'Blokdan chiqarish' : 'Bloklash'}
         </button>
-        <button class="btn btn-primary btn-anim" onclick="openBalanceEditor()">
-          ${ico("wallet")}Balans boshqarish
-        </button>
+        <button class="btn btn-primary" onclick="openBalanceEditor()">${ico("wallet")}Balans boshqarish</button>
       </div>
       <div id="balanceEditor" class="hidden" style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-        <div class="field">
-          <label class="label">${ico("dollar")}Summa (so'm)</label>
-          <input class="input" id="balAmt" inputmode="numeric" placeholder="Masalan: 50000">
-        </div>
+        <div class="field"><label class="label">${ico("dollar")}Summa (so'm)</label><input class="input" id="balAmt" inputmode="numeric" placeholder="Masalan: 50000"></div>
         <div class="balance-row">
-          <button class="btn btn-success btn-anim" onclick="changeBalance(${u.telegram_id}, 1)">${ico("plus-circle")}Qo'shish</button>
-          <button class="btn btn-danger btn-anim" onclick="changeBalance(${u.telegram_id}, -1)">${ico("minus-circle")}Olib tashlash</button>
+          <button class="btn btn-success" onclick="changeBalance(${u.telegram_id}, 1)">${ico("plus-circle")}Qo'shish</button>
+          <button class="btn btn-danger" onclick="changeBalance(${u.telegram_id}, -1)">${ico("minus-circle")}Olib tashlash</button>
         </div>
       </div>
     `;
@@ -3005,10 +3077,8 @@ async function renderUserbotSection(){
           </div>
           <div class="detail-info-row"><span class="k">${ico("phone")}Telefon</span><span class="v">${esc(s.phone||"-")}</span></div>
           ${s.me ? `<div class="detail-info-row"><span class="k">${ico("user")}Username</span><span class="v">@${esc(s.me.username||"-")}</span></div>` : ""}
-          ${s.me ? `<div class="detail-info-row"><span class="k">${ico("info")}Ism</span><span class="v">${esc(s.me.first_name||"-")}</span></div>` : ""}
-          <button class="btn btn-danger btn-block mt-16 btn-anim" onclick="userbotLogout()">${ico("ban")}Userbotni o'chirish</button>
+          <button class="btn btn-danger btn-block mt-16" onclick="userbotLogout()">${ico("ban")}Userbotni o'chirish</button>
         </div>
-        <div class="pay-note">${ico("check-circle")}<span>Userbot @${USERBOT_BOT} dan kelgan to'lovlarni avtomatik kuzatadi</span></div>
       `;
     } else {
       html = `
@@ -3018,29 +3088,17 @@ async function renderUserbotSection(){
             ${ico("info")}<span>Userbot @${USERBOT_BOT} dan kelgan to'lov xabarlarini kuzatadi</span>
           </div>
           <div id="ub-step1">
-            <div class="field">
-              <label class="label">${ico("phone")}Telefon raqam</label>
-              <div class="input-group">
-                <div class="input-prefix">+998</div>
-                <input class="input" id="ubPhone" inputmode="numeric" maxlength="9" placeholder="901234567">
-              </div>
-            </div>
-            <button class="btn btn-primary btn-block btn-anim" onclick="userbotSendCode()">${ico("send")}Kod yuborish</button>
+            <div class="field"><label class="label">${ico("phone")}Telefon raqam</label><div class="input-group"><div class="input-prefix">+998</div><input class="input" id="ubPhone" inputmode="numeric" maxlength="9" placeholder="901234567"></div></div>
+            <button class="btn btn-primary btn-block" onclick="userbotSendCode()">${ico("send")}Kod yuborish</button>
           </div>
           <div id="ub-step2" class="hidden">
-            <div class="field">
-              <label class="label">${ico("msg")}Telegram dan kelgan kod</label>
-              <input class="input" id="ubCode" inputmode="numeric" maxlength="6" placeholder="12345" style="text-align:center;font-size:20px;letter-spacing:4px">
-            </div>
-            <button class="btn btn-primary btn-block btn-anim" onclick="userbotVerifyCode()">${ico("check")}Tasdiqlash</button>
+            <div class="field"><label class="label">${ico("msg")}Telegram dan kelgan kod</label><input class="input" id="ubCode" inputmode="numeric" maxlength="6" placeholder="12345" style="text-align:center;font-size:20px;letter-spacing:4px"></div>
+            <button class="btn btn-primary btn-block" onclick="userbotVerifyCode()">${ico("check")}Tasdiqlash</button>
             <button class="btn btn-secondary btn-block mt-8" onclick="userbotBack()">${ico("arrow-l")}Orqaga</button>
           </div>
           <div id="ub-step3" class="hidden">
-            <div class="field">
-              <label class="label">${ico("lock")}2FA parolingiz</label>
-              <input class="input" id="ubPassword" type="password" placeholder="••••••••">
-            </div>
-            <button class="btn btn-primary btn-block btn-anim" onclick="userbotVerify2FA()">${ico("check")}Tasdiqlash</button>
+            <div class="field"><label class="label">${ico("lock")}2FA parolingiz</label><input class="input" id="ubPassword" type="password" placeholder="••••••••"></div>
+            <button class="btn btn-primary btn-block" onclick="userbotVerify2FA()">${ico("check")}Tasdiqlash</button>
           </div>
         </div>
       `;
@@ -3117,6 +3175,13 @@ function advertiseBot(){ startCreate() }
 function useMyUsername(){
   if(USER?.username){ $("accUser").value = "@" + USER.username; }
   else { toast("Sizda Telegram username yo'q", "error") }
+}
+
+function closeVideoModal(){
+  const v = $("videoModalPlayer");
+  try { v.pause(); v.src = ""; } catch(e){}
+  $("videoModal").classList.remove("active");
+  document.body.style.overflow = "";
 }
 
 async function init(){
@@ -3197,7 +3262,6 @@ document.addEventListener("DOMContentLoaded", init);
 
 window.addEventListener("beforeunload", () => {
   stopTopupTimers();
-  if(_videoObserver){ try { _videoObserver.disconnect(); } catch(e){} }
 });
 </script>
 
