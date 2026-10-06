@@ -1,8 +1,10 @@
 """
-Cardinal Bot v6.1 - Premium Emoji + Button Icons
+Cardinal Bot v6.2 - Premium Emoji + Button Icons + Clickable Footer
 - Barcha xabarlar premium emoji bilan
 - Inline tugmalarda premium emoji ikonkalar
 - Kanal posti ham premium
+- Sonlar qalin shriftda
+- Footer havolalar bosiladigan
 """
 import asyncio
 import logging
@@ -30,6 +32,17 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s"
 )
 logger = logging.getLogger("CardinalBot")
+
+
+# ============================================================
+# KANAL FOOTER — bosiladigan havolalar
+# ============================================================
+CHANNEL_FOOTER_HTML = (
+    '📌 <a href="https://t.me/cardinal_savdo">Kanalimiz</a>\n'
+    '🤝 <a href="https://t.me/Cardinal_G">Garant uchun</a>\n'
+    '💰 <a href="https://t.me/cardinal_uc">UC Servis</a>\n'
+    '✔️ <a href="https://t.me/Cardinal_pubg">Asosiy kanal</a>'
+)
 
 
 # ============================================================
@@ -140,6 +153,17 @@ def num(n) -> str:
         return "0"
 
 
+def bold_numbers(text: str) -> str:
+    """Matndagi mustaqil sonlarni <b> ga o'raydi (harflar ichidagi sonlar tegilmaydi)."""
+    if not text:
+        return text
+    return re.sub(
+        r'(?<![A-Za-z])(\d+)(?![A-Za-z])',
+        lambda m: f'<b>{m.group(1)}</b>',
+        str(text)
+    )
+
+
 def fmt_price(amount, currency="UZS") -> str:
     cur = CURRENCIES.get(currency, CURRENCIES["UZS"])
     n = int(amount or 0)
@@ -199,9 +223,7 @@ def _json_default(obj):
 
 
 def ikb(text: str, emoji_key: str = None, **kwargs) -> InlineKeyboardButton:
-    """Premium emoji ikonka bilan InlineKeyboardButton yasash.
-    Agar aiogram icon_custom_emoji_id ni qo'llab-quvvatlamasa — oddiy tugma.
-    """
+    """Premium emoji ikonka bilan InlineKeyboardButton yasash."""
     if emoji_key and emoji_key in EMOJI_ID:
         try:
             return InlineKeyboardButton(
@@ -766,6 +788,18 @@ class CardinalBot:
         await cb.message.edit_reply_markup(reply_markup=None)
         await cb.answer("❌ Rad etildi")
 
+    # ============================================================
+    # KANALGA JOYLASH — PREMIUM EMOJI + QALIN SONLAR + LINKLAR
+    # ============================================================
+    def _tree_lines(self, items: list) -> list:
+        """Ro'yxat elementlarini daraxt shaklida + qalin sonlar bilan qaytaradi."""
+        out = []
+        n = len(items)
+        for i, item in enumerate(items):
+            prefix = "└" if i == n - 1 else "├"
+            out.append(f"{prefix} {bold_numbers(str(item))}")
+        return out
+
     async def _post_to_channel(self, ad: dict):
         try:
             acc = ad.get("account_data", {}) or {}
@@ -774,44 +808,45 @@ class CardinalBot:
             lines = [
                 "🎮 <b>PUBG MOBILE AKKOUNT SOTILADI</b>",
                 "",
-                f"📈 <b>LVL:</b> {acc.get('level', '-')}",
-                f"🎯 <b>Kolleksiya:</b> {acc.get('collection', '-')}",
-                f"🏆 <b>RP:</b> {acc.get('rp', '-')}",
-                f"👕 <b>Mifik kiyimlar:</b> {acc.get('mythic_clothes', 0)} ta",
+                f"📈 <b>LVL:</b> <b>{acc.get('level', '-')}</b>",
+                f"🎯 <b>Kolleksiya:</b> <b>{acc.get('collection', '-')}</b>",
+                f"🏆 <b>RP:</b> {bold_numbers(str(acc.get('rp', '-')))}",
+                f"👕 <b>Mifik kiyimlar:</b> <b>{acc.get('mythic_clothes', 0)}</b> ta",
             ]
 
             xc = acc.get("x_costume") or []
             if xc:
                 lines.append("")
-                lines.append("🎁 <b>X-KOSTYUM:</b>")
-                for s in xc[:25]:
-                    lines.append(f"  • {s}")
+                lines.append("🎁 <b>X-KOSTYUM</b>")
+                lines.extend(self._tree_lines(xc[:25]))
 
             cars = acc.get("supar_car") or []
             if cars:
                 lines.append("")
-                lines.append("🚗 <b>SUPAR-CAR:</b>")
-                for s in cars[:25]:
-                    lines.append(f"  • {s}")
+                lines.append("🚗 <b>SUPAR-CAR</b>")
+                lines.extend(self._tree_lines(cars[:25]))
 
             skins = acc.get("rare_skins") or []
             if skins:
                 lines.append("")
-                lines.append("💎 <b>Redkiy skinlar:</b>")
-                for s in skins[:25]:
-                    lines.append(f"  • {s}")
+                lines.append("💎 <b>Redkiy skinlar</b>")
+                lines.extend(self._tree_lines(skins[:25]))
 
             guns = acc.get("guns") or []
             gc = acc.get("guns_count") or len(guns)
+            if guns or gc:
+                lines.append("")
+                lines.append("🔫 <b>Kuchaytirilgan qurollar</b>")
+                gun_items = list(guns[:24])
+                if gc:
+                    gun_items.append(f"Jami: {gc} ta")
+                if gun_items:
+                    lines.extend(self._tree_lines(gun_items))
+
             lines.append("")
-            lines.append("🔫 <b>Kuchaytirilgan qurollar:</b>")
-            for g in guns[:25]:
-                lines.append(f"  • {g}")
-            if gc:
-                lines.append(f"  • Jami kuchaytiriladigan qurollar {gc} ta")
+            lines.append("")
 
             linked = acc.get("linked") or []
-            lines.append("")
             lines.append(f"🔗 <b>Ulangan:</b> {', '.join(linked) if linked else '-'}")
             lines.append(f"🏠 <b>Manzil:</b> {ad.get('location', '-')}")
             if ad.get("full_location"):
@@ -825,20 +860,22 @@ class CardinalBot:
                 p = phone.replace("+", "").replace(" ", "")
                 if not p.startswith("998"):
                     p = "998" + p
-                lines.append(f"📞 <b>Telefon raqam:</b> +{p}")
+                lines.append(f"📞 <b>Telefon:</b> +{p}")
 
+            lines.append("")
+            lines.append("")
             if cur["symbol"] == "$":
-                price_str = f"{ad['price']} $ {cur['flag']}"
+                price_str = f"{ad['price']} $"
             else:
-                price_str = f"{num(ad['price'])} {cur['symbol']} {cur['flag']}"
-            lines.append(f"💰 <b>NARXI:</b> {price_str}")
+                price_str = f"{num(ad['price'])} {cur['symbol']}"
+            lines.append(f"💰 <b>NARXI:</b> <b>{price_str}</b>")
 
             lines.append("")
             lines.append(BOT.CHANNEL_NOTE)
             lines.append("")
             lines.append(BOT.CHANNEL_WARNING)
             lines.append("")
-            lines.append(BOT.CHANNEL_FOOTER)
+            lines.append(CHANNEL_FOOTER_HTML)
 
             text = "\n".join(lines)
 
@@ -860,7 +897,7 @@ class CardinalBot:
                     parse_mode="HTML", reply_markup=kb
                 )
             await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.message_id)
-            logger.info(f"#{ad['id']} reklama kanaliga joylandi (premium)")
+            logger.info(f"#{ad['id']} reklama kanaliga joylandi (premium + bold + links)")
         except Exception as e:
             logger.error(f"Kanalga joylash xato: {e}", exc_info=True)
 
@@ -910,10 +947,10 @@ class CardinalBot:
                 "",
                 "📋 <b>AKKAUNT MA'LUMOTLARI:</b>",
                 "",
-                f"📈 LVL: {acc.get('level', '-')}",
-                f"🎯 Kolleksiya: {acc.get('collection', '-')}",
-                f"🏆 RP: {acc.get('rp', '-')}",
-                f"👕 Mifik: {acc.get('mythic_clothes', 0)} ta",
+                f"📈 LVL: <b>{acc.get('level', '-')}</b>",
+                f"🎯 Kolleksiya: <b>{acc.get('collection', '-')}</b>",
+                f"🏆 RP: {bold_numbers(str(acc.get('rp', '-')))}",
+                f"👕 Mifik: <b>{acc.get('mythic_clothes', 0)}</b> ta",
             ]
             for key, label, emoji in [
                 ("x_costume", "X-KOSTYUM", "🎁"),
@@ -926,7 +963,7 @@ class CardinalBot:
                     lines.append("")
                     lines.append(f"{emoji} <b>{label}:</b>")
                     for s in arr[:25]:
-                        lines.append(f"  • {s}")
+                        lines.append(f"  • {bold_numbers(str(s))}")
 
             lines.append("")
             lines.append(f"🏠 Manzil: {acc.get('location', '-') or '-'}")
@@ -982,7 +1019,7 @@ class CardinalBot:
             logger.error(f"send_receipt_to_admin: {e}", exc_info=True)
 
     async def start(self):
-        logger.info("CardinalBot v6.1 (Premium Emoji + Button Icons) ishga tushdi")
+        logger.info("CardinalBot v6.2 (Premium Emoji + Bold Numbers + Clickable Footer) ishga tushdi")
         await self.userbot.start()
         await self.cleaner.start()
         await self.dp.start_polling(self.bot)
