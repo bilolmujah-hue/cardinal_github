@@ -404,13 +404,13 @@ class CardinalBot:
             resize_keyboard=True
         )
         await message.answer(
-            pe("🎮 <b>CARDINAL AKKAUNT</b>\n\n"
-               "💎 <b>Premium xizmat:</b>\n"
-               "  • 🎬 Video reklama joylash\n"
-               "  • 🛒 Akkaunt sotish va sotib olish\n"
-               "  • 💰 Balansni avtomatik to'ldirish\n"
-               "  • ⭐️ Otzif qoldirish\n\n"
-               "🚀 Web App orqali barcha imkoniyatlar!"),
+            pe("<b>CARDINAL BOT</b> ✅ \n\n"
+               "<b>Botimiz orqali siz</b> 👇 \n"
+               " - @Cardinal_Savdo kanalimizga oson reklama joylaysiz ✅ \n"
+               " - Akkauntingizni ishonchli sotasiz ✅ \n"
+               " - Ishonchli akkaunt sotib olasiz💯\n"
+               " - Hammasi avtomat tarzda, juda tez✅ \n\n"
+               " - 24/7 Qo’llab-quvvatlash hizmati!💬"),
             parse_mode="HTML", reply_markup=kb
         )
         await message.answer(
