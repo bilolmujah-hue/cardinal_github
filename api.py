@@ -1,15 +1,17 @@
 """
-Cardinal API v6.2
-- Multipart video upload (XHR + progress)
-- Mark Sold
-- VIP requests
-- SOLD status support
+Cardinal API v7.0
+- Thumbnail endpoints (faqat admin)
+- PIN endpoints (faqat admin)
+- Edit ad endpoint (faqat admin)
+- Mark sold
+- VIP request
 """
 import asyncio
 import json
 import base64
 import logging
 import re
+import uuid
 from datetime import datetime, timedelta
 from decimal import Decimal
 
@@ -33,10 +35,8 @@ def json_ser(obj):
 
 
 def jresp(data, status=200):
-    return web.json_response(
-        data, status=status,
-        dumps=lambda x: json.dumps(x, default=json_ser, ensure_ascii=False)
-    )
+    return web.json_response(data, status=status,
+                             dumps=lambda x: json.dumps(x, default=json_ser, ensure_ascii=False))
 
 
 def is_valid_video_data_url(url: str) -> bool:
@@ -44,6 +44,11 @@ def is_valid_video_data_url(url: str) -> bool:
     if url.startswith("data:video"): return True
     exts = (".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".3gp", ".hevc")
     return url.lower().endswith(exts)
+
+
+def is_valid_image_data_url(url: str) -> bool:
+    if not url or not isinstance(url, str): return False
+    return url.startswith("data:image/")
 
 
 class API:
@@ -64,9 +69,6 @@ class API:
             return jresp({"ok": False, "error": "Fayl juda katta (max 200 MB)"}, 413)
         except web.HTTPException as e:
             return jresp({"ok": False, "error": f"HTTP {e.status}"}, e.status)
-        except ConnectionResetError:
-            logger.warning("Client connection reset")
-            return web.Response(status=499)
         except Exception as e:
             logger.error(f"API err: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 500)
@@ -95,6 +97,9 @@ class API:
             ("GET",  "/api/ad/{ad_id}/video", self.stream_video),
             ("GET",  "/api/ad/{ad_id}", self.get_ad),
 
+            # Upload video (multipart)
+            ("POST", "/api/upload-video", self.upload_video),
+
             # Auth
             ("POST", "/api/auth/telegram", self.auth_telegram),
             ("POST", "/api/auth/refresh", self.auth_refresh),
@@ -104,7 +109,6 @@ class API:
             ("GET",  "/api/user/{telegram_id}", self.get_user),
             ("POST", "/api/update-profile", self.update_profile),
             ("GET",  "/api/my-ads/{telegram_id}", self.my_ads),
-            ("POST", "/api/upload-video", self.upload_video),
             ("POST", "/api/create-ad", self.create_ad),
             ("POST", "/api/mark-sold", self.mark_sold),
             ("POST", "/api/toggle-save", self.toggle_save),
@@ -125,6 +129,7 @@ class API:
             # Admin
             ("GET",  "/api/admin/pending-ads", self.admin_pending_ads),
             ("GET",  "/api/admin/all-ads", self.admin_all_ads),
+            ("GET",  "/api/admin/ads-with-pin", self.admin_ads_with_pin),
             ("GET",  "/api/admin/users", self.admin_users),
             ("GET",  "/api/admin/blocked", self.admin_blocked),
             ("GET",  "/api/admin/cards", self.admin_cards),
@@ -144,6 +149,12 @@ class API:
             ("POST", "/api/admin/add-admin", self.admin_add_admin),
             ("GET",  "/api/admin/settings", self.admin_get_settings),
             ("POST", "/api/admin/settings/set-days", self.admin_set_days),
+
+            # 🔥 Admin — Thumbnail / PIN / Edit
+            ("POST", "/api/admin/ad/set-thumbnail", self.admin_set_thumbnail),
+            ("POST", "/api/admin/ad/toggle-pin", self.admin_toggle_pin),
+            ("POST", "/api/admin/ad/reorder-pins", self.admin_reorder_pins),
+            ("POST", "/api/admin/ad/edit", self.admin_edit_ad),
 
             # Admin Contacts
             ("GET",  "/api/admin/contacts", self.admin_list_contacts),
@@ -168,7 +179,7 @@ class API:
     # ============================================================
     async def index(self, req):
         return jresp({
-            "app": "Cardinal API", "version": "6.2", "status": "running",
+            "app": "Cardinal API", "version": "7.0", "status": "running",
             "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
         })
 
@@ -302,6 +313,52 @@ class API:
                 return web.Response(status=499)
             logger.error(f"stream_video (ad #{ad_id}): {e}", exc_info=True)
             return web.Response(status=500, text="Server xatosi")
+
+    # ============================================================
+    # UPLOAD VIDEO (multipart)
+    # ============================================================
+    async def upload_video(self, req):
+        try:
+            reader = await req.multipart()
+            if not reader:
+                return jresp({"ok": False, "error": "Fayl yuborilmadi"}, 400)
+
+            field = await reader.next()
+            if not field or field.name != "video":
+                return jresp({"ok": False, "error": "Video topilmadi"}, 400)
+
+            chunks = []
+            total = 0
+            MAX = API_CFG.MAX_SIZE
+            while True:
+                chunk = await field.read_chunk(1024 * 512)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX:
+                    return jresp({"ok": False, "error": "Video 200 MB dan katta"}, 413)
+                chunks.append(chunk)
+
+            raw = b"".join(chunks)
+            if not raw:
+                return jresp({"ok": False, "error": "Bo'sh fayl"}, 400)
+
+            from aiogram.types import BufferedInputFile
+            filename = getattr(field, "filename", None) or "ad.mp4"
+            vid = BufferedInputFile(raw, filename=filename)
+            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
+
+            if not msg.video:
+                return jresp({"ok": False, "error": "Telegram video qabul qilmadi"}, 500)
+
+            return jresp({
+                "ok": True,
+                "file_id": msg.video.file_id,
+                "size": total,
+            })
+        except Exception as e:
+            logger.error(f"upload_video: {e}", exc_info=True)
+            return jresp({"ok": False, "error": str(e)}, 500)
 
     async def get_feedbacks(self, req):
         return jresp(await self.db.get_feedbacks())
@@ -441,57 +498,6 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     # ============================================================
-    # UPLOAD VIDEO (multipart)
-    # ============================================================
-    async def upload_video(self, req):
-        """Videoni multipart sifatida qabul qiladi va Telegramga yuklaydi."""
-        try:
-            if not req.can_read_body:
-                return jresp({"ok": False, "error": "Body yo'q"}, 400)
-
-            reader = await req.multipart()
-            field = await reader.next()
-            if not field or field.name != "video":
-                return jresp({"ok": False, "error": "Video topilmadi"}, 400)
-
-            # Stream sifatida o'qib olish
-            chunks = []
-            total = 0
-            MAX = API_CFG.MAX_SIZE
-
-            while True:
-                chunk = await field.read_chunk(1024 * 512)  # 512 KB
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > MAX:
-                    return jresp({"ok": False, "error": "Video 200 MB dan katta"}, 413)
-                chunks.append(chunk)
-
-            raw = b"".join(chunks)
-            if not raw:
-                return jresp({"ok": False, "error": "Bo'sh fayl"}, 400)
-
-            # Telegramga yuborish
-            from aiogram.types import BufferedInputFile
-            filename = getattr(field, "filename", None) or "ad.mp4"
-            vid = BufferedInputFile(raw, filename=filename)
-            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
-
-            if not msg.video:
-                return jresp({"ok": False, "error": "Telegram video qabul qilmadi"}, 500)
-
-            logger.info(f"Video yuklandi: {total / 1024 / 1024:.1f} MB")
-            return jresp({
-                "ok": True,
-                "file_id": msg.video.file_id,
-                "size": total,
-            })
-        except Exception as e:
-            logger.error(f"upload_video: {e}", exc_info=True)
-            return jresp({"ok": False, "error": str(e)}, 500)
-
-    # ============================================================
     # CREATE AD
     # ============================================================
     async def create_ad(self, req):
@@ -516,9 +522,8 @@ class API:
                     "need": t.price, "have": user["balance"]
                 }, 400)
 
-            # Yangi: file_id (multipart orqali kelgan)
+            # video_file_id yoki base64
             file_id = ad_data.get("video_file_id")
-            # Zaxira: base64 (eski usul)
             if not file_id:
                 video_data = ad_data.get("video_url")
                 if video_data and is_valid_video_data_url(video_data):
@@ -616,20 +621,6 @@ class API:
         except Exception as e:
             logger.error(f"create_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
-
-    async def _upload_video_to_channel(self, data_url: str):
-        try:
-            header, encoded = data_url.split(",", 1)
-            raw = base64.b64decode(encoded)
-            if len(raw) > API_CFG.MAX_SIZE:
-                return None
-            from aiogram.types import BufferedInputFile
-            vid = BufferedInputFile(raw, filename="ad.mp4")
-            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
-            return msg.video.file_id
-        except Exception as e:
-            logger.error(f"video upload: {e}", exc_info=True)
-            return None
 
     # ============================================================
     # MARK SOLD
@@ -731,6 +722,20 @@ class API:
         except Exception as e:
             logger.error(f"create_vip_request: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def _upload_video_to_channel(self, data_url: str):
+        try:
+            header, encoded = data_url.split(",", 1)
+            raw = base64.b64decode(encoded)
+            if len(raw) > API_CFG.MAX_SIZE:
+                return None
+            from aiogram.types import BufferedInputFile
+            vid = BufferedInputFile(raw, filename="ad.mp4")
+            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
+            return msg.video.file_id
+        except Exception as e:
+            logger.error(f"video upload: {e}", exc_info=True)
+            return None
 
     # ============================================================
     # TOPUP
@@ -874,6 +879,15 @@ class API:
     async def admin_all_ads(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         return jresp(await self.db.get_active_ads())
+
+    async def admin_ads_with_pin(self, req):
+        """Admin panel uchun — barcha aktiv reklamalar + pin/thumb info."""
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            return jresp(await self.db.get_all_ads_with_pin())
+        except Exception as e:
+            logger.error(f"admin_ads_with_pin: {e}", exc_info=True)
+            return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_users(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
@@ -1136,6 +1150,154 @@ class API:
             await self.db.set_setting("ad_days", days)
             return jresp({"ok": True, "days": days})
         except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    # ============================================================
+    # ADMIN — THUMBNAIL
+    # ============================================================
+    async def admin_set_thumbnail(self, req):
+        """Admin reklamaga thumbnail (rasm) yuklaydi yoki olib tashlaydi."""
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            ad_id = int(data["ad_id"])
+            thumbnail_url = data.get("thumbnail_url")  # data:image/... yoki None
+
+            if thumbnail_url is not None:
+                if not is_valid_image_data_url(thumbnail_url):
+                    return jresp({"ok": False, "error": "Faqat rasm yuklang"}, 400)
+                # 1 MB limit
+                try:
+                    header, encoded = thumbnail_url.split(",", 1)
+                    if len(encoded) > 2_000_000:
+                        return jresp({"ok": False, "error": "Rasm 1.5 MB dan katta"}, 400)
+                except Exception:
+                    return jresp({"ok": False, "error": "Rasm noto'g'ri"}, 400)
+
+            await self.db.set_ad_thumbnail(ad_id, thumbnail_url)
+            return jresp({"ok": True})
+        except Exception as e:
+            logger.error(f"admin_set_thumbnail: {e}", exc_info=True)
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    # ============================================================
+    # ADMIN — PIN
+    # ============================================================
+    async def admin_toggle_pin(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            ad_id = int(data["ad_id"])
+            result = await self.db.toggle_ad_pin(ad_id)
+            if result is None:
+                return jresp({"ok": False, "error": "Topilmadi"}, 404)
+            return jresp({"ok": True, **result})
+        except Exception as e:
+            logger.error(f"admin_toggle_pin: {e}", exc_info=True)
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def admin_reorder_pins(self, req):
+        """
+        Admin pin tartibini o'zgartiradi.
+        Body: { "ad_ids": [1, 2, 3] } — tepadan pastga
+        """
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            ad_ids = data.get("ad_ids") or []
+            ad_ids = [int(x) for x in ad_ids if str(x).isdigit()]
+            await self.db.reorder_pins(ad_ids)
+            return jresp({"ok": True})
+        except Exception as e:
+            logger.error(f"admin_reorder_pins: {e}", exc_info=True)
+            return jresp({"ok": False, "error": str(e)}, 400)
+
+    # ============================================================
+    # ADMIN — EDIT AD (faqat matn)
+    # ============================================================
+    async def admin_edit_ad(self, req):
+        """
+        Faqat matn maydonlarini tahrirlash:
+        - price, currency, location, full_location
+        - account_data (level, collection, rp, mythic_clothes, rare_skins, x_costume, guns, guns_count, supar_car, username, phone)
+        Video va thumbnail tegmaydi.
+        """
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            ad_id = int(data["ad_id"])
+            acc = data.get("account_data", {}) or {}
+
+            # Validatsiya
+            try:
+                coll = int(acc.get("collection", 0))
+                if coll > LIMITS.COLLECTION_MAX:
+                    return jresp({"ok": False, "error": f"Kolleksiya max {LIMITS.COLLECTION_MAX}"}, 400)
+                acc["collection"] = coll
+            except Exception:
+                acc["collection"] = 0
+
+            try:
+                lvl = int(acc.get("level", 0))
+                if lvl > LIMITS.LVL_MAX:
+                    return jresp({"ok": False, "error": f"LVL max {LIMITS.LVL_MAX}"}, 400)
+                acc["level"] = lvl
+            except Exception:
+                acc["level"] = 0
+
+            try:
+                mc = int(re.sub(r"\D", "", str(acc.get("mythic_clothes", 0))) or 0)
+                if mc > LIMITS.MYTHIC_MAX:
+                    return jresp({"ok": False, "error": f"Mifik kiyimlar max {LIMITS.MYTHIC_MAX}"}, 400)
+                acc["mythic_clothes"] = mc
+            except Exception:
+                acc["mythic_clothes"] = 0
+
+            acc["rp"] = str(acc.get("rp", ""))[:LIMITS.RP_MAX_CHARS]
+
+            for k in ("rare_skins", "x_costume", "guns", "supar_car"):
+                arr = acc.get(k) or []
+                if isinstance(arr, list):
+                    acc[k] = arr[:LIMITS.ADD_LIST_MAX]
+
+            try:
+                acc["guns_count"] = int(re.sub(r"\D", "", str(acc.get("guns_count", 0))) or 0)
+            except Exception:
+                acc["guns_count"] = len(acc.get("guns") or [])
+
+            phone = (acc.get("phone") or "").strip()
+            username = (acc.get("username") or "").strip()
+            if phone:
+                digits = re.sub(r"\D", "", phone)
+                if digits.startswith("998"):
+                    digits = digits[3:]
+                if len(digits) != 9:
+                    return jresp({"ok": False, "error": "Telefon formati +998XXXXXXXXX"}, 400)
+                acc["phone"] = digits
+            if username:
+                if not username.startswith("@"):
+                    username = "@" + username
+                acc["username"] = username[:64]
+
+            price = int(re.sub(r"\D", "", str(data.get("price", 0))) or 0)
+            if price <= 0:
+                return jresp({"ok": False, "error": "Narx noto'g'ri"}, 400)
+
+            cur_code = data.get("currency", "UZS")
+            if cur_code not in CURRENCIES:
+                cur_code = "UZS"
+
+            await self.db.update_ad_text(ad_id, {
+                "price": price,
+                "currency": cur_code,
+                "location": data.get("location"),
+                "full_location": data.get("full_location"),
+                "account_data": acc,
+            })
+
+            return jresp({"ok": True})
+        except Exception as e:
+            logger.error(f"admin_edit_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     # ============================================================
