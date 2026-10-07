@@ -411,8 +411,8 @@ class CardinalBot:
                "<b>Botimiz orqali siz</b> 👇 \n"
                " - @Cardinal_Savdo kanalimizga oson reklama joylaysiz ✅ \n"
                " - Akkauntingizni ishonchli sotasiz ✅ \n"
-               " - Ishonchli akkaunt sotib olasiz💯\n"
-               " - Hammasi avtomat tarzda, juda tez✅ \n\n"
+               " - Hammasi avtomat tarzda, juda tez✅ \n"
+               " - Ishonchli akkaunt sotib olasiz💯 \n\n"
                " - 24/7 Qo’llab-quvvatlash hizmati!💬"),
             parse_mode="HTML", reply_markup=kb
         )
