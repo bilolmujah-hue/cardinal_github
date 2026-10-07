@@ -1,10 +1,14 @@
 """
-Cardinal DB v6.2
-- Settings (ad_days)
-- Video file_id (base64 emas)
-- SOLD status
-- VIP requests
-- Cleanup
+Cardinal DB v7.0
+- Settings jadvali (ad_days)
+- topup_requests.seen
+- Soft delete kartalar
+- Karta holder
+- Cleanup: get_expired_ads + expire_ad
+- SOLD status (sotildi)
+- Thumbnail (rasm) - faqat admin yuklaydi
+- PIN tizimi (admin tartibida)
+- Edit ad (faqat matn)
 """
 import asyncpg
 import json
@@ -64,6 +68,7 @@ class Database:
                     id SERIAL PRIMARY KEY,
                     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
                     title VARCHAR(255) NOT NULL, video_file_id TEXT,
+                    thumbnail_url TEXT,
                     ad_type VARCHAR(50) DEFAULT 'STANDARD',
                     price BIGINT NOT NULL, currency VARCHAR(10) DEFAULT 'UZS',
                     location VARCHAR(100), full_location VARCHAR(255),
@@ -72,6 +77,8 @@ class Database:
                     views INTEGER DEFAULT 0, reject_reason TEXT,
                     channel_msg_id BIGINT, top_until TIMESTAMP, expires_at TIMESTAMP,
                     sold_at TIMESTAMP,
+                    is_pinned BOOLEAN DEFAULT FALSE,
+                    pin_order INTEGER DEFAULT 0,
                     created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
@@ -185,6 +192,9 @@ class Database:
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'UZS'",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS account_data JSONB DEFAULT '{}'::jsonb",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS sold_at TIMESTAMP",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS thumbnail_url TEXT",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS pin_order INTEGER DEFAULT 0",
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS receipt_url TEXT",
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS matched_at TIMESTAMP",
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
@@ -240,7 +250,7 @@ class Database:
             return DEFAULT_AD_DAYS
 
     # ============================================================
-    # USERBOT
+    # USERBOT SESSION
     # ============================================================
     async def save_userbot_session(self, phone, session_string):
         async with self.pool.acquire() as c:
@@ -448,17 +458,24 @@ class Database:
         return d
 
     async def get_active_ads(self, category=None):
+        """
+        PIN qilinganlar tepada (pin_order DESC — katta raqam tepada = oxirgi pin),
+        keyin pin qilinmaganlar (yangi → eski).
+        """
         async with self.pool.acquire() as c:
             q = """
-                SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
-                       a.currency, a.location, a.full_location, a.account_data, a.tariff,
-                       a.status, a.views, a.top_until, a.expires_at, a.created_at,
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
+                       a.ad_type, a.price, a.currency, a.location, a.full_location,
+                       a.account_data, a.tariff, a.status, a.views, a.top_until,
+                       a.expires_at, a.is_pinned, a.pin_order, a.created_at,
                        u.first_name, u.last_name, u.telegram_id as seller_tg
                 FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE a.status='ACTIVE' AND (a.expires_at IS NULL OR a.expires_at > NOW())
-                ORDER BY CASE WHEN a.top_until IS NOT NULL AND a.top_until > NOW() THEN 1
-                    WHEN a.ad_type='PREMIUM' THEN 2 WHEN a.ad_type='RARE' THEN 3 ELSE 4 END,
-                    a.created_at DESC LIMIT 200
+                ORDER BY
+                    CASE WHEN a.is_pinned = TRUE THEN 0 ELSE 1 END,
+                    CASE WHEN a.is_pinned = TRUE THEN a.pin_order END DESC NULLS LAST,
+                    a.created_at DESC
+                LIMIT 200
             """
             return [self._parse_ad(r) for r in await c.fetch(q)]
 
@@ -473,10 +490,11 @@ class Database:
     async def get_user_ads(self, telegram_id):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
-                       a.currency, a.location, a.full_location, a.account_data, a.tariff,
-                       a.status, a.views, a.reject_reason, a.top_until, a.expires_at,
-                       a.sold_at, a.created_at, a.updated_at
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
+                       a.ad_type, a.price, a.currency, a.location, a.full_location,
+                       a.account_data, a.tariff, a.status, a.views, a.reject_reason,
+                       a.top_until, a.expires_at, a.sold_at, a.is_pinned, a.pin_order,
+                       a.created_at, a.updated_at
                 FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE u.telegram_id=$1 ORDER BY a.created_at DESC LIMIT 50
             """, telegram_id)
@@ -485,30 +503,45 @@ class Database:
     async def get_pending_ads(self):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
-                       a.currency, a.location, a.full_location, a.account_data, a.tariff,
-                       a.status, a.views, a.created_at,
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
+                       a.ad_type, a.price, a.currency, a.location, a.full_location,
+                       a.account_data, a.tariff, a.status, a.views, a.created_at,
+                       a.is_pinned, a.pin_order,
                        u.telegram_id, u.first_name, u.last_name, u.phone
                 FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE a.status='PENDING' ORDER BY a.created_at DESC LIMIT 100
             """)
             return [self._parse_ad(r) for r in rows]
 
+    async def get_all_ads_with_pin(self):
+        """Admin panel uchun — barcha aktiv reklamalar + pin info."""
+        async with self.pool.acquire() as c:
+            rows = await c.fetch("""
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
+                       a.ad_type, a.price, a.currency, a.location, a.full_location,
+                       a.account_data, a.tariff, a.status, a.views, a.created_at,
+                       a.is_pinned, a.pin_order,
+                       u.telegram_id, u.first_name, u.last_name
+                FROM ads a JOIN users u ON u.id=a.user_id
+                WHERE a.status='ACTIVE'
+                ORDER BY
+                    CASE WHEN a.is_pinned = TRUE THEN 0 ELSE 1 END,
+                    CASE WHEN a.is_pinned = TRUE THEN a.pin_order END DESC NULLS LAST,
+                    a.created_at DESC
+                LIMIT 200
+            """)
+            return [self._parse_ad(r) for r in rows]
+
     async def update_ad_status(self, ad_id, status, reason=None, channel_msg_id=None):
         async with self.pool.acquire() as c:
             if channel_msg_id:
-                await c.execute(
-                    "UPDATE ads SET status=$1, reject_reason=$2, channel_msg_id=$3, updated_at=NOW() WHERE id=$4",
-                    status, reason, channel_msg_id, ad_id
-                )
+                await c.execute("UPDATE ads SET status=$1, reject_reason=$2, channel_msg_id=$3, updated_at=NOW() WHERE id=$4",
+                                status, reason, channel_msg_id, ad_id)
             else:
-                await c.execute(
-                    "UPDATE ads SET status=$1, reject_reason=$2, updated_at=NOW() WHERE id=$3",
-                    status, reason, ad_id
-                )
+                await c.execute("UPDATE ads SET status=$1, reject_reason=$2, updated_at=NOW() WHERE id=$3",
+                                status, reason, ad_id)
 
     async def mark_ad_sold(self, ad_id, telegram_id):
-        """E'lonni SOLD qiladi. Faqat egasi belgilashi mumkin."""
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return False
@@ -525,6 +558,83 @@ class Database:
     async def increment_views(self, ad_id):
         async with self.pool.acquire() as c:
             await c.execute("UPDATE ads SET views=views+1 WHERE id=$1", ad_id)
+
+    # ============================================================
+    # ADS — THUMBNAIL
+    # ============================================================
+    async def set_ad_thumbnail(self, ad_id, thumbnail_url):
+        """Admin thumbnail o'rnatadi yoki olib tashlaydi (None)."""
+        async with self.pool.acquire() as c:
+            await c.execute("""
+                UPDATE ads SET thumbnail_url=$1, updated_at=NOW() WHERE id=$2
+            """, thumbnail_url, ad_id)
+            return True
+
+    # ============================================================
+    # ADS — PIN
+    # ============================================================
+    async def toggle_ad_pin(self, ad_id):
+        """
+        PIN yoqilgan bo'lsa — o'chiriladi (pin_order=0).
+        PIN yoqilmagan bo'lsa — yoqiladi va pin_order = max+1 (yangi pin tepada).
+        """
+        async with self.pool.acquire() as c:
+            r = await c.fetchrow("SELECT is_pinned FROM ads WHERE id=$1", ad_id)
+            if not r:
+                return None
+            if r["is_pinned"]:
+                await c.execute("""
+                    UPDATE ads SET is_pinned=FALSE, pin_order=0, updated_at=NOW() WHERE id=$1
+                """, ad_id)
+                return {"is_pinned": False, "pin_order": 0}
+            else:
+                max_order = await c.fetchval("SELECT COALESCE(MAX(pin_order), 0) FROM ads WHERE is_pinned=TRUE") or 0
+                new_order = max_order + 1
+                await c.execute("""
+                    UPDATE ads SET is_pinned=TRUE, pin_order=$1, updated_at=NOW() WHERE id=$2
+                """, new_order, ad_id)
+                return {"is_pinned": True, "pin_order": new_order}
+
+    async def reorder_pins(self, ad_ids):
+        """Admin tartibni saqlaydi: ad_ids ro'yxati — tepadan pastga."""
+        async with self.pool.acquire() as c:
+            async with c.transaction():
+                # Avval hammasini o'chirish
+                await c.execute("UPDATE ads SET is_pinned=FALSE, pin_order=0")
+                # Keyin tartib bilan yoqish (yuqori pin_order = tepada)
+                total = len(ad_ids)
+                for i, aid in enumerate(ad_ids):
+                    order_val = total - i  # birinchi element eng katta pin_order
+                    await c.execute("""
+                        UPDATE ads SET is_pinned=TRUE, pin_order=$1, updated_at=NOW() WHERE id=$2
+                    """, order_val, aid)
+            return True
+
+    # ============================================================
+    # ADS — EDIT (faqat matn)
+    # ============================================================
+    async def update_ad_text(self, ad_id, data):
+        """
+        Faqat matnli maydonlarni tahrirlash:
+        - title, price, currency, location, full_location
+        - account_data (level, collection, rp, mythic_clothes, rare_skins, x_costume, guns, guns_count, supar_car, username, phone)
+        Video va thumbnail tegmaydi.
+        """
+        async with self.pool.acquire() as c:
+            acc_json = json.dumps(data.get("account_data", {}) or {}, ensure_ascii=False)
+            await c.execute("""
+                UPDATE ads SET
+                    price=$1,
+                    currency=$2,
+                    location=$3,
+                    full_location=$4,
+                    account_data=$5::jsonb,
+                    updated_at=NOW()
+                WHERE id=$6
+            """, data.get("price"), data.get("currency", "UZS"),
+                data.get("location"), data.get("full_location"),
+                acc_json, ad_id)
+            return True
 
     # ============================================================
     # CLEANUP
@@ -567,9 +677,10 @@ class Database:
             u = await self.get_user(telegram_id)
             if not u: return []
             rows = await c.fetch("""
-                SELECT a.id, a.user_id, a.title, a.video_file_id, a.ad_type, a.price,
-                       a.currency, a.location, a.full_location, a.account_data, a.tariff,
-                       a.status, a.views, a.top_until, a.expires_at, a.created_at
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
+                       a.ad_type, a.price, a.currency, a.location, a.full_location,
+                       a.account_data, a.tariff, a.status, a.views, a.top_until,
+                       a.expires_at, a.is_pinned, a.pin_order, a.created_at
                 FROM saved_ads s JOIN ads a ON a.id=s.ad_id
                 WHERE s.user_id=$1 AND a.status='ACTIVE'
                   AND (a.expires_at IS NULL OR a.expires_at>NOW())
@@ -612,8 +723,7 @@ class Database:
             """, u["id"], amount, card["id"], card["number"], expires)
 
             return {
-                "id": rid,
-                "card_number": card["number"],
+                "id": rid, "card_number": card["number"],
                 "card_holder": card.get("holder") or "CARDINAL ADMIN",
                 "expires_at": expires,
             }
@@ -681,10 +791,9 @@ class Database:
             if not req:
                 return {"ok": False, "reason": "no_request"}
 
-            await c.execute(
-                "UPDATE topup_requests SET status='MATCHED', matched_at=NOW() WHERE id=$1",
-                req["id"]
-            )
+            await c.execute("""
+                UPDATE topup_requests SET status='MATCHED', matched_at=NOW() WHERE id=$1
+            """, req["id"])
 
             u = await self.get_user_by_id(req["user_id"])
             return {
@@ -719,18 +828,14 @@ class Database:
                     await c.execute("""
                         UPDATE topup_requests SET status='COMPLETED', completed_at=NOW(), seen=FALSE WHERE id=$1
                     """, req["id"])
-                    await c.execute(
-                        "UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE id=$2",
-                        req["amount"], req["user_id"]
-                    )
+                    await c.execute("UPDATE users SET balance=balance+$1, updated_at=NOW() WHERE id=$2",
+                                    req["amount"], req["user_id"])
                     await c.execute("""
                         INSERT INTO transactions (user_id, amount, type, description, status, card_last4)
                         VALUES ($1, $2, 'topup', 'Avto to''lov', 'APPROVED', $3)
                     """, req["user_id"], req["amount"], req["card_number"][-4:])
-                    await c.execute(
-                        "UPDATE cards SET total_received=total_received+$1 WHERE id=$2",
-                        req["amount"], req["card_id"]
-                    )
+                    await c.execute("UPDATE cards SET total_received=total_received+$1 WHERE id=$2",
+                                    req["amount"], req["card_id"])
                 user_info["completed"] = True
                 return {"ok": True, **user_info}
 
@@ -759,10 +864,8 @@ class Database:
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return []
-            rows = await c.fetch(
-                "SELECT * FROM transactions WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2",
-                u["id"], limit
-            )
+            rows = await c.fetch("SELECT * FROM transactions WHERE user_id=$1 ORDER BY created_at DESC LIMIT $2",
+                                 u["id"], limit)
             return [dict(r) for r in rows]
 
     # ============================================================
@@ -772,10 +875,8 @@ class Database:
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return None
-            return await c.fetchval(
-                "INSERT INTO feedbacks (user_id, text, rating) VALUES ($1,$2,$3) RETURNING id",
-                u["id"], text, rating
-            )
+            return await c.fetchval("INSERT INTO feedbacks (user_id, text, rating) VALUES ($1,$2,$3) RETURNING id",
+                                    u["id"], text, rating)
 
     async def get_feedbacks(self, limit=100):
         async with self.pool.acquire() as c:
@@ -819,9 +920,7 @@ class Database:
 
     async def get_all_user_ids(self):
         async with self.pool.acquire() as c:
-            return [r["telegram_id"] for r in await c.fetch(
-                "SELECT telegram_id FROM users WHERE is_blocked=FALSE"
-            )]
+            return [r["telegram_id"] for r in await c.fetch("SELECT telegram_id FROM users WHERE is_blocked=FALSE")]
 
     async def get_statistics(self):
         async with self.pool.acquire() as c:
@@ -844,8 +943,7 @@ class Database:
                 amt = 0
                 for r in rows:
                     if r["d"] == target:
-                        amt = r["amt"]
-                        break
+                        amt = r["amt"]; break
                 chart.append({"date": str(target), "day": days_uz[target.weekday()], "amount": int(amt)})
 
             return {
@@ -892,13 +990,14 @@ class Database:
             return new_state
 
     # ============================================================
-    # VIP
+    # VIP REQUESTS
     # ============================================================
     async def create_vip_request(self, telegram_id, price=49000):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
             if not u: return None
-            if u["balance"] < price: return None
+            if u["balance"] < price:
+                return None
             async with c.transaction():
                 await c.execute("""
                     UPDATE users SET balance=balance-$1, spent=spent+$1, updated_at=NOW()
