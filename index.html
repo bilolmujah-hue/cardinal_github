@@ -1890,14 +1890,14 @@ const REGIONS = ["Toshkent","Samarqand","Buxoro","Namangan","Andijon","Farg'ona"
 
 const TARIFFS = [
   {id:2, name:"KANAL", price:15000, desc:"Faqat kanalda chiqadi", badge:null,
-   feats:[["yes","Kanalga joylash"],["yes","Butun umur kanalda turadi"],["no","Web App'da chiqmaydi"],["no","TOP'da turmaydi"]],
+   feats:[["yes","Kanalga joylash"],["yes","Butun umur kanalda turadi"],["yes","24/7 Qo’llab-quvvatlash hizmati!"],["no","Botda chiqmaydi"]],
    showChannel:true},
-  {id:1, name:"STANDART", price:9000, desc:"Faqat Web App'da chiqadi", badge:null,
-   feats:[["yes","Web App'da joylash"],["yes","Admin belgilagan kun faol"],["no","Kanalga chiqmaydi"],["no","TOP'da turmaydi"]]},
-  {id:3, name:"RARE 10%", price:22000, desc:"Kanal + Web App + 10% skidka", badge:{t:"RARE", c:"rare"},
-   feats:[["yes","Web App'da joylash"],["yes","Kanalga joylash"],["yes","10% skidka keyingi"],["yes","Admin belgilagan kun faol"]]},
+  {id:1, name:"BOT", price:9000, desc:"Faqat Web App'da chiqadi", badge:null,
+   feats:[["yes","Botda joylash"],["yes","Reklama 15 kun Faol"],["yes","24/7 Qo’llab-quvvatlash hizmati!"],["no","Kanalga chiqmaydi"]]},
+  {id:3, name:"KANAL + BOT", price:22000, desc:"Kanal + Bot + 10% skidka", badge:{t:"RARE", c:"rare"},
+   feats:[["yes","Botda joylash"],["yes","Kanalga joylash"],["yes","24/7 Qo’llab-quvvatlash hizmati!"],["yes","Reklama 15 kun Faol"]]},
   {id:4, name:"PREMIUM VIP", price:49000, desc:"QR kod orqali akkauntni o'zimiz olamiz", badge:{t:"VIP", c:"vip"},
-   feats:[["yes","Admin siz bilan bog'lanadi"],["yes","QR kod orqali kirish"],["yes","Akkauntni biz olib chiqamiz"],["yes","To'liq xizmat"]],
+   feats:[["yes","Admin siz bilan bog'lanadi"],["yes","24/7 Qo’llab-quvvatlash hizmati!"],["yes","Kanal va botga joylab beradi"],["yes","To'liq xizmat"]],
    vip:true},
 ];
 
@@ -1925,7 +1925,7 @@ function renderTariffs(){
       ` : ""}
       ${t.vip ? `
         <div class="pay-note" style="margin-top:12px;text-align:left;background:rgba(139,92,246,.08);border-color:rgba(139,92,246,.25);color:#A78BFA">
-          ${ico("info")}<span>Sizning akkauntingizga biz QR kod orqali kirib, akkauntni o'zimiz olib chiqamiz</span>
+          ${ico("info")}<span>Akkauntingizga QR kod orqali kiramiz va akkaunt abzorini chiroyli montaj qilib, bot va kanal sahifasiga reklama tarzda joylab beramiz!</span>
         </div>
       ` : ""}
     </div>
