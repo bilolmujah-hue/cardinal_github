@@ -88,6 +88,7 @@ svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 
 .ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.55);transform:scale(0);animation:rippleAnim .6s ease-out;pointer-events:none;z-index:0}
 
+/* SPLASH */
 #splash{position:fixed;inset:0;z-index:10000;background:var(--bg);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;overflow:hidden;transition:opacity .6s ease, visibility .6s ease}
 #splash::before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 35%,rgba(96,165,250,.20),transparent 55%),radial-gradient(circle at 80% 80%,rgba(34,211,238,.14),transparent 55%),radial-gradient(circle at 20% 90%,rgba(139,92,246,.12),transparent 60%);pointer-events:none;animation:splashGlow 6s ease-in-out infinite alternate}
 #splash.hide{opacity:0;visibility:hidden;pointer-events:none}
@@ -111,8 +112,8 @@ svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 .tb-name-block{flex:1;min-width:0}
 .tb-hello{font-size:10.5px;font-weight:700;letter-spacing:.16em;color:var(--text-3);text-transform:uppercase;margin-bottom:2px}
 .tb-name{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:800;color:var(--text);letter-spacing:.02em;text-transform:uppercase;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.1}
-.tb-theme{width:42px;height:42px;flex-shrink:0;border-radius:14px;background:linear-gradient(135deg,rgba(139,92,246,.14),rgba(59,130,246,.10));border:1.5px solid rgba(139,92,246,.32);display:flex;align-items:center;justify-content:center;color:#A78BFA;transition:all .25s cubic-bezier(.16,1,.3,1);position:relative;overflow:hidden}
-.tb-theme svg{width:20px;height:20px;stroke-width:2.2;position:relative;z-index:1;transition:transform .35s cubic-bezier(.34,1.56,.64,1)}
+.tb-theme{width:42px;height:42px;flex-shrink:0;border-radius:14px;background:linear-gradient(135deg,rgba(139,92,246,.14),rgba(59,130,246,.10));border:1.5px solid rgba(139,92,246,.32);display:flex;align-items:center;justify-content:center;color:#A78BFA;transition:all .25s;position:relative;overflow:hidden}
+.tb-theme svg{width:20px;height:20px;stroke-width:2.2;position:relative;z-index:1;transition:transform .35s}
 .tb-theme svg.spin-once{transform:rotate(360deg)}
 body.dark .tb-theme{background:linear-gradient(135deg,rgba(251,191,36,.14),rgba(245,158,11,.08));border-color:rgba(251,191,36,.32);color:#FBBF24}
 .tb-balance-card{display:flex;align-items:center;gap:12px;padding:12px 14px;background:linear-gradient(135deg,rgba(59,130,246,.10),rgba(6,182,212,.05));border:1.5px solid var(--border-2);border-radius:20px;backdrop-filter:blur(12px);position:relative;overflow:hidden;transition:all .25s}
@@ -172,20 +173,8 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .ad-media video,.ad-media img{width:100%;height:100%;object-fit:cover}
 .ad-media .placeholder{width:100%;height:100%;display:flex;align-items:center;justify-content:center;color:var(--text-4)}
 .ad-media .placeholder svg{width:50px;height:50px}
-/* Yurakcha — fon yo'q, faqat ikonka */
-.ad-heart{
-  position:absolute;top:8px;right:8px;
-  width:38px;height:38px;border-radius:50%;
-  background:transparent;border:none;
-  display:flex;align-items:center;justify-content:center;
-  z-index:5;padding:0;
-}
-.ad-heart svg{
-  width:26px;height:26px;
-  stroke:#fff;stroke-width:2.2;fill:none;
-  filter:drop-shadow(0 2px 6px rgba(0,0,0,.55));
-  transition:all .25s cubic-bezier(.34,1.56,.64,1);
-}
+.ad-heart{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;background:transparent;border:none;display:flex;align-items:center;justify-content:center;z-index:5;padding:0}
+.ad-heart svg{width:26px;height:26px;stroke:#fff;stroke-width:2.2;fill:none;filter:drop-shadow(0 2px 6px rgba(0,0,0,.55));transition:all .25s cubic-bezier(.34,1.56,.64,1)}
 .ad-heart.saved svg{fill:var(--heart);stroke:var(--heart);filter:drop-shadow(0 2px 8px rgba(255,59,107,.6))}
 .ad-heart:active svg{transform:scale(.85)}
 .ad-admin-del{position:absolute;top:52px;right:8px;width:34px;height:34px;border-radius:12px;background:rgba(239,68,68,.95);display:flex;align-items:center;justify-content:center;z-index:5;color:#fff}
@@ -250,9 +239,6 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .dyn-del{width:46px;flex-shrink:0;background:rgba(239,68,68,.08);border:1.5px solid rgba(239,68,68,.2);border-radius:14px;display:flex;align-items:center;justify-content:center;color:#F87171}
 .dyn-del svg{width:16px;height:16px}
 
-/* ============================================================
-   CHIPS — Ulangan tarmoqlar (haqiqiy ikonkalar bilan)
-   ============================================================ */
 .chips{display:grid;grid-template-columns:repeat(2,1fr);gap:8px}
 .chip{display:flex;align-items:center;gap:10px;padding:12px 14px;background:var(--surface-2);border:1.5px solid var(--border-2);border-radius:13px;font-size:12.5px;font-weight:600;color:var(--text-2);text-align:left;transition:all .18s}
 .chip.active{background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border-color:#3B82F6;color:var(--blue)}
@@ -263,7 +249,6 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .chip.active .chip-check svg{opacity:1}
 .chip-icon{width:20px;height:20px;flex-shrink:0;display:flex;align-items:center;justify-content:center}
 .chip-icon svg{width:20px;height:20px;display:block}
-.chip-icon svg.ico-style{width:18px;height:18px;stroke:currentColor;fill:none;stroke-width:2}
 
 .cur-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .cur{padding:14px 8px;border-radius:14px;background:var(--surface-2);border:1.5px solid var(--border-2);display:flex;flex-direction:column;align-items:center;gap:3px;cursor:pointer;color:var(--text-2);transition:transform .15s}
@@ -306,6 +291,68 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .upload strong{font-size:14px;font-weight:700;color:var(--text)}
 .upload span{font-size:12px;color:var(--text-3)}
 .preview-video{width:100%;border-radius:var(--radius);background:#000;max-height:400px;margin-top:14px}
+
+/* ============================================================
+   VIDEO UPLOAD PROGRESS — chiroyli animatsiya
+   ============================================================ */
+.upload-progress{
+  margin-top:14px;padding:24px;
+  background:linear-gradient(135deg,rgba(59,130,246,.08),rgba(6,182,212,.04));
+  border:1.5px solid var(--border-2);border-radius:20px;
+  display:flex;flex-direction:column;align-items:center;gap:14px;
+  position:relative;overflow:hidden;
+}
+.upload-progress::before{
+  content:"";position:absolute;inset:0;
+  background:radial-gradient(circle at 50% 0%,rgba(59,130,246,.15),transparent 60%);
+  pointer-events:none;
+}
+.upload-spinner{
+  width:70px;height:70px;position:relative;
+  display:flex;align-items:center;justify-content:center;
+  z-index:1;
+}
+.upload-spinner .ring{position:absolute;inset:0;border-radius:50%;border:3px solid transparent}
+.upload-spinner .r1{border-top-color:#3B82F6;border-right-color:#06B6D4;animation:spin 1.1s linear infinite}
+.upload-spinner .r2{inset:10px;border-top-color:#06B6D4;border-right-color:#8B5CF6;animation:spin 1.7s linear infinite reverse}
+.upload-spinner .r3{inset:20px;border-top-color:#10B981;border-right-color:#3B82F6;animation:spin 2.3s linear infinite}
+.upload-spinner::after{
+  content:"";width:14px;height:14px;border-radius:50%;
+  background:linear-gradient(135deg,#3B82F6,#06B6D4);
+  box-shadow:0 0 20px rgba(59,130,246,.7);
+  animation:pulseSoft 1.6s ease-in-out infinite;
+}
+.upload-text{display:flex;align-items:center;gap:4px;z-index:1}
+.upload-label{font-family:'Space Grotesk',sans-serif;font-size:13px;font-weight:800;color:var(--text);letter-spacing:.16em;text-transform:uppercase}
+.upload-dots{display:inline-flex;margin-left:2px}
+.upload-dots span{animation:dots 1.4s infinite;color:var(--blue);font-weight:800;font-size:16px}
+.upload-dots span:nth-child(2){animation-delay:.2s}
+.upload-dots span:nth-child(3){animation-delay:.4s}
+.upload-bar-wrap{
+  width:100%;max-width:300px;height:8px;
+  background:var(--surface-3);border-radius:10px;overflow:hidden;
+  position:relative;z-index:1;
+  box-shadow:inset 0 1px 3px rgba(0,0,0,.1);
+}
+.upload-bar{
+  height:100%;width:0%;
+  background:linear-gradient(90deg,#3B82F6,#06B6D4,#8B5CF6);
+  border-radius:10px;transition:width .35s ease;
+  box-shadow:0 0 14px rgba(59,130,246,.7);
+  position:relative;
+}
+.upload-bar::after{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(90deg,transparent,rgba(255,255,255,.4),transparent);
+  animation:shimmer 1.5s ease-in-out infinite;
+  border-radius:10px;
+}
+.upload-percent{
+  font-family:'Space Grotesk',sans-serif;font-size:18px;font-weight:800;
+  background:linear-gradient(135deg,#3B82F6,#06B6D4);
+  -webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;
+  z-index:1;
+}
 
 .profile-hero{position:relative;padding:28px 20px;background:linear-gradient(135deg,#3B82F6,#2563EB);border-radius:var(--radius-lg);overflow:hidden;text-align:center;margin-bottom:16px;color:#fff}
 .profile-hero-in{position:relative;z-index:1}
@@ -364,26 +411,12 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .detail-title{font-size:22px;font-weight:700;font-family:'Space Grotesk',sans-serif;color:var(--text);margin-bottom:8px}
 .detail-price{font-size:26px;font-weight:800;font-family:'Space Grotesk',sans-serif;background:linear-gradient(135deg,#3B82F6,#06B6D4);-webkit-background-clip:text;-webkit-text-fill-color:transparent;background-clip:text;margin-bottom:18px}
 .detail-section{margin-bottom:16px}
-/* Sarlavha — qutida */
-.detail-section-title{
-  font-size:13px;font-weight:700;
-  display:flex;align-items:center;gap:8px;
-  margin-bottom:10px;color:var(--text-2);
-}
+.detail-section-title{font-size:13px;font-weight:700;display:flex;align-items:center;gap:8px;margin-bottom:10px;color:var(--text-2)}
 .detail-section-title .icon-sm{width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,rgba(59,130,246,.15),rgba(6,182,212,.08));border:1px solid var(--border-2);display:flex;align-items:center;justify-content:center;color:var(--blue)}
 .detail-section-title .icon-sm svg{width:14px;height:14px}
 .detail-section-title .count{margin-left:auto;padding:3px 8px;border-radius:8px;background:rgba(59,130,246,.12);border:1px solid rgba(59,130,246,.2);font-size:10px;font-weight:700;color:var(--blue)}
-/* Elementlar — ODDIY matn, chegara/fon yo'q */
 .detail-list{display:flex;flex-direction:column;gap:0}
-.detail-item{
-  padding:7px 4px;
-  background:transparent;
-  border:none;
-  font-size:13px;
-  font-weight:500;
-  display:flex;align-items:center;gap:8px;
-  color:var(--text);
-}
+.detail-item{padding:7px 4px;background:transparent;border:none;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;color:var(--text)}
 .detail-item svg{width:15px;height:15px;color:var(--icon-color);flex-shrink:0}
 .detail-info-row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);font-size:13px}
 .detail-info-row:last-child{border-bottom:0}
@@ -450,16 +483,7 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .my-ad-status.pending{background:rgba(245,158,11,.12);color:#F59E0B}
 .my-ad-status.rejected{background:rgba(239,68,68,.12);color:#EF4444}
 .my-ad-status.expired{background:rgba(148,163,184,.12);color:var(--text-3)}
-/* "Sotildi" tugmasi */
-.sold-btn{
-  display:inline-flex;align-items:center;gap:6px;
-  padding:8px 14px;border-radius:12px;
-  background:linear-gradient(135deg,#10B981,#059669);
-  color:#fff;font-size:11.5px;font-weight:800;
-  box-shadow:0 6px 18px rgba(16,185,129,.4);
-  margin-top:6px;align-self:flex-start;
-  transition:transform .18s;border:none;
-}
+.sold-btn{display:inline-flex;align-items:center;gap:6px;padding:8px 14px;border-radius:12px;background:linear-gradient(135deg,#10B981,#059669);color:#fff;font-size:11.5px;font-weight:800;box-shadow:0 6px 18px rgba(16,185,129,.4);margin-top:6px;align-self:flex-start;transition:transform .18s;border:none}
 .sold-btn:active{transform:scale(.94)}
 .sold-btn svg{width:13px;height:13px;stroke-width:2.6}
 
@@ -630,7 +654,6 @@ body.dark .load{background:rgba(26,35,50,.88)}
 .ac-admin-actions button.active{color:#10B981;border-color:rgba(16,185,129,.3);background:rgba(16,185,129,.08)}
 .ac-admin-actions svg{width:15px;height:15px}
 
-/* VIP CONFIRM MODAL */
 .vip-modal-in{max-width:400px;width:100%;background:var(--bg-2);border-radius:24px;padding:26px 22px 20px;text-align:center;animation:popIn .32s cubic-bezier(.34,1.56,.64,1);backdrop-filter:blur(24px)}
 .vip-modal-ic{width:72px;height:72px;margin:0 auto 16px;border-radius:22px;background:linear-gradient(135deg,#8B5CF6,#7C3AED);display:flex;align-items:center;justify-content:center;color:#fff;box-shadow:0 12px 32px rgba(139,92,246,.45)}
 .vip-modal-ic svg{width:36px;height:36px;stroke-width:2.4}
@@ -642,18 +665,10 @@ body.dark .load{background:rgba(26,35,50,.88)}
 .vip-modal-info-row .v{color:var(--text);font-weight:700}
 .vip-modal-actions{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .vip-modal-actions .btn{padding:13px;font-size:13px}
-
-/* FULLSCREEN VIDEO MODAL */
-.video-modal{position:fixed;inset:0;z-index:600;background:rgba(0,0,0,.95);display:none;align-items:center;justify-content:center;padding:20px}
-.video-modal.active{display:flex;animation:fadeIn .2s}
-.video-modal video{max-width:100%;max-height:90vh;border-radius:14px;background:#000}
-.video-modal-close{position:absolute;top:16px;right:16px;width:44px;height:44px;border-radius:50%;background:rgba(255,255,255,.15);color:#fff;display:flex;align-items:center;justify-content:center;z-index:1;backdrop-filter:blur(8px)}
-.video-modal-close svg{width:22px;height:22px;stroke-width:2.5}
 </style>
 </head>
 <body>
 
-<!-- SPLASH -->
 <div id="splash">
   <div class="splash-brand">CARDINAL <span class="c-blue">AKKAUNT</span></div>
   <div class="splash-sub">PUBG MOBILE</div>
@@ -664,7 +679,6 @@ body.dark .load{background:rgba(26,35,50,.88)}
   <div class="splash-bar"></div>
 </div>
 
-<!-- ICONS -->
 <svg style="display:none" xmlns="http://www.w3.org/2000/svg">
   <defs>
     <symbol id="i-home" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></symbol>
@@ -795,7 +809,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
 
       <div class="step-page" data-step="2">
         <div class="hero"><h2 class="hero-title" style="font-size:20px">Video <span class="accent">yuklang</span></h2>
-          <p class="hero-sub">MP4, max 200 MB, 10 daqiqa</p></div>
+          <p class="hero-sub">Istalgan format · 200 MB gacha · 10 daqiqa</p></div>
         <label class="upload" for="videoInput" style="margin-top:16px">
           <div class="upload-ic"><svg><use href="#i-upload"/></svg></div>
           <strong>Video tanlash uchun bosing</strong>
@@ -1262,7 +1276,6 @@ body.dark .load{background:rgba(26,35,50,.88)}
   </div>
 </div>
 
-<!-- VIP CONFIRM MODAL -->
 <div class="modal confirm-pop" id="mVipConfirm">
   <div class="vip-modal-in">
     <div class="vip-modal-ic"><svg><use href="#i-crown"/></svg></div>
@@ -1285,7 +1298,6 @@ body.dark .load{background:rgba(26,35,50,.88)}
   </div>
 </div>
 
-<!-- VIP SUCCESS MODAL -->
 <div class="modal confirm-pop" id="mVipSuccess">
   <div class="vip-modal-in">
     <div class="result-ic" style="background:linear-gradient(135deg,#8B5CF6,#7C3AED);box-shadow:0 12px 32px rgba(139,92,246,.45);width:80px;height:80px;margin:0 auto 20px;border-radius:50%;display:flex;align-items:center;justify-content:center;color:#fff">
@@ -1302,12 +1314,6 @@ body.dark .load{background:rgba(26,35,50,.88)}
   </div>
 </div>
 
-<!-- VIDEO MODAL -->
-<div class="video-modal" id="videoModal" onclick="if(event.target.id==='videoModal')closeVideoModal()">
-  <button class="video-modal-close" onclick="closeVideoModal()"><svg><use href="#i-x"/></svg></button>
-  <video id="videoModalPlayer" controls playsinline></video>
-</div>
-
 <div class="toast-wrap" id="toastWrap"></div>
 <div class="load" id="loadOverlay">
   <div class="load-text">
@@ -1318,9 +1324,6 @@ body.dark .load{background:rgba(26,35,50,.88)}
 </div>
 
 <script>
-/* ============================================================
-   CONFIG
-   ============================================================ */
 const API_URL = "https://cardinalgithub-production.up.railway.app";
 const BOT_LINK = "https://t.me/cardinal_akkaunt_bot";
 const USERBOT_BOT = "CardXabarBot";
@@ -1341,9 +1344,13 @@ const S = {
   topupTimer:null, topupPoll:null,
   pendingReceipt:null,
   fbRating:5,
-  vipTariff:null,
 };
 let UB_PHONE = null;
+
+/* VIDEO STATE */
+let VIDEO_FILE = null;      // XHR uchun
+let VIDEO_FILE_ID = null;   // yuklangandan keyin
+let VIDEO_UPLOADING = false;
 
 const $ = id => document.getElementById(id);
 const esc = s => !s ? "" : String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
@@ -1561,9 +1568,6 @@ function renderAds(){
   g.innerHTML = arr.map(adCard).join("");
 }
 
-/* ============================================================
-   AD CARD — badge yo'q, video qotib turadi (avtomatik ishlamaydi)
-   ============================================================ */
 function adCard(a){
   const acc = a.account_data || {};
   const isSaved = a.is_saved === true;
@@ -1605,9 +1609,6 @@ async function adminDeleteAd(adId){
   hide();
 }
 
-/* ============================================================
-   AD DETAIL — elementlar oddiy matn ko'rinishida
-   ============================================================ */
 async function openAd(id){
   show();
   try{
@@ -1874,9 +1875,6 @@ async function deleteFeedback(id){
   hide();
 }
 
-/* ============================================================
-   APP ICONS — haqiqiy SVG ikonkalar
-   ============================================================ */
 const LINKED_OPTIONS = [
   {id:"google", name:"Google", svg:`<svg viewBox="0 0 24 24"><path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/><path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/><path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/><path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/></svg>`},
   {id:"facebook", name:"Facebook", svg:`<svg viewBox="0 0 24 24"><path fill="#1877F2" d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>`},
@@ -1890,9 +1888,6 @@ const LINKED_OPTIONS = [
 
 const REGIONS = ["Toshkent","Samarqand","Buxoro","Namangan","Andijon","Farg'ona","Qashqadaryo","Surxondaryo","Xorazm","Navoiy","Jizzax","Sirdaryo","Toshkent viloyati","Qoraqalpog'iston"];
 
-/* ============================================================
-   TARIFFS — yangi narxlar
-   ============================================================ */
 const TARIFFS = [
   {id:2, name:"KANAL", price:15000, desc:"Faqat kanalda chiqadi", badge:null,
    feats:[["yes","Kanalga joylash"],["yes","Butun umur kanalda turadi"],["no","Web App'da chiqmaydi"],["no","TOP'da turmaydi"]],
@@ -1941,7 +1936,6 @@ function renderTariffs(){
       $("tariffList").querySelectorAll(".tariff").forEach(x => x.classList.remove("selected"));
       el.classList.add("selected");
       S.tariff = +el.dataset.t;
-      // VIP — maxsus oqim
       if(S.tariff === 4){
         openVipFlow();
         return;
@@ -1951,19 +1945,12 @@ function renderTariffs(){
   });
 }
 
-/* ============================================================
-   VIP FLOW — avval balans, keyin adminga
-   ============================================================ */
 function openVipFlow(){
-  // To'ldirish bosqichlarini yopib, tarif ekranini ko'rsatamiz
   $("tariffList").querySelectorAll(".tariff").forEach(x => x.classList.remove("selected"));
-
   if(S.balance < 49000){
     toast("Balansingizda 49 000 so'm yetarli emas. Iltimos, balansni to'ldiring.", "error");
     return;
   }
-
-  // Info modal
   $("vipBalance").innerText = num(S.balance) + " so'm";
   openModal("mVipConfirm");
 }
@@ -1972,7 +1959,6 @@ async function confirmVip(){
   closeModal("mVipConfirm");
   show();
   try{
-    // Serverda: balansdan 49 000 yechiladi, adminga xabar yuboriladi
     const r = await api("/api/create-vip-request", "POST", {
       telegram_id: USER.telegram_id,
       account_data: {},
@@ -1986,7 +1972,6 @@ async function confirmVip(){
       toast(r.error || "Xatolik", "error");
     }
   }catch(e){
-    // API mavjud bo'lmasa — baribir adminga murojaat qilish varianti
     toast(e.message, "error");
   }
   hide();
@@ -2056,6 +2041,9 @@ function addDyn(listId, cls, ph){
 
 function startCreate(){
   S.step = 1; S.tariff = null; S.videoData = null; S.videoName = "";
+  VIDEO_FILE = null;
+  VIDEO_FILE_ID = null;
+  VIDEO_UPLOADING = false;
   S.linked = []; S.currency = "UZS";
   ["accLevel","accColl","accRP","accMythic","gunsCount","accFull","accPrice","accPhone","accUser"].forEach(id => {
     const el = $(id); if(el) el.value = "";
@@ -2078,7 +2066,7 @@ function renderSteps(){
 
 function validateStep(){
   if(S.step === 1 && !S.tariff){ toast("Tarifni tanlang", "error"); return false }
-  if(S.step === 2 && !S.videoData){ toast("Video yuklang", "error"); return false }
+  if(S.step === 2 && !VIDEO_FILE){ toast("Video yuklang", "error"); return false }
   if(S.step === 3){
     for(const id of ["accLevel","accColl","accRP","accPrice"]){
       if(!$(id).value.trim()){ toast("Majburiy maydonlarni to'ldiring", "error"); $(id).focus(); return false }
@@ -2097,8 +2085,34 @@ function validateStep(){
   return true;
 }
 
-function nextStep(){
+async function nextStep(){
   if(!validateStep()) return;
+
+  /* 2-qadam → 3-qadam: videoni serverga yuklash */
+  if(S.step === 2 && !VIDEO_FILE_ID){
+    if(VIDEO_UPLOADING){ toast("Video hali yuklanmoqda, kuting", "info"); return }
+    if(!VIDEO_FILE){ toast("Video tanlang", "error"); return }
+
+    const prog = $("uploadProgress");
+    if(prog) prog.classList.remove("hidden");
+    VIDEO_UPLOADING = true;
+
+    try{
+      const r = await uploadVideoToServer(VIDEO_FILE);
+      VIDEO_FILE_ID = r.file_id;
+      S.videoData = r.file_id;
+      toast("Video muvaffaqiyatli yuklandi", "success");
+    }catch(e){
+      toast("Video yuklanmadi: " + e.message, "error");
+      if(prog) prog.classList.add("hidden");
+      VIDEO_UPLOADING = false;
+      return;
+    }
+
+    VIDEO_UPLOADING = false;
+    if(prog) prog.classList.add("hidden");
+  }
+
   if(S.step === 4){ submitAd(); return }
   S.step++;
   if(S.step === 4) renderPreview();
@@ -2114,31 +2128,89 @@ function prevStep(){
 }
 
 /* ============================================================
-   VIDEO UPLOAD — barcha formatlar, hech qanday format tekshiruvi yo'q
+   VIDEO UPLOAD — XHR + PROGRESS
    ============================================================ */
 $("videoInput").addEventListener("change", e => {
   const f = e.target.files[0];
   if(!f) return;
   if(f.size > 200*1024*1024){ toast("Video 200 MB dan katta", "error"); return }
 
-  const r = new FileReader();
-  r.onload = ev => {
-    S.videoData = ev.target.result;
-    S.videoName = f.name || "video";
-    $("videoPreview").innerHTML = `
-      <video class="preview-video" src="${ev.target.result}" controls playsinline preload="metadata"></video>
-      <button class="btn btn-secondary btn-block mt-8" onclick="removeVideo()">${ico("trash")}Videoni o'chirish</button>
-    `;
-    toast("Video yuklandi", "success");
-  };
-  r.onerror = () => toast("Videoni o'qib bo'lmadi", "error");
-  r.readAsDataURL(f);
+  VIDEO_FILE = f;
+  VIDEO_FILE_ID = null;
+  S.videoData = null;
+
+  const url = URL.createObjectURL(f);
+  $("videoPreview").innerHTML = `
+    <video class="preview-video" src="${url}" controls playsinline preload="metadata"></video>
+    <button class="btn btn-secondary btn-block mt-8" onclick="removeVideo()">${ico("trash")}Videoni o'chirish</button>
+    <div id="uploadProgress" class="upload-progress hidden">
+      <div class="upload-spinner">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+      </div>
+      <div class="upload-text">
+        <div class="upload-label">Video yuklanmoqda</div>
+        <div class="upload-dots"><span>.</span><span>.</span><span>.</span></div>
+      </div>
+      <div class="upload-bar-wrap">
+        <div class="upload-bar" id="uploadBar"></div>
+      </div>
+      <div class="upload-percent" id="uploadPercent">0%</div>
+    </div>
+  `;
 });
 
 function removeVideo(){
-  S.videoData = null; S.videoName = "";
+  VIDEO_FILE = null;
+  VIDEO_FILE_ID = null;
+  S.videoData = null;
+  S.videoName = "";
   $("videoPreview").innerHTML = "";
   $("videoInput").value = "";
+}
+
+function uploadVideoToServer(file){
+  return new Promise((resolve, reject) => {
+    const xhr = new XMLHttpRequest();
+    const fd = new FormData();
+    fd.append("video", file);
+
+    xhr.upload.onprogress = (e) => {
+      if(e.lengthComputable){
+        const p = Math.round((e.loaded / e.total) * 100);
+        const bar = $("uploadBar");
+        const pct = $("uploadPercent");
+        if(bar) bar.style.width = p + "%";
+        if(pct) pct.innerText = p + "%";
+      }
+    };
+
+    xhr.onload = () => {
+      if(xhr.status >= 200 && xhr.status < 300){
+        try{
+          const r = JSON.parse(xhr.responseText);
+          if(r.ok) resolve(r);
+          else reject(new Error(r.error || "Yuklashda xato"));
+        }catch(err){
+          reject(new Error("Javob noto'g'ri"));
+        }
+      } else {
+        let errMsg = `HTTP ${xhr.status}`;
+        try {
+          const r = JSON.parse(xhr.responseText);
+          if(r.error) errMsg = r.error;
+        } catch(e){}
+        reject(new Error(errMsg));
+      }
+    };
+    xhr.onerror = () => reject(new Error("Tarmoq xatosi"));
+    xhr.ontimeout = () => reject(new Error("Vaqt tugadi"));
+    xhr.timeout = 15 * 60 * 1000;
+    xhr.open("POST", API_URL + "/api/upload-video");
+    if(TOKEN) xhr.setRequestHeader("Authorization", "Bearer " + TOKEN);
+    xhr.send(fd);
+  });
 }
 
 function collectAd(){
@@ -2164,7 +2236,7 @@ function renderPreview(){
   const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
   $("previewBox").innerHTML = `
     <div class="card-box">
-      ${S.videoData ? `<video class="detail-video" src="${S.videoData}" controls playsinline preload="metadata"></video>` : ""}
+      ${VIDEO_FILE ? `<video class="detail-video" src="${URL.createObjectURL(VIDEO_FILE)}" controls playsinline preload="metadata"></video>` : ""}
       <h2 class="detail-title" style="font-size:18px;margin-top:8px">PUBG Mobile · ${esc(acc.level)} LVL</h2>
       <div class="detail-price" style="font-size:22px">${fmtPrice(price, S.currency)}</div>
       <div class="detail-info-row"><span class="k">${ico("target")}Kolleksiya</span><span class="v">${esc(acc.collection)}</span></div>
@@ -2184,12 +2256,13 @@ function renderPreview(){
 async function submitAd(){
   const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
   if(price <= 0){ toast("Narx noto'g'ri", "error"); return }
+  if(!VIDEO_FILE_ID){ toast("Video yuklanmagan. Qayta urinib ko'ring.", "error"); return }
   show();
   try{
     const acc = collectAd();
     const adData = {
       title: `PUBG Mobile - ${acc.level} LVL`,
-      video_url: S.videoData,
+      video_file_id: VIDEO_FILE_ID,
       price: price,
       currency: S.currency,
       location: acc.location,
@@ -2207,9 +2280,6 @@ async function submitAd(){
   hide();
 }
 
-/* ============================================================
-   MY ADS — "Sotildi" tugmasi faqat faol reklamalarda
-   ============================================================ */
 async function loadMyAds(){
   if(!USER) return;
   try{ S.myAds = await api(`/api/my-ads/${USER.telegram_id}`) }
@@ -2357,9 +2427,6 @@ async function markSold(adId){
   hide();
 }
 
-/* ============================================================
-   TOPUP
-   ============================================================ */
 function showTopupStep(step){
   ["topupStep1","topupStep2","topupStep3","topupRejected","topupSuccess"].forEach(id => {
     const el = $(id); if(el) el.classList.add("hidden");
@@ -2882,7 +2949,7 @@ async function renderSettings(){
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("calendar")}</div>Reklama muddati</div>
         <div class="pay-note" style="text-align:left;margin-bottom:14px;background:rgba(59,130,246,.08);border-color:rgba(59,130,246,.2);color:var(--blue)">
-          ${ico("info")}<span>Web App'dagi barcha tariflar uchun umumiy reklama muddati. Telegram kanalga tegishli emas.</span>
+          ${ico("info")}<span>Web App'dagi barcha tariflar uchun umumiy reklama muddati.</span>
         </div>
         <div class="field">
           <label class="label">${ico("calendar")}Necha kun turadi?</label>
@@ -3175,13 +3242,6 @@ function advertiseBot(){ startCreate() }
 function useMyUsername(){
   if(USER?.username){ $("accUser").value = "@" + USER.username; }
   else { toast("Sizda Telegram username yo'q", "error") }
-}
-
-function closeVideoModal(){
-  const v = $("videoModalPlayer");
-  try { v.pause(); v.src = ""; } catch(e){}
-  $("videoModal").classList.remove("active");
-  document.body.style.overflow = "";
 }
 
 async function init(){
