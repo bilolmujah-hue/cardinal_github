@@ -53,6 +53,11 @@ PREMIUM_EMOJI = {
     "❌": "5210952531676504517",
     "⌛️": "5296482716567495148",
     "⚠️": "5447644880824181073",
+    "1️⃣": "5382322671679708881",
+    "2️⃣": "5381990043642502553",
+    "3️⃣": "5381879959335738545",
+    "4️⃣": "5382054253403577563",
+    "✨": "5325547803936572038",
     "🚫": "5240241223632954241",
     "🟢": "5832572966721818453",
     "🔴": "5411225014148014586",
@@ -61,7 +66,7 @@ PREMIUM_EMOJI = {
     "⛔️": "5370675038200541160",
     "👤": "5879770735999717115",
     "👥": "5372926953978341366",
-    "🆔": "5014902839575577394",
+    "🔤": "5841276284155467413",
     "🧾": "5444856076954520455",
     "🖥": "5282843764451195532",
     "📱": "5355116622250026900",
@@ -563,13 +568,13 @@ class CardinalBot:
 
         text = (
             f"👤 <b>PROFILINGIZ</b>{admin_label}\n\n"
-            f"🆔 <b>ID:</b> <code>{u['telegram_id']}</code>\n"
+            f"🔤 <b>ID:</b> <code>{u['telegram_id']}</code>\n"
             f"🧾 <b>Ism:</b> {u.get('first_name') or '-'}\n"
             f"🧾 <b>Familiya:</b> {u.get('last_name') or '-'}\n"
             f"🔗 <b>Username:</b> @{u.get('username') or '-'}\n"
-            f"📱 <b>Telefon:</b> +998{u.get('phone') or '-'}\n\n"
+            f"📞 <b>Telefon:</b> +998{u.get('phone') or '-'}\n\n"
             f"💰 <b>Balans:</b> {num(u['balance'])} so'm\n"
-            f"💸 <b>Sarflangan:</b> {num(u['spent'])} so'm\n\n"
+            f"💵 <b>Sarflangan:</b> {num(u['spent'])} so'm\n\n"
             "📢 <b>Reklamalar:</b>\n"
             f"  • 📊 Jami: <b>{total_ads}</b>\n"
             f"  • 🟢 Faol: <b>{active_ads}</b>\n"
@@ -607,7 +612,7 @@ class CardinalBot:
         header = (
             "💳 <b>TRANZAKSIYALAR TARIXI</b>\n\n"
             f"💰 <b>Joriy balans:</b> {num(u['balance'])} so'm\n"
-            f"💸 <b>Jami sarflangan:</b> {num(u['spent'])} so'm\n"
+            f"💵 <b>Jami sarflangan:</b> {num(u['spent'])} so'm\n"
             f"📊 <b>Oxirgi {len(txs)} ta tranzaksiya</b>\n\n"
         )
 
