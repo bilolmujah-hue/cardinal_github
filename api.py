@@ -1,7 +1,8 @@
 """
-Cardinal API v6.1
-- Mark Sold endpoint
-- VIP request endpoint
+Cardinal API v6.2
+- Multipart video upload (XHR + progress)
+- Mark Sold
+- VIP requests
 - SOLD status support
 """
 import asyncio
@@ -32,8 +33,10 @@ def json_ser(obj):
 
 
 def jresp(data, status=200):
-    return web.json_response(data, status=status,
-                             dumps=lambda x: json.dumps(x, default=json_ser, ensure_ascii=False))
+    return web.json_response(
+        data, status=status,
+        dumps=lambda x: json.dumps(x, default=json_ser, ensure_ascii=False)
+    )
 
 
 def is_valid_video_data_url(url: str) -> bool:
@@ -61,6 +64,9 @@ class API:
             return jresp({"ok": False, "error": "Fayl juda katta (max 200 MB)"}, 413)
         except web.HTTPException as e:
             return jresp({"ok": False, "error": f"HTTP {e.status}"}, e.status)
+        except ConnectionResetError:
+            logger.warning("Client connection reset")
+            return web.Response(status=499)
         except Exception as e:
             logger.error(f"API err: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 500)
@@ -98,6 +104,7 @@ class API:
             ("GET",  "/api/user/{telegram_id}", self.get_user),
             ("POST", "/api/update-profile", self.update_profile),
             ("GET",  "/api/my-ads/{telegram_id}", self.my_ads),
+            ("POST", "/api/upload-video", self.upload_video),
             ("POST", "/api/create-ad", self.create_ad),
             ("POST", "/api/mark-sold", self.mark_sold),
             ("POST", "/api/toggle-save", self.toggle_save),
@@ -161,7 +168,7 @@ class API:
     # ============================================================
     async def index(self, req):
         return jresp({
-            "app": "Cardinal API", "version": "6.1", "status": "running",
+            "app": "Cardinal API", "version": "6.2", "status": "running",
             "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
         })
 
@@ -434,6 +441,57 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     # ============================================================
+    # UPLOAD VIDEO (multipart)
+    # ============================================================
+    async def upload_video(self, req):
+        """Videoni multipart sifatida qabul qiladi va Telegramga yuklaydi."""
+        try:
+            if not req.can_read_body:
+                return jresp({"ok": False, "error": "Body yo'q"}, 400)
+
+            reader = await req.multipart()
+            field = await reader.next()
+            if not field or field.name != "video":
+                return jresp({"ok": False, "error": "Video topilmadi"}, 400)
+
+            # Stream sifatida o'qib olish
+            chunks = []
+            total = 0
+            MAX = API_CFG.MAX_SIZE
+
+            while True:
+                chunk = await field.read_chunk(1024 * 512)  # 512 KB
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > MAX:
+                    return jresp({"ok": False, "error": "Video 200 MB dan katta"}, 413)
+                chunks.append(chunk)
+
+            raw = b"".join(chunks)
+            if not raw:
+                return jresp({"ok": False, "error": "Bo'sh fayl"}, 400)
+
+            # Telegramga yuborish
+            from aiogram.types import BufferedInputFile
+            filename = getattr(field, "filename", None) or "ad.mp4"
+            vid = BufferedInputFile(raw, filename=filename)
+            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
+
+            if not msg.video:
+                return jresp({"ok": False, "error": "Telegram video qabul qilmadi"}, 500)
+
+            logger.info(f"Video yuklandi: {total / 1024 / 1024:.1f} MB")
+            return jresp({
+                "ok": True,
+                "file_id": msg.video.file_id,
+                "size": total,
+            })
+        except Exception as e:
+            logger.error(f"upload_video: {e}", exc_info=True)
+            return jresp({"ok": False, "error": str(e)}, 500)
+
+    # ============================================================
     # CREATE AD
     # ============================================================
     async def create_ad(self, req):
@@ -458,9 +516,15 @@ class API:
                     "need": t.price, "have": user["balance"]
                 }, 400)
 
-            video_data = ad_data.get("video_url")
-            if not video_data or not is_valid_video_data_url(video_data):
-                return jresp({"ok": False, "error": "Faqat video yuklang"}, 400)
+            # Yangi: file_id (multipart orqali kelgan)
+            file_id = ad_data.get("video_file_id")
+            # Zaxira: base64 (eski usul)
+            if not file_id:
+                video_data = ad_data.get("video_url")
+                if video_data and is_valid_video_data_url(video_data):
+                    file_id = await self._upload_video_to_channel(video_data)
+            if not file_id:
+                return jresp({"ok": False, "error": "Video yuklanmagan"}, 400)
 
             acc = ad_data.get("account_data", {}) or {}
 
@@ -527,10 +591,6 @@ class API:
             if price <= 0:
                 return jresp({"ok": False, "error": "Narx noto'g'ri"}, 400)
 
-            file_id = await self._upload_video_to_channel(video_data)
-            if not file_id:
-                return jresp({"ok": False, "error": "Videoni yuklashda xatolik"}, 500)
-
             days = await self.db.get_ad_days()
             expires_at = datetime.now() + timedelta(days=days)
 
@@ -557,6 +617,20 @@ class API:
             logger.error(f"create_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
+    async def _upload_video_to_channel(self, data_url: str):
+        try:
+            header, encoded = data_url.split(",", 1)
+            raw = base64.b64decode(encoded)
+            if len(raw) > API_CFG.MAX_SIZE:
+                return None
+            from aiogram.types import BufferedInputFile
+            vid = BufferedInputFile(raw, filename="ad.mp4")
+            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
+            return msg.video.file_id
+        except Exception as e:
+            logger.error(f"video upload: {e}", exc_info=True)
+            return None
+
     # ============================================================
     # MARK SOLD
     # ============================================================
@@ -581,14 +655,12 @@ class API:
             if not ok:
                 return jresp({"ok": False, "error": "Belgilanmadi"}, 400)
 
-            # Admin kanalidan postni o'chirish (agar bo'lsa)
             if ad.get("channel_msg_id"):
                 try:
                     await self.bot_app.bot.delete_message(BOT.ADS_CHANNEL_ID, ad["channel_msg_id"])
                 except Exception:
                     pass
 
-            # Foydalanuvchiga xabar
             try:
                 await self.bot_app.bot.send_message(
                     tg,
@@ -622,7 +694,7 @@ class API:
                 return jresp({"ok": False, "error": "User yo'q"}, 404)
 
             t = TARIFFS[4]
-            price = t.price  # 49000
+            price = t.price
 
             if user["balance"] < price:
                 return jresp({
@@ -636,7 +708,6 @@ class API:
             if not result:
                 return jresp({"ok": False, "error": "Xatolik"}, 500)
 
-            # Adminga xabar yuborish
             try:
                 info = {
                     "telegram_id": tg,
@@ -660,20 +731,6 @@ class API:
         except Exception as e:
             logger.error(f"create_vip_request: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
-
-    async def _upload_video_to_channel(self, data_url: str):
-        try:
-            header, encoded = data_url.split(",", 1)
-            raw = base64.b64decode(encoded)
-            if len(raw) > API_CFG.MAX_SIZE:
-                return None
-            from aiogram.types import BufferedInputFile
-            vid = BufferedInputFile(raw, filename="ad.mp4")
-            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
-            return msg.video.file_id
-        except Exception as e:
-            logger.error(f"video upload: {e}", exc_info=True)
-            return None
 
     # ============================================================
     # TOPUP
