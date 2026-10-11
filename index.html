@@ -73,6 +73,7 @@ svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 @keyframes splashGlow{0%{opacity:.7}100%{opacity:1}}
 @keyframes pinPop{0%{transform:scale(0) rotate(-180deg)}60%{transform:scale(1.25) rotate(10deg)}100%{transform:scale(1) rotate(0)}}
 @keyframes thumbShine{0%{transform:translateX(-100%) skewX(-15deg)}60%,100%{transform:translateX(250%) skewX(-15deg)}}
+@keyframes heartBeat{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(.92)}100%{transform:scale(1)}}
 
 .tb-theme{animation:floatSoft 3.4s ease-in-out infinite}
 .tb-balance-icon{animation:floatIcon 3.8s ease-in-out infinite}
@@ -174,8 +175,9 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .ad-media .placeholder svg{width:44px;height:44px;stroke-width:1.5;opacity:.6}
 .ad-media .placeholder span{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;opacity:.7}
 .ad-heart{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;background:transparent;border:none;display:flex;align-items:center;justify-content:center;z-index:5;padding:0}
-.ad-heart svg{width:26px;height:26px;stroke:#fff !important;stroke-width:2.2;fill:transparent !important;filter:drop-shadow(0 2px 6px rgba(0,0,0,.55));transition:all .25s cubic-bezier(.34,1.56,.64,1)}
-.ad-heart.saved svg{fill:var(--heart) !important;stroke:var(--heart) !important;filter:drop-shadow(0 3px 10px rgba(255,59,107,.75)) !important}
+.ad-heart svg{width:26px;height:26px;stroke:#fff;stroke-width:2.4;fill:rgba(0,0,0,.15);filter:drop-shadow(0 2px 6px rgba(0,0,0,.65));transition:all .28s cubic-bezier(.34,1.56,.64,1)}
+.ad-heart.saved svg{fill:var(--heart) !important;stroke:#fff;stroke-width:1.5;filter:drop-shadow(0 3px 10px rgba(255,59,107,.85)) !important}
+.ad-heart.saved{animation:heartBeat .5s ease-out}
 .ad-heart:active svg{transform:scale(.82)}
 .ad-body{padding:12px;display:flex;flex-direction:column;gap:5px}
 .ad-title{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1316,7 +1318,6 @@ body.dark .load{background:rgba(26,35,50,.88)}
   </div>
 </div>
 
-<!-- ========== EDIT AD MODAL (TO'LIQ) ========== -->
 <div class="modal" id="mEditAd">
   <div class="modal-in">
     <div class="modal-handle"></div>
@@ -1331,25 +1332,25 @@ body.dark .load{background:rgba(26,35,50,.88)}
       <input class="input" id="editTitle" placeholder="PUBG Mobile - 70 LVL" maxlength="255" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </div>
 
-    <div class="edit-grid">
-      <div class="field">
+    <div class="edit-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="field" style="margin-bottom:0">
         <label class="label"><svg><use href="#i-trending"/></svg>LVL</label>
-        <input class="input" id="editLvl" inputmode="numeric" maxlength="3" placeholder="70" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input class="input" id="editLvl" inputmode="numeric" maxlength="3" placeholder="70" autocomplete="off">
       </div>
-      <div class="field">
+      <div class="field" style="margin-bottom:0">
         <label class="label"><svg><use href="#i-target"/></svg>Kolleksiya</label>
-        <input class="input" id="editColl" inputmode="numeric" maxlength="3" placeholder="56" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input class="input" id="editColl" inputmode="numeric" maxlength="3" placeholder="56" autocomplete="off">
       </div>
     </div>
 
     <div class="field">
       <label class="label"><svg><use href="#i-award"/></svg>RP</label>
-      <input class="input" id="editRp" maxlength="50" placeholder="S2 sezondan..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input class="input" id="editRp" maxlength="50" placeholder="S2 sezondan..." autocomplete="off">
     </div>
 
     <div class="field">
       <label class="label"><svg><use href="#i-shirt"/></svg>Mifik kiyimlar</label>
-      <input class="input" id="editMythic" inputmode="numeric" maxlength="4" placeholder="300" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input class="input" id="editMythic" inputmode="numeric" maxlength="4" placeholder="300" autocomplete="off">
     </div>
 
     <div class="card-box" style="padding:14px;margin-bottom:14px">
@@ -1388,7 +1389,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
       <button class="btn btn-ghost btn-block mt-8" onclick="addEditDyn('editGunsList','edit-gun-input','Masalan: Lednik 7 full')"><svg><use href="#i-plus"/></svg>Yana qo'shish</button>
       <div class="field mt-16" style="margin-bottom:0">
         <label class="label"><svg><use href="#i-zap"/></svg>Jami qurollar soni</label>
-        <input class="input" id="editGunsCount" inputmode="numeric" placeholder="70" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input class="input" id="editGunsCount" inputmode="numeric" placeholder="70" autocomplete="off">
       </div>
     </div>
 
@@ -1407,11 +1408,11 @@ body.dark .load{background:rgba(26,35,50,.88)}
 
     <div class="field">
       <label class="label"><svg><use href="#i-map"/></svg>To'liq manzil</label>
-      <input class="input" id="editFull" placeholder="Masalan: Qo'qon shahar" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input class="input" id="editFull" placeholder="Masalan: Qo'qon shahar" autocomplete="off">
     </div>
 
-    <div class="edit-grid">
-      <div class="field">
+    <div class="edit-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+      <div class="field" style="margin-bottom:0">
         <label class="label"><svg><use href="#i-dollar"/></svg>Valyuta</label>
         <select class="select" id="editCurrency">
           <option value="UZS">🇺🇿 So'm</option>
@@ -1419,9 +1420,9 @@ body.dark .load{background:rgba(26,35,50,.88)}
           <option value="RUB">🇷🇺 Rubl</option>
         </select>
       </div>
-      <div class="field">
+      <div class="field" style="margin-bottom:0">
         <label class="label"><svg><use href="#i-wallet"/></svg>Narx</label>
-        <input class="input" id="editPrice" inputmode="numeric" placeholder="400 000" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input class="input" id="editPrice" inputmode="numeric" placeholder="400 000" autocomplete="off">
       </div>
     </div>
 
@@ -1429,13 +1430,13 @@ body.dark .load{background:rgba(26,35,50,.88)}
       <label class="label"><svg><use href="#i-phone"/></svg>Telefon</label>
       <div class="input-group">
         <div class="input-prefix">🇺🇿 +998</div>
-        <input class="input" id="editPhone" inputmode="numeric" maxlength="9" placeholder="901234567" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+        <input class="input" id="editPhone" inputmode="numeric" maxlength="9" placeholder="901234567" autocomplete="off">
       </div>
     </div>
 
     <div class="field">
       <label class="label"><svg><use href="#i-msg"/></svg>Telegram username</label>
-      <input class="input" id="editUser" maxlength="64" placeholder="@username" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+      <input class="input" id="editUser" maxlength="64" placeholder="@username" autocomplete="off">
     </div>
 
     <button class="btn btn-primary btn-block" onclick="saveEditAd()">
@@ -1444,7 +1445,6 @@ body.dark .load{background:rgba(26,35,50,.88)}
   </div>
 </div>
 
-<!-- ========== SET IMAGE MODAL ========== -->
 <div class="modal" id="mSetImage">
   <div class="modal-in">
     <div class="modal-handle"></div>
@@ -1512,14 +1512,12 @@ const S = {
   editLinked:[]
 };
 let UB_PHONE = null;
-
 let VIDEO_FILE = null;
 let VIDEO_FILE_ID = null;
 let VIDEO_UPLOADING = false;
 let _adImageData = null;
-
-/* COUNTDOWN */
 let _myAdsCountdownTimer = null;
+let _posterCache = {}; // ad_id -> poster dataURL
 
 const $ = id => document.getElementById(id);
 const esc = s => !s ? "" : String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
@@ -1669,7 +1667,7 @@ function hideSplash(){
 }
 
 /* ============================================================
-   TELEGRAM WEBAPP — FULLSCREEN + SCROLL
+   TELEGRAM WEBAPP — FULLSCREEN (iOS FIX)
    ============================================================ */
 function initTelegramWebApp(){
   if(!tg) return;
@@ -1684,7 +1682,6 @@ function initTelegramWebApp(){
     if(tg.setBackgroundColor){
       try{ tg.setBackgroundColor(document.body.classList.contains("dark") ? "#1A2332" : "#F5F7FB") }catch(e){}
     }
-    // iOS Safari uchun body heightni to'g'irlash
     const fixHeight = () => {
       const h = tg.viewportStableHeight || window.innerHeight;
       document.documentElement.style.setProperty("--tg-h", h + "px");
@@ -1764,7 +1761,60 @@ async function loadAds(){
 }
 
 /* ============================================================
-   AD CARD — rasm > video poster > placeholder
+   POSTER CACHE (iOS uchun video birinchi kadri)
+   ============================================================ */
+function generatePoster(videoUrl, adId, callback){
+  if(_posterCache[adId]){
+    callback(_posterCache[adId]);
+    return;
+  }
+  const vid = document.createElement("video");
+  vid.src = videoUrl;
+  vid.crossOrigin = "anonymous";
+  vid.muted = true;
+  vid.playsInline = true;
+  vid.preload = "metadata";
+
+  const timeout = setTimeout(() => {
+    // 6 sekundda ham ishlamasa — bo'sh qaytaramiz
+    callback(null);
+  }, 6000);
+
+  vid.onloadeddata = () => {
+    try{
+      vid.currentTime = 0.5;
+    }catch(e){
+      clearTimeout(timeout);
+      callback(null);
+    }
+  };
+
+  vid.onseeked = () => {
+    clearTimeout(timeout);
+    try{
+      const canvas = document.createElement("canvas");
+      canvas.width = vid.videoWidth || 640;
+      canvas.height = vid.videoHeight || 640;
+      const ctx = canvas.getContext("2d");
+      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
+      const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
+      _posterCache[adId] = dataUrl;
+      callback(dataUrl);
+    }catch(e){
+      callback(null);
+    }
+  };
+
+  vid.onerror = () => {
+    clearTimeout(timeout);
+    callback(null);
+  };
+
+  vid.load();
+}
+
+/* ============================================================
+   AD CARD
    ============================================================ */
 function adCard(a){
   const acc = a.account_data || {};
@@ -1794,19 +1844,34 @@ function adCard(a){
     ? `<div class="ad-pin-badge">${ico("pin")}<span>PIN</span></div>`
     : "";
 
-  // MEDIA — rasm > video poster > placeholder
+  // MEDIA: rasm > poster (cache) > video (iOS uchun) > placeholder
   let mediaContent;
   if(a.thumbnail_url){
     mediaContent = `<img src="${a.thumbnail_url}" alt="" loading="lazy">`;
   } else if(a.video_file_id){
-    mediaContent = `<video src="${API_URL}/api/ad/${a.id}/video#t=0.5" preload="metadata" muted playsinline webkit-playsinline></video>`;
+    const poster = _posterCache[a.id];
+    if(poster){
+      mediaContent = `<img src="${poster}" alt="" loading="lazy">`;
+    } else {
+      // Poster hali tayyor emas — generatsiya qilamiz
+      mediaContent = `<div class="placeholder" style="background:#000;color:#fff">${ico("play","ico-lg")}</div>`;
+      const videoUrl = `${API_URL}/api/ad/${a.id}/video`;
+      setTimeout(() => {
+        generatePoster(videoUrl, a.id, (dataUrl) => {
+          if(dataUrl){
+            const el = document.querySelector(`[data-ad-media="${a.id}"]`);
+            if(el) el.innerHTML = `<img src="${dataUrl}" alt="" loading="lazy">`;
+          }
+        });
+      }, 50);
+    }
   } else {
     mediaContent = `<div class="placeholder">${ico("image","ico-lg")}<span>Rasm yo'q</span></div>`;
   }
 
   return `
     <article class="ad" onclick="openAd(${a.id})">
-      <div class="ad-media ${a.thumbnail_url?'has-thumb':''}">
+      <div class="ad-media ${a.thumbnail_url?'has-thumb':''}" data-ad-media="${a.id}">
         ${mediaContent}
         <button class="ad-heart ${isSaved?'saved':''}"
                 onclick="event.stopPropagation();toggleSave(${a.id}, this)"
@@ -1945,6 +2010,7 @@ async function removeAdImageServer(){
     });
     const upd = (arr) => arr.forEach(a => { if(a.id === adId) a.thumbnail_url = null });
     upd(S.ads); upd(S.saved); upd(S.myAds);
+    delete _posterCache[adId];
     closeModal("mSetImage");
     toast("Rasm olib tashlandi", "success");
     renderAds(); renderSaved();
@@ -1954,7 +2020,7 @@ async function removeAdImageServer(){
 }
 
 /* ============================================================
-   ADMIN — Tahrirlash (TO'LIQ)
+   ADMIN — Tahrirlash
    ============================================================ */
 function addEditDyn(listId, cls, ph, val=""){
   const c = $(listId);
@@ -2005,7 +2071,6 @@ async function openEditAd(adId){
     $("editUser").value = acc.username || "";
     $("editGunsCount").value = acc.guns_count || "";
 
-    // Ro'yxatlar
     $("editXcList").innerHTML = "";
     (acc.x_costume || []).forEach(v => addEditDyn("editXcList", "edit-xc-input", "X-kostyum", v));
     if(!(acc.x_costume || []).length) addEditDyn("editXcList", "edit-xc-input", "Masalan: Farovon Full 7");
@@ -2022,16 +2087,13 @@ async function openEditAd(adId){
     (acc.guns || []).forEach(v => addEditDyn("editGunsList", "edit-gun-input", "Qurol", v));
     if(!(acc.guns || []).length) addEditDyn("editGunsList", "edit-gun-input", "Masalan: Lednik 7 full");
 
-    // Linked
     S.editLinked = Array.isArray(acc.linked) ? acc.linked.slice() : [];
     renderEditLinked();
 
-    // Region
     const sel = $("editRegion");
     sel.innerHTML = `<option value="">Viloyatni tanlang</option>` +
       REGIONS.map(r => `<option ${r === a.location ? "selected" : ""}>${r}</option>`).join("");
 
-    // Inputlar
     $("editPrice").oninput = e => {
       e.target.value = e.target.value.replace(/\D/g,"").replace(/\B(?=(\d{3})+(?!\d))/g," ");
     };
@@ -2125,7 +2187,7 @@ async function toggleAdPin(adId, btn){
 }
 
 /* ============================================================
-   ADMIN — Aktiv reklamalar ro'yxati (VIDEO PREVIEW bilan)
+   ADMIN — Aktiv reklamalar (video poster bilan)
    ============================================================ */
 async function renderAdminActiveAds(){
   const c = $("atAds");
@@ -2153,7 +2215,15 @@ async function renderAdminActiveAds(){
         if(a.thumbnail_url){
           thumb = `<img src="${a.thumbnail_url}" alt="" loading="lazy">`;
         } else if(a.video_file_id){
-          thumb = `<video src="${API_URL}/api/ad/${a.id}/video#t=0.5" preload="metadata" muted playsinline></video>`;
+          const poster = _posterCache[a.id];
+          if(poster){
+            thumb = `<img src="${poster}" alt="" loading="lazy">`;
+          } else {
+            thumb = `<div style="width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;color:#fff">${ico("play")}</div>`;
+            setTimeout(() => generatePoster(`${API_URL}/api/ad/${a.id}/video`, a.id, () => {
+              renderAdminActiveAds();
+            }), 100);
+          }
         } else {
           thumb = ico("image");
         }
@@ -2192,7 +2262,15 @@ async function renderAdminActiveAds(){
         if(hasThumb){
           thumb = `<img src="${a.thumbnail_url}" alt="" loading="lazy">`;
         } else if(a.video_file_id){
-          thumb = `<video src="${API_URL}/api/ad/${a.id}/video#t=0.5" preload="metadata" muted playsinline></video>`;
+          const poster = _posterCache[a.id];
+          if(poster){
+            thumb = `<img src="${poster}" alt="" loading="lazy">`;
+          } else {
+            thumb = `<div style="width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;color:#fff">${ico("play")}</div>`;
+            setTimeout(() => generatePoster(`${API_URL}/api/ad/${a.id}/video`, a.id, () => {
+              renderAdminActiveAds();
+            }), 100);
+          }
         } else {
           thumb = `<div class="empty-ic">${ico("image")}<span>Video yo'q</span></div>`;
         }
@@ -2536,8 +2614,8 @@ const LINKED_OPTIONS = [
 const REGIONS = ["Toshkent","Samarqand","Buxoro","Namangan","Andijon","Farg'ona","Qashqadaryo","Surxondaryo","Xorazm","Navoiy","Jizzax","Sirdaryo","Toshkent viloyati","Qoraqalpog'iston"];
 
 const TARIFFS = [
-  {id:2, name:"KANAL", price:15000, desc:"Faqat Kanalda da chiqadi", badge:null,
-   feats:[["yes","Kanalda joylash"],["yes","Reklama kanalda butunlay qoladi"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["no","Bot da chiqmaydi"]]},
+  {id:2, name:"WEB APP", price:15000, desc:"Faqat Web App'da chiqadi", badge:null,
+   feats:[["yes","Web App'da joylash"],["yes","Reklama 15 kun Faol"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["no","Kanalga chiqmaydi"]]},
   {id:1, name:"BOT", price:9000, desc:"Faqat Web App'da chiqadi", badge:null,
    feats:[["yes","Botda joylash"],["yes","Reklama 15 kun Faol"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["no","Kanalga chiqmaydi"]]},
   {id:3, name:"KANAL + BOT", price:22000, desc:"Kanal + Bot + 10% skidka", badge:{t:"RARE", c:"rare"},
@@ -2966,8 +3044,6 @@ function renderMyAds(){
     return;
   }
   c.innerHTML = S.myAds.map(a => myAdCard(a)).join("");
-
-  // Countdown timerni ishga tushuramiz
   startMyAdsCountdown();
 }
 
@@ -2994,12 +3070,19 @@ function myAdCard(a){
     st = {c:"expired", t:"Tugagan", i:"clock"};
   }
 
-  // Thumbnail: rasm > video poster > icon
   let thumb;
   if(a.thumbnail_url){
     thumb = `<img src="${a.thumbnail_url}" alt="" loading="lazy">`;
   } else if(a.video_file_id){
-    thumb = `<video src="${API_URL}/api/ad/${a.id}/video#t=0.5" preload="metadata" muted playsinline></video>`;
+    const poster = _posterCache[a.id];
+    if(poster){
+      thumb = `<img src="${poster}" alt="" loading="lazy">`;
+    } else {
+      thumb = `<div style="width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;color:#fff">${ico("play")}</div>`;
+      setTimeout(() => generatePoster(`${API_URL}/api/ad/${a.id}/video`, a.id, (url) => {
+        if(url) renderMyAds();
+      }), 100);
+    }
   } else {
     thumb = ico("image");
   }
@@ -3037,21 +3120,16 @@ function startMyAdsCountdown(){
   stopMyAdsCountdown();
   const tick = () => {
     document.querySelectorAll("[data-cd-val]").forEach(el => {
-      const adId = el.dataset.cdVal;
       const wrap = el.closest("[data-post-at]");
       if(!wrap) return;
       const postAt = +wrap.dataset.postAt;
       const now = Date.now();
       const left = Math.max(0, Math.floor((postAt - now) / 1000));
       el.innerText = secondsToHMS(left);
-      if(left === 0){
-        // Vaqt keldi — keyingi yangilanishda reload qilamiz
-      }
     });
   };
   tick();
   _myAdsCountdownTimer = setInterval(tick, 1000);
-  // Har 30 sekundda my ads listni yangilash (serverdan post_at o'zgarishi mumkin)
   setTimeout(async () => {
     if($("pageMyAds").classList.contains("active")){
       await loadMyAds();
@@ -4016,7 +4094,6 @@ function useMyUsername(){
    INIT
    ============================================================ */
 async function init(){
-  // Telegram WebApp — fullscreen
   initTelegramWebApp();
 
   const saved = localStorage.getItem("cardinal_theme");
