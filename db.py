@@ -1,6 +1,6 @@
 """
-Cardinal DB v7.0
-- Settings jadvali (ad_days)
+Cardinal DB v7.1
+- Settings jadvali (ad_days, kanal_interval_min)
 - topup_requests.seen
 - Soft delete kartalar
 - Karta holder
@@ -8,7 +8,8 @@ Cardinal DB v7.0
 - SOLD status (sotildi)
 - Thumbnail (rasm) - faqat admin yuklaydi
 - PIN tizimi (admin tartibida)
-- Edit ad (faqat matn)
+- Edit ad (TO'LIQ: matn + ro'yxatlar + linked)
+- Kanal navbati (post_at) — 30 daqiqa interval
 """
 import asyncpg
 import json
@@ -79,6 +80,7 @@ class Database:
                     sold_at TIMESTAMP,
                     is_pinned BOOLEAN DEFAULT FALSE,
                     pin_order INTEGER DEFAULT 0,
+                    post_at TIMESTAMP,
                     created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
@@ -195,6 +197,7 @@ class Database:
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS thumbnail_url TEXT",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS is_pinned BOOLEAN DEFAULT FALSE",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS pin_order INTEGER DEFAULT 0",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS post_at TIMESTAMP",
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS receipt_url TEXT",
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS matched_at TIMESTAMP",
             "ALTER TABLE topup_requests ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
@@ -226,6 +229,10 @@ class Database:
                 INSERT INTO settings (key, value) VALUES ('ad_days', $1)
                 ON CONFLICT (key) DO NOTHING
             """, str(DEFAULT_AD_DAYS))
+            await c.execute("""
+                INSERT INTO settings (key, value) VALUES ('kanal_interval_min', '30')
+                ON CONFLICT (key) DO NOTHING
+            """)
 
     # ============================================================
     # SETTINGS
@@ -248,6 +255,13 @@ class Database:
             return max(1, int(v))
         except Exception:
             return DEFAULT_AD_DAYS
+
+    async def get_kanal_interval_min(self) -> int:
+        v = await self.get_setting("kanal_interval_min", "30")
+        try:
+            return max(1, int(v))
+        except Exception:
+            return 30
 
     # ============================================================
     # USERBOT SESSION
@@ -436,12 +450,12 @@ class Database:
             acc_json = json.dumps(data.get("account_data", {}) or {}, ensure_ascii=False)
             return await c.fetchval("""
                 INSERT INTO ads (user_id, title, video_file_id, ad_type, price, currency,
-                    location, full_location, account_data, tariff, status, expires_at, top_until)
-                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'PENDING',$11,$12) RETURNING id
+                    location, full_location, account_data, tariff, status, expires_at, top_until, post_at)
+                VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'PENDING',$11,$12,$13) RETURNING id
             """, user_id, data["title"], data.get("video_file_id"),
                 data.get("ad_type","STANDARD"), data["price"], data.get("currency","UZS"),
                 data.get("location"), data.get("full_location"), acc_json,
-                data.get("tariff"), data.get("expires_at"), data.get("top_until"))
+                data.get("tariff"), data.get("expires_at"), data.get("top_until"), data.get("post_at"))
 
     def _parse_ad(self, r):
         d = dict(r)
@@ -459,7 +473,7 @@ class Database:
 
     async def get_active_ads(self, category=None):
         """
-        PIN qilinganlar tepada (pin_order DESC — katta raqam tepada = oxirgi pin),
+        PIN qilinganlar tepada (pin_order DESC),
         keyin pin qilinmaganlar (yangi → eski).
         """
         async with self.pool.acquire() as c:
@@ -494,6 +508,7 @@ class Database:
                        a.ad_type, a.price, a.currency, a.location, a.full_location,
                        a.account_data, a.tariff, a.status, a.views, a.reject_reason,
                        a.top_until, a.expires_at, a.sold_at, a.is_pinned, a.pin_order,
+                       a.channel_msg_id, a.post_at,
                        a.created_at, a.updated_at
                 FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE u.telegram_id=$1 ORDER BY a.created_at DESC LIMIT 50
@@ -541,6 +556,33 @@ class Database:
                 await c.execute("UPDATE ads SET status=$1, reject_reason=$2, updated_at=NOW() WHERE id=$3",
                                 status, reason, ad_id)
 
+    async def set_ad_post_at(self, ad_id, post_at):
+        """Kanalga chiqish vaqtini belgilash."""
+        async with self.pool.acquire() as c:
+            await c.execute("UPDATE ads SET post_at=$1, updated_at=NOW() WHERE id=$2", post_at, ad_id)
+
+    async def get_next_kanal_slot(self):
+        """
+        Keyingi kanal navbati vaqtini qaytaradi.
+        - Agar hech qanday reklama navbatda bo'lmasa → hozirgi vaqt
+        - Aks holda → oxirgi post_at + interval
+        """
+        interval = await self.get_kanal_interval_min()
+        async with self.pool.acquire() as c:
+            r = await c.fetchrow("""
+                SELECT MAX(post_at) as last_post
+                FROM ads
+                WHERE post_at IS NOT NULL
+                  AND post_at > NOW()
+                  AND channel_msg_id IS NULL
+                  AND status='ACTIVE'
+            """)
+            last_post = r["last_post"] if r else None
+            now = datetime.now()
+            if last_post and last_post > now:
+                return last_post + timedelta(minutes=interval)
+            return now
+
     async def mark_ad_sold(self, ad_id, telegram_id):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
@@ -574,10 +616,6 @@ class Database:
     # ADS — PIN
     # ============================================================
     async def toggle_ad_pin(self, ad_id):
-        """
-        PIN yoqilgan bo'lsa — o'chiriladi (pin_order=0).
-        PIN yoqilmagan bo'lsa — yoqiladi va pin_order = max+1 (yangi pin tepada).
-        """
         async with self.pool.acquire() as c:
             r = await c.fetchrow("SELECT is_pinned FROM ads WHERE id=$1", ad_id)
             if not r:
@@ -596,44 +634,66 @@ class Database:
                 return {"is_pinned": True, "pin_order": new_order}
 
     async def reorder_pins(self, ad_ids):
-        """Admin tartibni saqlaydi: ad_ids ro'yxati — tepadan pastga."""
         async with self.pool.acquire() as c:
             async with c.transaction():
-                # Avval hammasini o'chirish
                 await c.execute("UPDATE ads SET is_pinned=FALSE, pin_order=0")
-                # Keyin tartib bilan yoqish (yuqori pin_order = tepada)
                 total = len(ad_ids)
                 for i, aid in enumerate(ad_ids):
-                    order_val = total - i  # birinchi element eng katta pin_order
+                    order_val = total - i
                     await c.execute("""
                         UPDATE ads SET is_pinned=TRUE, pin_order=$1, updated_at=NOW() WHERE id=$2
                     """, order_val, aid)
             return True
 
     # ============================================================
-    # ADS — EDIT (faqat matn)
+    # ADS — EDIT (TO'LIQ: matn + ro'yxatlar + linked)
     # ============================================================
     async def update_ad_text(self, ad_id, data):
         """
-        Faqat matnli maydonlarni tahrirlash:
-        - title, price, currency, location, full_location
-        - account_data (level, collection, rp, mythic_clothes, rare_skins, x_costume, guns, guns_count, supar_car, username, phone)
-        Video va thumbnail tegmaydi.
+        To'liq matnli maydonlarni tahrirlash:
+        - title (ixtiyoriy)
+        - price, currency, location, full_location
+        - account_data:
+            level, collection, rp, mythic_clothes,
+            x_costume, supar_car, rare_skins, guns, guns_count,
+            linked, username, phone
+        Video va thumbnail TEGMAYDI.
         """
         async with self.pool.acquire() as c:
             acc_json = json.dumps(data.get("account_data", {}) or {}, ensure_ascii=False)
-            await c.execute("""
-                UPDATE ads SET
-                    price=$1,
-                    currency=$2,
-                    location=$3,
-                    full_location=$4,
-                    account_data=$5::jsonb,
-                    updated_at=NOW()
-                WHERE id=$6
-            """, data.get("price"), data.get("currency", "UZS"),
-                data.get("location"), data.get("full_location"),
-                acc_json, ad_id)
+
+            title = (data.get("title") or "").strip()
+            price = data.get("price")
+            currency = data.get("currency", "UZS")
+            location = data.get("location")
+            full_location = data.get("full_location")
+
+            if title:
+                await c.execute("""
+                    UPDATE ads SET
+                        title=$1,
+                        price=$2,
+                        currency=$3,
+                        location=$4,
+                        full_location=$5,
+                        account_data=$6::jsonb,
+                        updated_at=NOW()
+                    WHERE id=$7
+                """, title, price, currency, location, full_location,
+                    acc_json, ad_id)
+            else:
+                await c.execute("""
+                    UPDATE ads SET
+                        price=$1,
+                        currency=$2,
+                        location=$3,
+                        full_location=$4,
+                        account_data=$5::jsonb,
+                        updated_at=NOW()
+                    WHERE id=$6
+                """, price, currency, location, full_location,
+                    acc_json, ad_id)
+
             return True
 
     # ============================================================
