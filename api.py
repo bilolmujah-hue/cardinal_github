@@ -1,11 +1,14 @@
 """
-Cardinal API v7.1
+Cardinal API v7.2
+- iOS video streaming TO'LIQ qo'llab-quvvatlanadi (Range, HEAD, CORS)
+- Video streaming Telegram'dan (streaming-friendly, HEVC/MP4 uchun)
 - Thumbnail endpoints (faqat admin)
 - PIN endpoints (faqat admin)
 - Edit ad endpoint (TO'LIQ: matn + ro'yxatlar + linked)
 - Mark sold
 - VIP request
 - Kanal navbati (post_at) — interval sozlamasi
+- Topup (avtomatik to'lov tizimi)
 """
 import asyncio
 import json
@@ -29,6 +32,9 @@ from jwt_auth import (
 logger = logging.getLogger("API")
 
 
+# ============================================================
+# YORDAMCHI
+# ============================================================
 def json_ser(obj):
     if isinstance(obj, Decimal): return float(obj)
     if isinstance(obj, datetime): return obj.isoformat()
@@ -36,8 +42,10 @@ def json_ser(obj):
 
 
 def jresp(data, status=200):
-    return web.json_response(data, status=status,
-                             dumps=lambda x: json.dumps(x, default=json_ser, ensure_ascii=False))
+    return web.json_response(
+        data, status=status,
+        dumps=lambda x: json.dumps(x, default=json_ser, ensure_ascii=False)
+    )
 
 
 def is_valid_video_data_url(url: str) -> bool:
@@ -52,15 +60,86 @@ def is_valid_image_data_url(url: str) -> bool:
     return url.startswith("data:image/")
 
 
+def parse_range_header(range_header: str, file_size: int):
+    """
+    Range headerini parse qiladi.
+    Qaytaradi: (start, end) yoki None.
+    """
+    if not range_header or not range_header.startswith("bytes="):
+        return None
+    try:
+        ranges = range_header.replace("bytes=", "").split(",")
+        first = ranges[0].strip()
+        if "-" not in first:
+            return None
+        parts = first.split("-", 1)
+        start_str = parts[0].strip()
+        end_str = parts[1].strip() if len(parts) > 1 else ""
+        if not start_str:
+            # "bytes=-500" — oxirgi 500 bayt
+            length = int(end_str)
+            start = max(0, file_size - length)
+            end = file_size - 1
+        elif not end_str:
+            # "bytes=500-" — boshidan oxirigacha
+            start = int(start_str)
+            end = file_size - 1
+        else:
+            # "bytes=500-1000"
+            start = int(start_str)
+            end = int(end_str)
+        if start > end or start >= file_size:
+            return None
+        end = min(end, file_size - 1)
+        return (start, end)
+    except Exception:
+        return None
+
+
+# ============================================================
+# API
+# ============================================================
 class API:
     def __init__(self, db: Database, bot_app):
         self.db = db
         self.bot_app = bot_app
         self.app = web.Application(
             client_max_size=API_CFG.MAX_SIZE,
-            middlewares=[jwt_middleware, self._err_mw]
+            middlewares=[self._cors_mw, jwt_middleware, self._err_mw]
         )
         self._routes()
+
+    # ============================================================
+    # CORS PREFLIGHT + IOS FIX
+    # ============================================================
+    @web.middleware
+    async def _cors_mw(self, request, handler):
+        """CORS preflight va iOS uchun maxsus middleware."""
+        # OPTIONS preflight
+        if request.method == "OPTIONS":
+            resp = web.Response(status=204)
+            resp.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
+            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, HEAD"
+            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Range, X-Requested-With"
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Access-Control-Max-Age"] = "86400"
+            resp.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges"
+            return resp
+
+        # Oddiy so'rovlar uchun CORS headerlar
+        try:
+            resp = await handler(request)
+        except web.HTTPException as e:
+            resp = e
+
+        # Video/rasm uchun CORS headerlar
+        if not resp.headers.get("Access-Control-Allow-Origin"):
+            origin = request.headers.get("Origin", "*")
+            resp.headers["Access-Control-Allow-Origin"] = origin
+            resp.headers["Access-Control-Allow-Credentials"] = "true"
+            resp.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges"
+
+        return resp
 
     @web.middleware
     async def _err_mw(self, request, handler):
@@ -74,115 +153,130 @@ class API:
             logger.error(f"API err: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 500)
 
+    # ============================================================
+    # ROUTES
+    # ============================================================
     def _routes(self):
         cors = aiohttp_cors.setup(self.app, defaults={
             "*": aiohttp_cors.ResourceOptions(
-                allow_credentials=True, expose_headers="*",
-                allow_headers="*", allow_methods="*",
+                allow_credentials=True,
+                expose_headers="*",
+                allow_headers="*",
+                allow_methods="*",
             )
         })
 
         r = [
             # Public
-            ("GET",  "/", self.index),
-            ("GET",  "/api/stats", self.stats),
-            ("GET",  "/api/tariffs", self.tariffs),
-            ("GET",  "/api/regions", self.regions),
-            ("GET",  "/api/currencies", self.currencies),
-            ("GET",  "/api/settings", self.public_settings),
-            ("GET",  "/api/ads", self.get_ads),
-            ("GET",  "/api/feedbacks", self.get_feedbacks),
-            ("GET",  "/api/admin-contacts", self.public_admin_contacts),
+            ("GET",   "/", self.index),
+            ("GET",   "/api/stats", self.stats),
+            ("GET",   "/api/tariffs", self.tariffs),
+            ("GET",   "/api/regions", self.regions),
+            ("GET",   "/api/currencies", self.currencies),
+            ("GET",   "/api/settings", self.public_settings),
+            ("GET",   "/api/ads", self.get_ads),
+            ("GET",   "/api/feedbacks", self.get_feedbacks),
+            ("GET",   "/api/admin-contacts", self.public_admin_contacts),
 
-            # Video streaming
-            ("GET",  "/api/ad/{ad_id}/video", self.stream_video),
-            ("GET",  "/api/ad/{ad_id}", self.get_ad),
+            # Video streaming (GET + HEAD — iOS uchun)
+            ("GET",   "/api/ad/{ad_id}/video", self.stream_video),
+            ("HEAD",  "/api/ad/{ad_id}/video", self.stream_video),
+            ("OPTIONS", "/api/ad/{ad_id}/video", self.options_video),
+
+            # Ad detail
+            ("GET",   "/api/ad/{ad_id}", self.get_ad),
 
             # Upload video (multipart)
-            ("POST", "/api/upload-video", self.upload_video),
+            ("POST",  "/api/upload-video", self.upload_video),
 
             # Auth
-            ("POST", "/api/auth/telegram", self.auth_telegram),
-            ("POST", "/api/auth/refresh", self.auth_refresh),
-            ("POST", "/api/auth/logout", self.auth_logout),
+            ("POST",  "/api/auth/telegram", self.auth_telegram),
+            ("POST",  "/api/auth/refresh", self.auth_refresh),
+            ("POST",  "/api/auth/logout", self.auth_logout),
 
             # User
-            ("GET",  "/api/user/{telegram_id}", self.get_user),
-            ("POST", "/api/update-profile", self.update_profile),
-            ("GET",  "/api/my-ads/{telegram_id}", self.my_ads),
-            ("POST", "/api/create-ad", self.create_ad),
-            ("POST", "/api/mark-sold", self.mark_sold),
-            ("POST", "/api/toggle-save", self.toggle_save),
-            ("GET",  "/api/saved-ads/{telegram_id}", self.saved_ads),
-            ("GET",  "/api/user-transactions/{telegram_id}", self.user_txs),
-            ("POST", "/api/feedbacks/add", self.add_feedback),
+            ("GET",   "/api/user/{telegram_id}", self.get_user),
+            ("POST",  "/api/update-profile", self.update_profile),
+            ("GET",   "/api/my-ads/{telegram_id}", self.my_ads),
+            ("POST",  "/api/create-ad", self.create_ad),
+            ("POST",  "/api/mark-sold", self.mark_sold),
+            ("POST",  "/api/toggle-save", self.toggle_save),
+            ("GET",   "/api/saved-ads/{telegram_id}", self.saved_ads),
+            ("GET",   "/api/user-transactions/{telegram_id}", self.user_txs),
+            ("POST",  "/api/feedbacks/add", self.add_feedback),
 
             # VIP
-            ("POST", "/api/create-vip-request", self.create_vip_request),
+            ("POST",  "/api/create-vip-request", self.create_vip_request),
 
             # Topup
-            ("POST", "/api/topup/request", self.topup_request),
-            ("GET",  "/api/topup/status",  self.topup_status),
-            ("POST", "/api/topup/cancel",  self.topup_cancel),
-            ("POST", "/api/topup/receipt", self.topup_receipt),
-            ("POST", "/api/topup/dismiss", self.topup_dismiss),
+            ("POST",  "/api/topup/request", self.topup_request),
+            ("GET",   "/api/topup/status", self.topup_status),
+            ("POST",  "/api/topup/cancel", self.topup_cancel),
+            ("POST",  "/api/topup/receipt", self.topup_receipt),
+            ("POST",  "/api/topup/dismiss", self.topup_dismiss),
 
             # Admin
-            ("GET",  "/api/admin/pending-ads", self.admin_pending_ads),
-            ("GET",  "/api/admin/all-ads", self.admin_all_ads),
-            ("GET",  "/api/admin/ads-with-pin", self.admin_ads_with_pin),
-            ("GET",  "/api/admin/users", self.admin_users),
-            ("GET",  "/api/admin/blocked", self.admin_blocked),
-            ("GET",  "/api/admin/cards", self.admin_cards),
-            ("GET",  "/api/admin/topups", self.admin_topups),
-            ("GET",  "/api/admin/statistics", self.admin_statistics),
-            ("GET",  "/api/admin/user/{telegram_id}", self.admin_user_detail),
-            ("POST", "/api/admin/card/add", self.admin_add_card),
-            ("POST", "/api/admin/card/del", self.admin_del_card),
-            ("POST", "/api/admin/approve-ad", self.admin_approve_ad),
-            ("POST", "/api/admin/reject-ad", self.admin_reject_ad),
-            ("POST", "/api/admin/delete-ad", self.admin_delete_ad),
-            ("POST", "/api/admin/block", self.admin_block),
-            ("POST", "/api/admin/unblock", self.admin_unblock),
-            ("POST", "/api/admin/broadcast", self.admin_broadcast),
-            ("POST", "/api/admin/add-balance", self.admin_add_balance),
-            ("POST", "/api/admin/delete-feedback", self.admin_delete_feedback),
-            ("POST", "/api/admin/add-admin", self.admin_add_admin),
-            ("GET",  "/api/admin/settings", self.admin_get_settings),
-            ("POST", "/api/admin/settings/set-days", self.admin_set_days),
-            ("POST", "/api/admin/settings/set-kanal-interval", self.admin_set_kanal_interval),
+            ("GET",   "/api/admin/pending-ads", self.admin_pending_ads),
+            ("GET",   "/api/admin/all-ads", self.admin_all_ads),
+            ("GET",   "/api/admin/ads-with-pin", self.admin_ads_with_pin),
+            ("GET",   "/api/admin/users", self.admin_users),
+            ("GET",   "/api/admin/blocked", self.admin_blocked),
+            ("GET",   "/api/admin/cards", self.admin_cards),
+            ("GET",   "/api/admin/topups", self.admin_topups),
+            ("GET",   "/api/admin/statistics", self.admin_statistics),
+            ("GET",   "/api/admin/user/{telegram_id}", self.admin_user_detail),
+            ("POST",  "/api/admin/card/add", self.admin_add_card),
+            ("POST",  "/api/admin/card/del", self.admin_del_card),
+            ("POST",  "/api/admin/approve-ad", self.admin_approve_ad),
+            ("POST",  "/api/admin/reject-ad", self.admin_reject_ad),
+            ("POST",  "/api/admin/delete-ad", self.admin_delete_ad),
+            ("POST",  "/api/admin/block", self.admin_block),
+            ("POST",  "/api/admin/unblock", self.admin_unblock),
+            ("POST",  "/api/admin/broadcast", self.admin_broadcast),
+            ("POST",  "/api/admin/add-balance", self.admin_add_balance),
+            ("POST",  "/api/admin/delete-feedback", self.admin_delete_feedback),
+            ("POST",  "/api/admin/add-admin", self.admin_add_admin),
+            ("GET",   "/api/admin/settings", self.admin_get_settings),
+            ("POST",  "/api/admin/settings/set-days", self.admin_set_days),
+            ("POST",  "/api/admin/settings/set-kanal-interval", self.admin_set_kanal_interval),
 
-            # 🔥 Admin — Thumbnail / PIN / Edit
-            ("POST", "/api/admin/ad/set-thumbnail", self.admin_set_thumbnail),
-            ("POST", "/api/admin/ad/toggle-pin", self.admin_toggle_pin),
-            ("POST", "/api/admin/ad/reorder-pins", self.admin_reorder_pins),
-            ("POST", "/api/admin/ad/edit", self.admin_edit_ad),
+            # Admin — Thumbnail / PIN / Edit
+            ("POST",  "/api/admin/ad/set-thumbnail", self.admin_set_thumbnail),
+            ("POST",  "/api/admin/ad/toggle-pin", self.admin_toggle_pin),
+            ("POST",  "/api/admin/ad/reorder-pins", self.admin_reorder_pins),
+            ("POST",  "/api/admin/ad/edit", self.admin_edit_ad),
 
             # Admin Contacts
-            ("GET",  "/api/admin/contacts", self.admin_list_contacts),
-            ("POST", "/api/admin/contacts/add", self.admin_add_contact),
-            ("POST", "/api/admin/contacts/delete", self.admin_delete_contact),
-            ("POST", "/api/admin/contacts/toggle", self.admin_toggle_contact),
+            ("GET",   "/api/admin/contacts", self.admin_list_contacts),
+            ("POST",  "/api/admin/contacts/add", self.admin_add_contact),
+            ("POST",  "/api/admin/contacts/delete", self.admin_delete_contact),
+            ("POST",  "/api/admin/contacts/toggle", self.admin_toggle_contact),
 
             # Userbot
-            ("POST", "/api/admin/userbot/send-code", self.admin_userbot_send_code),
-            ("POST", "/api/admin/userbot/verify-code", self.admin_userbot_verify_code),
-            ("POST", "/api/admin/userbot/verify-2fa", self.admin_userbot_verify_2fa),
-            ("GET",  "/api/admin/userbot/status", self.admin_userbot_status),
-            ("POST", "/api/admin/userbot/logout", self.admin_userbot_logout),
+            ("POST",  "/api/admin/userbot/send-code", self.admin_userbot_send_code),
+            ("POST",  "/api/admin/userbot/verify-code", self.admin_userbot_verify_code),
+            ("POST",  "/api/admin/userbot/verify-2fa", self.admin_userbot_verify_2fa),
+            ("GET",   "/api/admin/userbot/status", self.admin_userbot_status),
+            ("POST",  "/api/admin/userbot/logout", self.admin_userbot_logout),
         ]
 
         for method, path, handler in r:
-            route = self.app.router.add_route(method, path, handler)
-            cors.add(route)
+            try:
+                route = self.app.router.add_route(method, path, handler)
+                if path not in ("/api/ad/{ad_id}/video",) or method == "GET":
+                    cors.add(route)
+            except Exception as e:
+                logger.warning(f"Route add: {method} {path}: {e}")
 
     # ============================================================
     # PUBLIC
     # ============================================================
     async def index(self, req):
         return jresp({
-            "app": "Cardinal API", "version": "7.1", "status": "running",
-            "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
+            "app": "Cardinal API",
+            "version": "7.2",
+            "status": "running",
+            "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB",
         })
 
     async def stats(self, req):
@@ -202,9 +296,14 @@ class API:
         out = []
         for tid, t in TARIFFS.items():
             out.append({
-                "id": tid, "name": t.name, "price": t.price,
-                "days": days, "type": t.type, "badge": t.badge,
-                "channel": t.channel, "webapp": t.webapp,
+                "id": tid,
+                "name": t.name,
+                "price": t.price,
+                "days": days,
+                "type": t.type,
+                "badge": t.badge,
+                "channel": t.channel,
+                "webapp": t.webapp,
                 "top_hours": getattr(t, "top_hours", 0),
                 "manual": getattr(t, "manual", False),
             })
@@ -244,10 +343,29 @@ class API:
         return jresp(ad)
 
     # ============================================================
-    # VIDEO STREAMING
+    # VIDEO STREAMING — iOS UCHUN TO'LIQ QO'LLAB-QUVVATLASH
     # ============================================================
+    async def options_video(self, req):
+        """iOS Safari CORS preflight uchun."""
+        resp = web.Response(status=204)
+        resp.headers["Access-Control-Allow-Origin"] = req.headers.get("Origin", "*")
+        resp.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
+        resp.headers["Access-Control-Allow-Headers"] = "Range, Content-Type, Authorization"
+        resp.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges"
+        resp.headers["Access-Control-Max-Age"] = "86400"
+        return resp
+
     async def stream_video(self, req):
+        """
+        Video streaming — iOS Safari, Android Chrome, Desktop uchun.
+        - Range requests (206 Partial Content)
+        - HEAD requests
+        - Content-Type: video/mp4
+        - Accept-Ranges: bytes
+        - CORS headers
+        """
         ad_id = None
+        is_head = (req.method == "HEAD")
         try:
             ad_id = int(req.match_info["ad_id"])
             ad = await self.db.get_ad(ad_id)
@@ -256,36 +374,91 @@ class API:
 
             file_id = ad["video_file_id"]
 
+            # Telegram'dan fayl ma'lumotlarini olish
             try:
                 tg_file = await self.bot_app.bot.get_file(file_id)
                 file_path = tg_file.file_path
+                file_size = getattr(tg_file, "file_size", None)
             except Exception as e:
                 logger.error(f"get_file xato (ad #{ad_id}): {e}")
                 return web.Response(status=502, text="Video yuklanmadi")
 
             telegram_url = f"https://api.telegram.org/file/bot{BOT.TOKEN}/{file_path}"
 
-            req_headers = {}
-            if "Range" in req.headers:
-                req_headers["Range"] = req.headers["Range"]
+            # ====== RANGE REQUEST parse ======
+            range_header = req.headers.get("Range")
+            range_tuple = None
+            if range_header and file_size:
+                range_tuple = parse_range_header(range_header, file_size)
 
-            async with ClientSession() as sess:
+            # ====== HEAD REQUEST (iOS Safari tez-tez yuboradi) ======
+            if is_head:
+                resp = web.Response(status=200)
+                resp.headers["Content-Type"] = "video/mp4"
+                resp.headers["Accept-Ranges"] = "bytes"
+                resp.headers["Cache-Control"] = "public, max-age=3600"
+                resp.headers["Access-Control-Allow-Origin"] = req.headers.get("Origin", "*")
+                if file_size:
+                    resp.headers["Content-Length"] = str(file_size)
+                return resp
+
+            # ====== UPSTREAM REQUEST ======
+            req_headers = {
+                "User-Agent": "CardinalBot/7.2",
+            }
+            if range_tuple:
+                req_headers["Range"] = f"bytes={range_tuple[0]}-{range_tuple[1]}"
+            elif range_header:
+                req_headers["Range"] = range_header
+
+            async with ClientSession(timeout=None) as sess:
                 async with sess.get(telegram_url, headers=req_headers) as upstream:
                     if upstream.status not in (200, 206):
+                        logger.error(f"Upstream status {upstream.status} (ad #{ad_id})")
                         return web.Response(status=502, text="Video CDN xato")
 
-                    resp = web.StreamResponse(status=upstream.status)
-                    resp.headers["Content-Type"] = upstream.headers.get("Content-Type", "video/mp4")
+                    # ====== RESPONSE STATUS ======
+                    status = 200
+                    if upstream.status == 206 or range_tuple:
+                        status = 206
 
+                    resp = web.StreamResponse(status=status)
+
+                    # ====== CONTENT TYPE ======
+                    # iOS uchun video/mp4 yoki video/quicktime
+                    upstream_ct = upstream.headers.get("Content-Type", "").lower()
+                    if "mp4" in upstream_ct or "mpeg" in upstream_ct:
+                        content_type = "video/mp4"
+                    elif "quicktime" in upstream_ct or "mov" in upstream_ct:
+                        content_type = "video/quicktime"
+                    elif "webm" in upstream_ct:
+                        content_type = "video/webm"
+                    else:
+                        content_type = "video/mp4"
+                    resp.headers["Content-Type"] = content_type
+
+                    # ====== CONTENT LENGTH / RANGE ======
                     if "Content-Length" in upstream.headers:
                         resp.headers["Content-Length"] = upstream.headers["Content-Length"]
-                    if "Content-Range" in upstream.headers:
-                        resp.headers["Content-Range"] = upstream.headers["Content-Range"]
 
+                    if status == 206:
+                        if "Content-Range" in upstream.headers:
+                            resp.headers["Content-Range"] = upstream.headers["Content-Range"]
+                        elif range_tuple and file_size:
+                            s, e = range_tuple
+                            resp.headers["Content-Range"] = f"bytes {s}-{e}/{file_size}"
+                            resp.headers["Content-Length"] = str(e - s + 1)
+
+                    # ====== iOS/VIDEO UCHUN MUHIM HEADERLAR ======
                     resp.headers["Accept-Ranges"] = "bytes"
                     resp.headers["Cache-Control"] = "public, max-age=3600"
-                    resp.headers["Access-Control-Allow-Origin"] = "*"
+                    resp.headers["Access-Control-Allow-Origin"] = req.headers.get("Origin", "*")
+                    resp.headers["Access-Control-Allow-Credentials"] = "true"
+                    resp.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges"
+                    resp.headers["Content-Disposition"] = "inline"
+                    resp.headers["X-Content-Type-Options"] = "nosniff"
 
+                    # ====== STREAMING ======
                     try:
                         await resp.prepare(req)
                     except (ConnectionResetError, ConnectionAbortedError):
@@ -308,7 +481,7 @@ class API:
                         except Exception:
                             pass
                     except Exception as e:
-                        logger.debug(f"Upstream xato (ad #{ad_id}): {e}")
+                        logger.debug(f"Upstream stream xato (ad #{ad_id}): {e}")
 
                     return resp
 
@@ -316,13 +489,15 @@ class API:
             raise
         except Exception as e:
             err_str = str(e)
-            if "closing transport" in err_str or isinstance(e, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)):
+            if "closing transport" in err_str or isinstance(
+                e, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)
+            ):
                 return web.Response(status=499)
             logger.error(f"stream_video (ad #{ad_id}): {e}", exc_info=True)
             return web.Response(status=500, text="Server xatosi")
 
     # ============================================================
-    # UPLOAD VIDEO (multipart)
+    # UPLOAD VIDEO
     # ============================================================
     async def upload_video(self, req):
         try:
@@ -539,14 +714,7 @@ class API:
 
             acc = ad_data.get("account_data", {}) or {}
 
-            try:
-                coll = int(acc.get("collection", 0))
-                if coll > LIMITS.COLLECTION_MAX:
-                    return jresp({"ok": False, "error": f"Kolleksiya max {LIMITS.COLLECTION_MAX}"}, 400)
-                acc["collection"] = coll
-            except Exception:
-                acc["collection"] = 0
-
+            # LEVEL
             try:
                 lvl = int(acc.get("level", 0))
                 if lvl > LIMITS.LVL_MAX:
@@ -555,6 +723,16 @@ class API:
             except Exception:
                 acc["level"] = 0
 
+            # KOLLEKSIYA
+            try:
+                coll = int(acc.get("collection", 0))
+                if coll > LIMITS.COLLECTION_MAX:
+                    return jresp({"ok": False, "error": f"Kolleksiya max {LIMITS.COLLECTION_MAX}"}, 400)
+                acc["collection"] = coll
+            except Exception:
+                acc["collection"] = 0
+
+            # MIFIK
             try:
                 mc = int(re.sub(r"\D", "", str(acc.get("mythic_clothes", 0))) or 0)
                 if mc > LIMITS.MYTHIC_MAX:
@@ -574,6 +752,13 @@ class API:
                 acc["guns_count"] = int(re.sub(r"\D", "", str(acc.get("guns_count", 0))) or 0)
             except Exception:
                 acc["guns_count"] = len(acc.get("guns") or [])
+
+            # LINKED
+            linked = acc.get("linked") or []
+            if isinstance(linked, list):
+                acc["linked"] = [str(x).strip().lower()[:30] for x in linked if str(x).strip()][:20]
+            else:
+                acc["linked"] = []
 
             phone = (acc.get("phone") or "").strip()
             username = (acc.get("username") or "").strip()
@@ -887,7 +1072,6 @@ class API:
         return jresp(await self.db.get_active_ads())
 
     async def admin_ads_with_pin(self, req):
-        """Admin panel uchun — barcha aktiv reklamalar + pin/thumb info."""
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
             return jresp(await self.db.get_all_ads_with_pin())
@@ -991,9 +1175,6 @@ class API:
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
 
-    # ============================================================
-    # ADMIN — APPROVE / REJECT (kanal navbati bilan)
-    # ============================================================
     async def admin_approve_ad(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
@@ -1013,18 +1194,15 @@ class API:
 
             await self.db.update_ad_status(ad_id, "ACTIVE")
 
-            # Kanalga chiqadigan tarif bo'lsa — navbatga qo'yamiz
             if t.channel and ad.get("video_file_id"):
-                # Keyingi navbat vaqtini olamiz
                 post_at = await self.db.get_next_kanal_slot()
                 await self.db.set_ad_post_at(ad_id, post_at)
-                # Bot navbatni boshqaradi (bot.py dagi kanal scheduler)
                 asyncio.create_task(self.bot_app.schedule_channel_post(ad_id, post_at))
                 logger.info(f"#{ad_id} kanal navbatiga qo'yildi: {post_at}")
 
-            # Foydalanuvchiga chiroyli xabar (bot_app orqali)
             try:
-                await self.bot_app.notify_user_approved(ad, t)
+                fresh = await self.db.get_ad(ad_id)
+                await self.bot_app.notify_user_approved(fresh, t)
             except Exception as e:
                 logger.error(f"notify_user_approved xato: {e}")
 
@@ -1180,9 +1358,6 @@ class API:
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
 
-    # ============================================================
-    # ADMIN — THUMBNAIL
-    # ============================================================
     async def admin_set_thumbnail(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
@@ -1206,9 +1381,6 @@ class API:
             logger.error(f"admin_set_thumbnail: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
-    # ============================================================
-    # ADMIN — PIN
-    # ============================================================
     async def admin_toggle_pin(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
@@ -1235,19 +1407,9 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     # ============================================================
-    # ADMIN — EDIT AD (TO'LIQ: matn + ro'yxatlar + linked)
+    # ADMIN — EDIT AD (TO'LIQ)
     # ============================================================
     async def admin_edit_ad(self, req):
-        """
-        Admin e'lonni to'liq tahrirlaydi:
-        - title (ixtiyoriy)
-        - price, currency, location, full_location
-        - account_data:
-            level, collection, rp, mythic_clothes,
-            x_costume, supar_car, rare_skins, guns, guns_count,
-            linked, username, phone
-        Video va thumbnail TEGMAYDI.
-        """
         if not self._is_admin_req(req):
             return jresp({"error": "Ruxsat yo'q"}, 403)
 
@@ -1259,8 +1421,7 @@ class API:
             # 1. LEVEL
             try:
                 lvl = int(acc.get("level", 0) or 0)
-                if lvl < 0:
-                    lvl = 0
+                if lvl < 0: lvl = 0
                 if lvl > LIMITS.LVL_MAX:
                     return jresp({"ok": False, "error": f"LVL max {LIMITS.LVL_MAX}"}, 400)
                 acc["level"] = lvl
@@ -1270,15 +1431,14 @@ class API:
             # 2. KOLLEKSIYA
             try:
                 coll = int(acc.get("collection", 0) or 0)
-                if coll < 0:
-                    coll = 0
+                if coll < 0: coll = 0
                 if coll > LIMITS.COLLECTION_MAX:
                     return jresp({"ok": False, "error": f"Kolleksiya max {LIMITS.COLLECTION_MAX}"}, 400)
                 acc["collection"] = coll
             except Exception:
                 acc["collection"] = 0
 
-            # 3. MIFIK KIYIMLAR
+            # 3. MIFIK
             try:
                 mc = int(re.sub(r"\D", "", str(acc.get("mythic_clothes", 0))) or 0)
                 if mc > LIMITS.MYTHIC_MAX:
@@ -1308,8 +1468,7 @@ class API:
             # 6. GUNS COUNT
             try:
                 gc = int(re.sub(r"\D", "", str(acc.get("guns_count", 0))) or 0)
-                if gc < 0:
-                    gc = 0
+                if gc < 0: gc = 0
                 acc["guns_count"] = gc
             except Exception:
                 acc["guns_count"] = len(acc.get("guns") or [])
@@ -1359,7 +1518,7 @@ class API:
             if cur_code not in CURRENCIES:
                 cur_code = "UZS"
 
-            # 12. TITLE (ixtiyoriy)
+            # 12. TITLE
             title = (data.get("title") or "").strip()
             if title and len(title) > 255:
                 title = title[:255]
@@ -1495,4 +1654,4 @@ class API:
         await runner.setup()
         site = web.TCPSite(runner, API_CFG.HOST, API_CFG.PORT)
         await site.start()
-        logger.info(f"API: http://{API_CFG.HOST}:{API_CFG.PORT}")
+        logger.info(f"✅ API: http://{API_CFG.HOST}:{API_CFG.PORT}")
