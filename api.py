@@ -1,10 +1,11 @@
 """
-Cardinal API v7.0
+Cardinal API v7.1
 - Thumbnail endpoints (faqat admin)
 - PIN endpoints (faqat admin)
-- Edit ad endpoint (faqat admin)
+- Edit ad endpoint (TO'LIQ: matn + ro'yxatlar + linked)
 - Mark sold
 - VIP request
+- Kanal navbati (post_at) — interval sozlamasi
 """
 import asyncio
 import json
@@ -149,6 +150,7 @@ class API:
             ("POST", "/api/admin/add-admin", self.admin_add_admin),
             ("GET",  "/api/admin/settings", self.admin_get_settings),
             ("POST", "/api/admin/settings/set-days", self.admin_set_days),
+            ("POST", "/api/admin/settings/set-kanal-interval", self.admin_set_kanal_interval),
 
             # 🔥 Admin — Thumbnail / PIN / Edit
             ("POST", "/api/admin/ad/set-thumbnail", self.admin_set_thumbnail),
@@ -179,7 +181,7 @@ class API:
     # ============================================================
     async def index(self, req):
         return jresp({
-            "app": "Cardinal API", "version": "7.0", "status": "running",
+            "app": "Cardinal API", "version": "7.1", "status": "running",
             "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB"
         })
 
@@ -188,7 +190,12 @@ class API:
 
     async def public_settings(self, req):
         days = await self.db.get_ad_days()
-        return jresp({"ad_days": days, "timeout_min": LIMITS.PAYMENT_TIMEOUT_MIN})
+        interval = await self.db.get_kanal_interval_min()
+        return jresp({
+            "ad_days": days,
+            "kanal_interval_min": interval,
+            "timeout_min": LIMITS.PAYMENT_TIMEOUT_MIN,
+        })
 
     async def tariffs(self, req):
         days = await self.db.get_ad_days()
@@ -522,7 +529,6 @@ class API:
                     "need": t.price, "have": user["balance"]
                 }, 400)
 
-            # video_file_id yoki base64
             file_id = ad_data.get("video_file_id")
             if not file_id:
                 video_data = ad_data.get("video_url")
@@ -985,6 +991,9 @@ class API:
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
 
+    # ============================================================
+    # ADMIN — APPROVE / REJECT (kanal navbati bilan)
+    # ============================================================
     async def admin_approve_ad(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
@@ -1004,18 +1013,24 @@ class API:
 
             await self.db.update_ad_status(ad_id, "ACTIVE")
 
+            # Kanalga chiqadigan tarif bo'lsa — navbatga qo'yamiz
             if t.channel and ad.get("video_file_id"):
-                asyncio.create_task(self.bot_app._post_to_channel(ad))
+                # Keyingi navbat vaqtini olamiz
+                post_at = await self.db.get_next_kanal_slot()
+                await self.db.set_ad_post_at(ad_id, post_at)
+                # Bot navbatni boshqaradi (bot.py dagi kanal scheduler)
+                asyncio.create_task(self.bot_app.schedule_channel_post(ad_id, post_at))
+                logger.info(f"#{ad_id} kanal navbatiga qo'yildi: {post_at}")
 
+            # Foydalanuvchiga chiroyli xabar (bot_app orqali)
             try:
-                await self.bot_app.bot.send_message(
-                    ad["seller_tg"], f"✅ Reklamangiz tasdiqlandi!\n#{ad_id}"
-                )
-            except Exception:
-                pass
+                await self.bot_app.notify_user_approved(ad, t)
+            except Exception as e:
+                logger.error(f"notify_user_approved xato: {e}")
 
             return jresp({"ok": True})
         except Exception as e:
+            logger.error(f"admin_approve_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_reject_ad(self, req):
@@ -1031,12 +1046,12 @@ class API:
             await self.db.update_ad_status(ad_id, "REJECTED", reason)
             t = TARIFFS.get(ad["tariff"], TARIFFS[1])
             await self.db.update_balance(ad["seller_tg"], t.price, "topup", "Rad etilgan reklama qaytarildi")
+
             try:
-                await self.bot_app.bot.send_message(
-                    ad["seller_tg"], f"❌ Rad etildi.\nSabab: {reason}\nPul qaytarildi."
-                )
-            except Exception:
-                pass
+                await self.bot_app.notify_user_rejected(ad, reason, t.price)
+            except Exception as e:
+                logger.error(f"notify_user_rejected xato: {e}")
+
             return jresp({"ok": True})
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
@@ -1138,7 +1153,8 @@ class API:
     async def admin_get_settings(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         days = await self.db.get_ad_days()
-        return jresp({"ad_days": days})
+        interval = await self.db.get_kanal_interval_min()
+        return jresp({"ad_days": days, "kanal_interval_min": interval})
 
     async def admin_set_days(self, req):
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
@@ -1152,21 +1168,31 @@ class API:
         except Exception as e:
             return jresp({"ok": False, "error": str(e)}, 400)
 
+    async def admin_set_kanal_interval(self, req):
+        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        try:
+            data = await req.json()
+            minutes = int(data.get("minutes", 30))
+            if minutes < 1: minutes = 1
+            if minutes > 1440: minutes = 1440
+            await self.db.set_setting("kanal_interval_min", minutes)
+            return jresp({"ok": True, "minutes": minutes})
+        except Exception as e:
+            return jresp({"ok": False, "error": str(e)}, 400)
+
     # ============================================================
     # ADMIN — THUMBNAIL
     # ============================================================
     async def admin_set_thumbnail(self, req):
-        """Admin reklamaga thumbnail (rasm) yuklaydi yoki olib tashlaydi."""
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
             data = await req.json()
             ad_id = int(data["ad_id"])
-            thumbnail_url = data.get("thumbnail_url")  # data:image/... yoki None
+            thumbnail_url = data.get("thumbnail_url")
 
             if thumbnail_url is not None:
                 if not is_valid_image_data_url(thumbnail_url):
                     return jresp({"ok": False, "error": "Faqat rasm yuklang"}, 400)
-                # 1 MB limit
                 try:
                     header, encoded = thumbnail_url.split(",", 1)
                     if len(encoded) > 2_000_000:
@@ -1197,10 +1223,6 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_reorder_pins(self, req):
-        """
-        Admin pin tartibini o'zgartiradi.
-        Body: { "ad_ids": [1, 2, 3] } — tepadan pastga
-        """
         if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
         try:
             data = await req.json()
@@ -1213,38 +1235,50 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     # ============================================================
-    # ADMIN — EDIT AD (faqat matn)
+    # ADMIN — EDIT AD (TO'LIQ: matn + ro'yxatlar + linked)
     # ============================================================
     async def admin_edit_ad(self, req):
         """
-        Faqat matn maydonlarini tahrirlash:
+        Admin e'lonni to'liq tahrirlaydi:
+        - title (ixtiyoriy)
         - price, currency, location, full_location
-        - account_data (level, collection, rp, mythic_clothes, rare_skins, x_costume, guns, guns_count, supar_car, username, phone)
-        Video va thumbnail tegmaydi.
+        - account_data:
+            level, collection, rp, mythic_clothes,
+            x_costume, supar_car, rare_skins, guns, guns_count,
+            linked, username, phone
+        Video va thumbnail TEGMAYDI.
         """
-        if not self._is_admin_req(req): return jresp({"error": "Ruxsat yo'q"}, 403)
+        if not self._is_admin_req(req):
+            return jresp({"error": "Ruxsat yo'q"}, 403)
+
         try:
             data = await req.json()
             ad_id = int(data["ad_id"])
             acc = data.get("account_data", {}) or {}
 
-            # Validatsiya
+            # 1. LEVEL
             try:
-                coll = int(acc.get("collection", 0))
-                if coll > LIMITS.COLLECTION_MAX:
-                    return jresp({"ok": False, "error": f"Kolleksiya max {LIMITS.COLLECTION_MAX}"}, 400)
-                acc["collection"] = coll
-            except Exception:
-                acc["collection"] = 0
-
-            try:
-                lvl = int(acc.get("level", 0))
+                lvl = int(acc.get("level", 0) or 0)
+                if lvl < 0:
+                    lvl = 0
                 if lvl > LIMITS.LVL_MAX:
                     return jresp({"ok": False, "error": f"LVL max {LIMITS.LVL_MAX}"}, 400)
                 acc["level"] = lvl
             except Exception:
                 acc["level"] = 0
 
+            # 2. KOLLEKSIYA
+            try:
+                coll = int(acc.get("collection", 0) or 0)
+                if coll < 0:
+                    coll = 0
+                if coll > LIMITS.COLLECTION_MAX:
+                    return jresp({"ok": False, "error": f"Kolleksiya max {LIMITS.COLLECTION_MAX}"}, 400)
+                acc["collection"] = coll
+            except Exception:
+                acc["collection"] = 0
+
+            # 3. MIFIK KIYIMLAR
             try:
                 mc = int(re.sub(r"\D", "", str(acc.get("mythic_clothes", 0))) or 0)
                 if mc > LIMITS.MYTHIC_MAX:
@@ -1253,20 +1287,49 @@ class API:
             except Exception:
                 acc["mythic_clothes"] = 0
 
+            # 4. RP
             acc["rp"] = str(acc.get("rp", ""))[:LIMITS.RP_MAX_CHARS]
 
+            # 5. RO'YXATLAR
             for k in ("rare_skins", "x_costume", "guns", "supar_car"):
                 arr = acc.get(k) or []
                 if isinstance(arr, list):
-                    acc[k] = arr[:LIMITS.ADD_LIST_MAX]
+                    cleaned = []
+                    for item in arr:
+                        s = str(item).strip()
+                        if s:
+                            cleaned.append(s[:100])
+                        if len(cleaned) >= LIMITS.ADD_LIST_MAX:
+                            break
+                    acc[k] = cleaned
+                else:
+                    acc[k] = []
 
+            # 6. GUNS COUNT
             try:
-                acc["guns_count"] = int(re.sub(r"\D", "", str(acc.get("guns_count", 0))) or 0)
+                gc = int(re.sub(r"\D", "", str(acc.get("guns_count", 0))) or 0)
+                if gc < 0:
+                    gc = 0
+                acc["guns_count"] = gc
             except Exception:
                 acc["guns_count"] = len(acc.get("guns") or [])
 
+            # 7. LINKED
+            linked = acc.get("linked") or []
+            if isinstance(linked, list):
+                cleaned_linked = []
+                for item in linked:
+                    s = str(item).strip().lower()
+                    if s and s not in cleaned_linked:
+                        cleaned_linked.append(s[:30])
+                    if len(cleaned_linked) >= 20:
+                        break
+                acc["linked"] = cleaned_linked
+            else:
+                acc["linked"] = []
+
+            # 8. TELEFON
             phone = (acc.get("phone") or "").strip()
-            username = (acc.get("username") or "").strip()
             if phone:
                 digits = re.sub(r"\D", "", phone)
                 if digits.startswith("998"):
@@ -1274,24 +1337,43 @@ class API:
                 if len(digits) != 9:
                     return jresp({"ok": False, "error": "Telefon formati +998XXXXXXXXX"}, 400)
                 acc["phone"] = digits
+            else:
+                acc["phone"] = ""
+
+            # 9. USERNAME
+            username = (acc.get("username") or "").strip()
             if username:
                 if not username.startswith("@"):
                     username = "@" + username
                 acc["username"] = username[:64]
+            else:
+                acc["username"] = ""
 
+            # 10. NARX
             price = int(re.sub(r"\D", "", str(data.get("price", 0))) or 0)
             if price <= 0:
                 return jresp({"ok": False, "error": "Narx noto'g'ri"}, 400)
 
+            # 11. VALYUTA
             cur_code = data.get("currency", "UZS")
             if cur_code not in CURRENCIES:
                 cur_code = "UZS"
 
+            # 12. TITLE (ixtiyoriy)
+            title = (data.get("title") or "").strip()
+            if title and len(title) > 255:
+                title = title[:255]
+
+            # 13. LOCATION
+            location = (data.get("location") or "").strip() or None
+            full_location = (data.get("full_location") or "").strip() or None
+
             await self.db.update_ad_text(ad_id, {
+                "title": title or None,
                 "price": price,
                 "currency": cur_code,
-                "location": data.get("location"),
-                "full_location": data.get("full_location"),
+                "location": location,
+                "full_location": full_location,
                 "account_data": acc,
             })
 
