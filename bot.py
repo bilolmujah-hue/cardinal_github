@@ -1,10 +1,10 @@
 """
-Cardinal Bot v6.2 - Premium Emoji + Button Icons + Clickable Footer
+Cardinal Bot v7.1 - Premium Emoji + Kanal Navbati + Live Countdown
 - Barcha xabarlar premium emoji bilan
 - Inline tugmalarda premium emoji ikonkalar
-- Kanal posti ham premium
-- Sonlar qalin shriftda
-- Footer havolalar bosiladigan
+- Kanal navbati: har bir reklama orasida interval (sozlanadi)
+- Live countdown timer (30 sekundda yangilanadi)
+- Chiroyli tasdiqlash/rad etish xabarlari
 """
 import asyncio
 import logging
@@ -133,6 +133,8 @@ EMOJI_ID = {
     "game": "5361741454685256344",
     "message": "5253742260054409879",
     "wallet": "5445353829304387411",
+    "clock": "5296482716567495148",
+    "eye": "5210952531676504517",
 }
 
 _EMOJI_KEYS = sorted(PREMIUM_EMOJI.keys(), key=len, reverse=True)
@@ -162,7 +164,6 @@ def num(n) -> str:
 
 
 def bold_numbers(text: str) -> str:
-    """Matndagi mustaqil sonlarni <b> ga o'raydi (harflar ichidagi sonlar tegilmaydi)."""
     if not text:
         return text
     return re.sub(
@@ -244,6 +245,16 @@ def ikb(text: str, emoji_key: str = None, **kwargs) -> InlineKeyboardButton:
     return InlineKeyboardButton(text=text, **kwargs)
 
 
+def seconds_to_hms(total_seconds: int) -> str:
+    """Soniyalarni 01:00:00 formatiga o'girish."""
+    if total_seconds < 0:
+        total_seconds = 0
+    h = total_seconds // 3600
+    m = (total_seconds % 3600) // 60
+    s = total_seconds % 60
+    return f"{h:02d}:{m:02d}:{s:02d}"
+
+
 # ============================================================
 # BOT
 # ============================================================
@@ -258,6 +269,12 @@ class CardinalBot:
             db=db
         )
         self.cleaner = VideoCleaner(db, self.bot)
+
+        # Kanal navbati uchun
+        self._scheduler_task = None
+        self._scheduler_running = False
+        # Countdown tasklar: ad_id -> Task
+        self._countdown_tasks = {}
 
         self._register_handlers()
         self._register_callbacks()
@@ -431,6 +448,7 @@ class CardinalBot:
             return
         s = await self.db.get_stats()
         days = await self.db.get_ad_days()
+        interval = await self.db.get_kanal_interval_min()
         await message.answer(
             pe("🛡 <b>ADMIN PANEL</b>\n\n"
                f"👥 Foydalanuvchilar: <b>{num(s['users'])}</b>\n"
@@ -441,7 +459,8 @@ class CardinalBot:
                f"💳 Aktiv kartalar: <b>{num(s['cards'])}</b>\n"
                f"⭐️ Otziflar: <b>{num(s['feedbacks'])}</b>\n"
                f"🤖 Userbot: <b>{'✔️ Aktiv' if s.get('userbot') else '❌ Yoq'}</b>\n"
-               f"🗓 Reklama muddati: <b>{days} kun</b>\n\n"
+               f"🗓 Reklama muddati: <b>{days} kun</b>\n"
+               f"⏱ Kanal intervali: <b>{interval} daqiqa</b>\n\n"
                f"💵 Umumiy balans: <b>{num(s['total_balance'])} so'm</b>\n"
                f"📈 30 kunlik daromad: <b>{num(s['monthly_income'])} so'm</b>"),
             parse_mode="HTML"
@@ -740,14 +759,290 @@ class CardinalBot:
         btns.append([ikb("Tekshirish", "check", callback_data="check_sub")])
         return InlineKeyboardMarkup(inline_keyboard=btns)
 
+    # ============================================================
+    # KANAL NAVBATI — API tomonidan chaqiriladi
+    # ============================================================
+    async def schedule_channel_post(self, ad_id: int, post_at):
+        """
+        API tomonidan chaqiriladi (asyncio.create_task).
+        Hozircha hech narsa qilmaydi - scheduler o'zi hal qiladi.
+        Faqat log yozadi.
+        """
+        try:
+            logger.info(f"📅 schedule_channel_post: ad #{ad_id} → {post_at}")
+        except Exception as e:
+            logger.error(f"schedule_channel_post: {e}")
+
+    async def notify_user_approved(self, ad: dict, t):
+        """
+        Foydalanuvchiga tasdiqlash xabarini yuboradi.
+        - Agar kanalga chiqishi kerak bo'lsa va post_at mavjud bo'lsa → live countdown
+        - Aks holda → oddiy "tasdiqlandi" xabari
+        """
+        try:
+            # Yangi ad ma'lumotlarini olamiz (post_at yangi bo'lishi mumkin)
+            fresh = await self.db.get_ad(ad["id"])
+            if fresh:
+                ad = fresh
+
+            post_at = ad.get("post_at")
+            has_channel = bool(t.channel and ad.get("video_file_id"))
+
+            if has_channel and post_at:
+                # Kanal navbatida — countdown bilan xabar
+                if isinstance(post_at, str):
+                    try:
+                        post_at = datetime.fromisoformat(post_at.replace("Z", ""))
+                    except Exception:
+                        post_at = None
+
+            if has_channel and post_at and post_at > datetime.now():
+                await self._send_waiting_message(ad, t, post_at)
+            else:
+                await self._send_approved_message(ad, t)
+        except Exception as e:
+            logger.error(f"notify_user_approved: {e}", exc_info=True)
+
+    async def _send_approved_message(self, ad: dict, t):
+        """Oddiy 'Tasdiqlandi' xabari."""
+        try:
+            kb_rows = [
+                [ikb("Web App'ni ochish", "webapp",
+                     web_app=WebAppInfo(url=BOT.WEB_APP_URL))]
+            ]
+            kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
+
+            text = (
+                f"🎉 <b>REKLAMANGIZ TASDIQLANDI!</b>\n\n"
+                f"📢 <b>{html_escape(ad.get('title', '-'))}</b>\n"
+                f"🆔 <code>#{ad['id']}</code>\n"
+                f"💎 Tarif: <b>{t.name}</b>\n\n"
+                f"✅ Sizning e'loningiz <b>Web App</b>'da faol.\n"
+                f"👥 Xaridorlar uni ko'rishlari mumkin!\n\n"
+                f"👇 Quyidagi tugma orqali o'zingiz ham ko'ring:"
+            )
+            await self.bot.send_message(
+                ad["seller_tg"], pe(text),
+                parse_mode="HTML", reply_markup=kb
+            )
+        except Exception as e:
+            logger.error(f"_send_approved_message: {e}")
+
+    async def _send_waiting_message(self, ad: dict, t, post_at: datetime):
+        """Kanal navbati uchun countdown xabari."""
+        try:
+            now = datetime.now()
+            left = int((post_at - now).total_seconds())
+            if left < 0:
+                left = 0
+            countdown = seconds_to_hms(left)
+
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [ikb("Web App'ni ochish", "webapp",
+                     web_app=WebAppInfo(url=BOT.WEB_APP_URL))]
+            ])
+
+            text = (
+                f"✅ <b>REKLAMANGIZ TASDIQLANDI!</b>\n\n"
+                f"📢 <b>{html_escape(ad.get('title', '-'))}</b>\n"
+                f"🆔 <code>#{ad['id']}</code>\n"
+                f"💎 Tarif: <b>{t.name}</b>\n\n"
+                f"⏳ <b>Kanal navbati</b>\n"
+                f"🕐 <b>{countdown}</b> dan keyin kanalga joylanadi\n\n"
+                f"💡 Web App'da e'loningiz <b>hozir</b> ko'rinadi"
+            )
+            msg = await self.bot.send_message(
+                ad["seller_tg"], pe(text),
+                parse_mode="HTML", reply_markup=kb
+            )
+
+            # Countdown taskni boshlaymiz
+            self._start_countdown(ad["id"], ad["seller_tg"], msg.message_id, post_at, ad)
+        except Exception as e:
+            logger.error(f"_send_waiting_message: {e}", exc_info=True)
+
+    def _start_countdown(self, ad_id: int, chat_id: int, msg_id: int, post_at: datetime, ad: dict):
+        """Countdown taskni boshqaradi (har 30 sekundda yangilanadi)."""
+        # Eski taskni bekor qilamiz
+        old = self._countdown_tasks.pop(ad_id, None)
+        if old:
+            old.cancel()
+
+        async def loop():
+            try:
+                while True:
+                    await asyncio.sleep(30)
+                    now = datetime.now()
+                    left = int((post_at - now).total_seconds())
+                    if left <= 0:
+                        break
+
+                    countdown = seconds_to_hms(left)
+                    try:
+                        text = (
+                            f"✅ <b>REKLAMANGIZ TASDIQLANDI!</b>\n\n"
+                            f"📢 <b>{html_escape(ad.get('title', '-'))}</b>\n"
+                            f"🆔 <code>#{ad_id}</code>\n\n"
+                            f"⏳ <b>Kanal navbati</b>\n"
+                            f"🕐 <b>{countdown}</b> dan keyin kanalga joylanadi\n\n"
+                            f"💡 Web App'da e'loningiz <b>hozir</b> ko'rinadi"
+                        )
+                        await self.bot.edit_message_text(
+                            chat_id=chat_id,
+                            message_id=msg_id,
+                            text=pe(text),
+                            parse_mode="HTML"
+                        )
+                    except Exception as e:
+                        # Edit fail bo'lsa (masalan, xabar o'chirilgan) - chiqamiz
+                        logger.debug(f"Countdown edit xato (ad #{ad_id}): {e}")
+                        break
+            except asyncio.CancelledError:
+                pass
+            except Exception as e:
+                logger.error(f"Countdown loop xato (ad #{ad_id}): {e}")
+            finally:
+                self._countdown_tasks.pop(ad_id, None)
+
+        task = asyncio.create_task(loop())
+        self._countdown_tasks[ad_id] = task
+
+    async def notify_user_rejected(self, ad: dict, reason: str, price: int):
+        """Rad etish xabari."""
+        try:
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [ikb("Admin bilan bog'lanish", "message",
+                     url=f"https://t.me/{BOT.ADMIN_USERNAME}")]
+            ])
+            text = (
+                f"❌ <b>REKLAMA RAD ETILDI</b>\n\n"
+                f"📢 <b>{html_escape(ad.get('title', '-'))}</b>\n"
+                f"🆔 <code>#{ad['id']}</code>\n\n"
+                f"⚠️ <b>Sabab:</b> {html_escape(reason)}\n\n"
+                f"💰 <b>To'lov qaytarildi:</b> {num(price)} so'm\n"
+                f"💳 Balansingizga qo'shildi\n\n"
+                f"💡 Savollaringiz bo'lsa admin bilan bog'laning."
+            )
+            await self.bot.send_message(
+                ad["seller_tg"], pe(text),
+                parse_mode="HTML", reply_markup=kb
+            )
+        except Exception as e:
+            logger.error(f"notify_user_rejected: {e}")
+
+    # ============================================================
+    # KANAL SCHEDULER — har 20 sekundda tekshiradi
+    # ============================================================
+    async def _kanal_scheduler_loop(self):
+        """Har 20 sekundda kanal navbatini tekshiradi va joylaydi."""
+        logger.info("⏰ Kanal scheduler ishga tushdi")
+        self._scheduler_running = True
+
+        # Startupda kichik kutish
+        await asyncio.sleep(5)
+
+        while self._scheduler_running:
+            try:
+                await self._process_kanal_queue()
+            except Exception as e:
+                logger.error(f"Scheduler xato: {e}", exc_info=True)
+            await asyncio.sleep(20)
+
+    async def _process_kanal_queue(self):
+        """Navbatda vaqti kelgan reklamalarni kanalga joylaydi."""
+        try:
+            async with self.db.pool.acquire() as c:
+                rows = await c.fetch("""
+                    SELECT a.*, u.telegram_id as seller_tg, u.first_name as seller_name
+                    FROM ads a JOIN users u ON u.id=a.user_id
+                    WHERE a.status='ACTIVE'
+                      AND a.post_at IS NOT NULL
+                      AND a.post_at <= NOW()
+                      AND a.channel_msg_id IS NULL
+                      AND a.video_file_id IS NOT NULL
+                    ORDER BY a.post_at ASC
+                    LIMIT 5
+                """)
+            if not rows:
+                return
+
+            logger.info(f"📤 Navbatdan {len(rows)} ta reklama kanalga joylanadi")
+
+            for row in rows:
+                ad = self.db._parse_ad(row)
+                try:
+                    await self._post_to_channel_and_notify(ad)
+                except Exception as e:
+                    logger.error(f"Navbatdan joylash xato (ad #{ad['id']}): {e}", exc_info=True)
+                    # Xatolik bo'lsa ham, DB da channel_msg_id NULL qoladi
+                    # 5 marta urinish uchun nima qilsak bo'ladi - keyingi tsiklda qayta urinadi
+
+        except Exception as e:
+            logger.error(f"_process_kanal_queue: {e}", exc_info=True)
+
+    async def _post_to_channel_and_notify(self, ad: dict):
+        """Kanalga joylaydi va userga xabar yuboradi."""
+        ad_id = ad["id"]
+
+        # Countdown taskni bekor qilamiz
+        task = self._countdown_tasks.pop(ad_id, None)
+        if task:
+            task.cancel()
+
+        # Kanalga post qilamiz (mavjud _post_to_channel)
+        await self._post_to_channel(ad)
+
+        # Fresh ad (channel_msg_id bilan)
+        fresh = await self.db.get_ad(ad_id)
+        if not fresh or not fresh.get("channel_msg_id"):
+            logger.error(f"#{ad_id} kanalga joylanmadi yoki msg_id yo'q")
+            return
+
+        # Kanalga havola
+        link = self._channel_link(fresh["channel_msg_id"])
+
+        # Userga xabar
+        try:
+            kb = InlineKeyboardMarkup(inline_keyboard=[
+                [ikb("Reklamani ko'rish", "channel", url=link)],
+                [ikb("Web App'ni ochish", "webapp",
+                     web_app=WebAppInfo(url=BOT.WEB_APP_URL))]
+            ])
+
+            text = (
+                f"🎉 <b>REKLAMANGIZ KANALGA JOYLANDI!</b>\n\n"
+                f"📢 <b>{html_escape(ad.get('title', '-'))}</b>\n"
+                f"🆔 <code>#{ad_id}</code>\n\n"
+                f"✅ Endi e'loningiz kanalda ham ko'rinadi\n\n"
+                f"👇 Quyidagi tugma orqali ko'ring:"
+            )
+            await self.bot.send_message(
+                ad["seller_tg"], pe(text),
+                parse_mode="HTML", reply_markup=kb
+            )
+            logger.info(f"✅ #{ad_id} kanalga joylandi va userga xabar yuborildi")
+        except Exception as e:
+            logger.error(f"Post-notify xato (ad #{ad_id}): {e}")
+
+    def _channel_link(self, msg_id: int) -> str:
+        """Private kanal uchun message link."""
+        try:
+            ch_id = str(abs(BOT.ADS_CHANNEL_ID))
+            if ch_id.startswith("100"):
+                ch_id = ch_id[3:]
+            return f"https://t.me/c/{ch_id}/{msg_id}"
+        except Exception:
+            return BOT.ADS_CHANNEL_INVITE
+
     async def _approve_ad(self, ad_id: int, cb: CallbackQuery):
+        """Bot orqali tasdiqlash (admin tugma bosganda)."""
         ad = await self.db.get_ad(ad_id)
         if not ad:
             await cb.answer("❌ Topilmadi")
             return
 
-        top_until = None
         t = TARIFFS.get(ad["tariff"], TARIFFS[1])
+        top_until = None
         if getattr(t, "top_hours", 0) > 0:
             top_until = datetime.now() + timedelta(hours=t.top_hours)
 
@@ -756,26 +1051,32 @@ class CardinalBot:
 
         await self.db.update_ad_status(ad_id, "ACTIVE")
 
+        # Kanal navbati
+        post_at = None
         if t.channel and ad.get("video_file_id"):
-            await self._post_to_channel(ad)
+            post_at = await self.db.get_next_kanal_slot()
+            await self.db.set_ad_post_at(ad_id, post_at)
+            logger.info(f"#{ad_id} kanal navbatiga qo'yildi: {post_at}")
 
+        # Fresh ad
+        fresh = await self.db.get_ad(ad_id)
+
+        # Notify
         try:
-            await self.bot.send_message(
-                ad["seller_tg"],
-                pe("✔️ <b>REKLAMANGIZ TASDIQLANDI!</b>\n\n"
-                   f"📢 <b>{ad['title']}</b>\n"
-                   f"🆔 #{ad_id}\n\n"
-                   "🎉 Endi e'loningiz Web App'da ko'rinadi!"),
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
+            await self.notify_user_approved(fresh, t)
+        except Exception as e:
+            logger.error(f"approve notify: {e}")
 
         await cb.message.edit_reply_markup(reply_markup=None)
         await cb.answer("✔️ Tasdiqlandi")
-        await cb.message.answer(pe(f"✔️ <b>E'lon #{ad_id} tasdiqlandi</b>"), parse_mode="HTML")
+        await cb.message.answer(
+            pe(f"✔️ <b>E'lon #{ad_id} tasdiqlandi</b>\n"
+               + (f"⏳ Kanalga: {fmt_date(post_at, full=True)}" if post_at else "")),
+            parse_mode="HTML"
+        )
 
     async def _reject_ad(self, ad_id: int, cb: CallbackQuery):
+        """Bot orqali rad etish."""
         ad = await self.db.get_ad(ad_id)
         if not ad:
             await cb.answer("❌ Topilmadi")
@@ -784,15 +1085,9 @@ class CardinalBot:
         t = TARIFFS.get(ad["tariff"], TARIFFS[1])
         await self.db.update_balance(ad["seller_tg"], t.price, "topup", "Rad etilgan reklama qaytarildi")
         try:
-            await self.bot.send_message(
-                ad["seller_tg"],
-                pe("❌ <b>REKLAMA RAD ETILDI</b>\n\n"
-                   f"📢 <b>{ad['title']}</b>\n"
-                   f"💰 Pul qaytarildi: <b>{num(t.price)} so'm</b>"),
-                parse_mode="HTML"
-            )
-        except Exception:
-            pass
+            await self.notify_user_rejected(ad, "Admin rad etdi", t.price)
+        except Exception as e:
+            logger.error(f"reject notify: {e}")
         await cb.message.edit_reply_markup(reply_markup=None)
         await cb.answer("❌ Rad etildi")
 
@@ -800,7 +1095,6 @@ class CardinalBot:
     # KANALGA JOYLASH — PREMIUM EMOJI + QALIN SONLAR + LINKLAR
     # ============================================================
     def _tree_lines(self, items: list) -> list:
-        """Ro'yxat elementlarini daraxt shaklida + qalin sonlar bilan qaytaradi."""
         out = []
         n = len(items)
         for i, item in enumerate(items):
@@ -905,39 +1199,85 @@ class CardinalBot:
                     parse_mode="HTML", reply_markup=kb
                 )
             await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.message_id)
-            logger.info(f"#{ad['id']} reklama kanaliga joylandi (premium + bold + links)")
+            logger.info(f"#{ad['id']} reklama kanaliga joylandi")
         except Exception as e:
             logger.error(f"Kanalga joylash xato: {e}", exc_info=True)
 
     async def notify_admin_new_ad(self, ad: dict):
+        """Adminga yangi reklama haqida TO'LIQ ma'lumot."""
         try:
             cur = CURRENCIES.get(ad.get("currency", "UZS"), CURRENCIES["UZS"])
-            text = (
-                "🆕 <b>YANGI REKLAMA</b>\n\n"
-                f"📝 <b>{ad['title']}</b>\n"
-                f"💰 {num(ad['price'])} {cur['symbol']} {cur['flag']}\n"
-                f"📍 {ad.get('location', '-')}\n"
-                f"🎯 Tarif: {ad.get('tariff')}\n"
-                f"🆔 <code>{ad['id']}</code>\n\n"
-                "👇 Tasdiqlaysizmi?"
-            )
+            acc = ad.get("account_data", {}) or {}
+
+            lines = [
+                "🆕 <b>YANGI REKLAMA</b>",
+                "",
+                f"📝 <b>{html_escape(ad.get('title', '-'))}</b>",
+                f"💰 {num(ad['price'])} {cur['symbol']} {cur['flag']}",
+                f"📍 {ad.get('location', '-')}",
+                f"🎯 Tarif: <b>{ad.get('tariff')}</b>",
+                f"🆔 <code>{ad['id']}</code>",
+                "",
+                "📋 <b>AKKAUNT MA'LUMOTLARI:</b>",
+                "",
+                f"📈 LVL: <b>{acc.get('level', '-')}</b>",
+                f"🎯 Kolleksiya: <b>{acc.get('collection', '-')}</b>",
+                f"🏆 RP: {bold_numbers(str(acc.get('rp', '-')))}",
+                f"👕 Mifik: <b>{acc.get('mythic_clothes', 0)}</b> ta",
+            ]
+
+            for key, label, emoji in [
+                ("x_costume", "X-KOSTYUM", "🎁"),
+                ("supar_car", "SUPAR-CAR", "🚗"),
+                ("rare_skins", "Redkiy skinlar", "💎"),
+                ("guns", "Kuchaytirilgan qurollar", "🔫"),
+            ]:
+                arr = acc.get(key) or []
+                if arr:
+                    lines.append("")
+                    lines.append(f"{emoji} <b>{label}:</b>")
+                    for s in arr[:25]:
+                        lines.append(f"  • {bold_numbers(str(s))}")
+
+            gc = acc.get("guns_count")
+            if gc:
+                lines.append(f"  🔫 Jami qurollar: <b>{gc}</b> ta")
+
+            linked = acc.get("linked") or []
+            if linked:
+                lines.append("")
+                lines.append(f"🔗 Ulangan: {', '.join(linked)}")
+
+            lines.append("")
+            lines.append(f"📲 TG: {acc.get('username', '-') or '-'}")
+            lines.append(f"📞 Tel: +998{acc.get('phone', '-') or '-'}")
+            lines.append("")
+            lines.append("👇 <b>Tasdiqlaysizmi?</b>")
+
+            text = "\n".join(lines)
+
             kb = InlineKeyboardMarkup(inline_keyboard=[[
                 ikb("Tasdiqlash", "check", callback_data=f"approve_ad_{ad['id']}"),
                 ikb("Rad etish", "cross", callback_data=f"reject_ad_{ad['id']}"),
             ]])
             caption = pe(text)
+
             if ad.get("video_file_id"):
-                await self.bot.send_video(
-                    BOT.ADMIN_CHAT_ID, ad["video_file_id"],
-                    caption=caption, parse_mode="HTML", reply_markup=kb
-                )
-            else:
-                await self.bot.send_message(
-                    BOT.ADMIN_CHAT_ID, caption,
-                    parse_mode="HTML", reply_markup=kb
-                )
+                try:
+                    await self.bot.send_video(
+                        BOT.ADMIN_CHAT_ID, ad["video_file_id"],
+                        caption=caption, parse_mode="HTML", reply_markup=kb
+                    )
+                    return
+                except Exception as e:
+                    logger.warning(f"Video yuborish xato, matn yuboramiz: {e}")
+
+            await self.bot.send_message(
+                BOT.ADMIN_CHAT_ID, caption,
+                parse_mode="HTML", reply_markup=kb
+            )
         except Exception as e:
-            logger.error(f"Admin notify xato: {e}")
+            logger.error(f"Admin notify xato: {e}", exc_info=True)
 
     async def notify_admin_vip_request(self, info: dict):
         try:
@@ -1026,13 +1366,40 @@ class CardinalBot:
         except Exception as e:
             logger.error(f"send_receipt_to_admin: {e}", exc_info=True)
 
+    # ============================================================
+    # START / STOP
+    # ============================================================
     async def start(self):
-        logger.info("CardinalBot v6.2 (Premium Emoji + Bold Numbers + Clickable Footer) ishga tushdi")
+        logger.info("CardinalBot v7.1 ishga tushdi")
+
+        # Schedulerni boshlash
+        self._scheduler_task = asyncio.create_task(self._kanal_scheduler_loop())
+
+        # Userbot va Cleaner
         await self.userbot.start()
         await self.cleaner.start()
+
+        # Polling
         await self.dp.start_polling(self.bot)
 
     async def stop(self):
+        logger.info("CardinalBot to'xtatilmoqda...")
+
+        # Scheduler
+        self._scheduler_running = False
+        if self._scheduler_task:
+            self._scheduler_task.cancel()
+            try:
+                await self._scheduler_task
+            except asyncio.CancelledError:
+                pass
+
+        # Countdown tasklar
+        for ad_id, task in list(self._countdown_tasks.items()):
+            task.cancel()
+        self._countdown_tasks.clear()
+
+        # Boshqa komponentlar
         await self.cleaner.stop()
         await self.userbot.stop()
         await self.bot.session.close()
