@@ -1,14 +1,9 @@
 """
-Cardinal API v7.2
-- iOS video streaming TO'LIQ qo'llab-quvvatlanadi (Range, HEAD, CORS)
-- Video streaming Telegram'dan (streaming-friendly, HEVC/MP4 uchun)
-- Thumbnail endpoints (faqat admin)
-- PIN endpoints (faqat admin)
-- Edit ad endpoint (TO'LIQ: matn + ro'yxatlar + linked)
-- Mark sold
-- VIP request
-- Kanal navbati (post_at) — interval sozlamasi
-- Topup (avtomatik to'lov tizimi)
+Cardinal API v7.3
+- iOS video streaming TO'LIQ qo'llab-quvvatlanadi
+- aiohttp_cors bilan TO'G'RI integratsiya (AssertionError FIX)
+- Video streaming Telegram'dan (Range, HEAD)
+- Barcha funksiyalar ishlaydi
 """
 import asyncio
 import json
@@ -61,10 +56,7 @@ def is_valid_image_data_url(url: str) -> bool:
 
 
 def parse_range_header(range_header: str, file_size: int):
-    """
-    Range headerini parse qiladi.
-    Qaytaradi: (start, end) yoki None.
-    """
+    """Range headerini parse qiladi. (start, end) yoki None."""
     if not range_header or not range_header.startswith("bytes="):
         return None
     try:
@@ -76,16 +68,13 @@ def parse_range_header(range_header: str, file_size: int):
         start_str = parts[0].strip()
         end_str = parts[1].strip() if len(parts) > 1 else ""
         if not start_str:
-            # "bytes=-500" — oxirgi 500 bayt
             length = int(end_str)
             start = max(0, file_size - length)
             end = file_size - 1
         elif not end_str:
-            # "bytes=500-" — boshidan oxirigacha
             start = int(start_str)
             end = file_size - 1
         else:
-            # "bytes=500-1000"
             start = int(start_str)
             end = int(end_str)
         if start > end or start >= file_size:
@@ -105,44 +94,13 @@ class API:
         self.bot_app = bot_app
         self.app = web.Application(
             client_max_size=API_CFG.MAX_SIZE,
-            middlewares=[self._cors_mw, jwt_middleware, self._err_mw]
+            middlewares=[self._err_mw, jwt_middleware]
         )
         self._routes()
 
-    # ============================================================
-    # CORS PREFLIGHT + IOS FIX
-    # ============================================================
-    @web.middleware
-    async def _cors_mw(self, request, handler):
-        """CORS preflight va iOS uchun maxsus middleware."""
-        # OPTIONS preflight
-        if request.method == "OPTIONS":
-            resp = web.Response(status=204)
-            resp.headers["Access-Control-Allow-Origin"] = request.headers.get("Origin", "*")
-            resp.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, HEAD"
-            resp.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, Range, X-Requested-With"
-            resp.headers["Access-Control-Allow-Credentials"] = "true"
-            resp.headers["Access-Control-Max-Age"] = "86400"
-            resp.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges"
-            return resp
-
-        # Oddiy so'rovlar uchun CORS headerlar
-        try:
-            resp = await handler(request)
-        except web.HTTPException as e:
-            resp = e
-
-        # Video/rasm uchun CORS headerlar
-        if not resp.headers.get("Access-Control-Allow-Origin"):
-            origin = request.headers.get("Origin", "*")
-            resp.headers["Access-Control-Allow-Origin"] = origin
-            resp.headers["Access-Control-Allow-Credentials"] = "true"
-            resp.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges"
-
-        return resp
-
     @web.middleware
     async def _err_mw(self, request, handler):
+        """Xatolarni tutuvchi middleware. CORS'ga TEGMAYDI."""
         try:
             return await handler(request)
         except web.HTTPRequestEntityTooLarge:
@@ -153,10 +111,12 @@ class API:
             logger.error(f"API err: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 500)
 
-    # ============================================================
-    # ROUTES
-    # ============================================================
     def _routes(self):
+        """
+        MUHIM: aiohttp_cors.setup() O'ZI OPTIONS preflight'ni avtomatik
+        qo'shadi. Biz FAQAT GET/POST/HEAD route'larni qo'shamiz va har biri
+        uchun cors.add() chaqiramiz. Qo'lda CORS header yozmaymiz.
+        """
         cors = aiohttp_cors.setup(self.app, defaults={
             "*": aiohttp_cors.ResourceOptions(
                 allow_credentials=True,
@@ -178,15 +138,10 @@ class API:
             ("GET",   "/api/feedbacks", self.get_feedbacks),
             ("GET",   "/api/admin-contacts", self.public_admin_contacts),
 
-            # Video streaming (GET + HEAD — iOS uchun)
-            ("GET",   "/api/ad/{ad_id}/video", self.stream_video),
-            ("HEAD",  "/api/ad/{ad_id}/video", self.stream_video),
-            ("OPTIONS", "/api/ad/{ad_id}/video", self.options_video),
-
             # Ad detail
             ("GET",   "/api/ad/{ad_id}", self.get_ad),
 
-            # Upload video (multipart)
+            # Upload video
             ("POST",  "/api/upload-video", self.upload_video),
 
             # Auth
@@ -260,13 +215,28 @@ class API:
             ("POST",  "/api/admin/userbot/logout", self.admin_userbot_logout),
         ]
 
+        # Oddiy route'lar
         for method, path, handler in r:
             try:
                 route = self.app.router.add_route(method, path, handler)
-                if path not in ("/api/ad/{ad_id}/video",) or method == "GET":
+                try:
                     cors.add(route)
+                except Exception as e:
+                    logger.warning(f"CORS add skip: {method} {path}: {e}")
             except Exception as e:
                 logger.warning(f"Route add: {method} {path}: {e}")
+
+        # VIDEO STREAMING ROUTE — GET + HEAD (iOS uchun MUHIM)
+        try:
+            video_route = self.app.router.add_get(
+                "/api/ad/{ad_id}/video",
+                self.stream_video,
+                allow_head=True
+            )
+            cors.add(video_route)
+            logger.info("Video route qo'shildi (GET + HEAD)")
+        except Exception as e:
+            logger.error(f"Video route xato: {e}")
 
     # ============================================================
     # PUBLIC
@@ -274,7 +244,7 @@ class API:
     async def index(self, req):
         return jresp({
             "app": "Cardinal API",
-            "version": "7.2",
+            "version": "7.3",
             "status": "running",
             "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB",
         })
@@ -343,27 +313,10 @@ class API:
         return jresp(ad)
 
     # ============================================================
-    # VIDEO STREAMING — iOS UCHUN TO'LIQ QO'LLAB-QUVVATLASH
+    # VIDEO STREAMING — iOS TO'LIQ QO'LLAB-QUVVATLASH
+    # CORS headerlarni aiohttp_cors AVTOMATIK qo'shadi — qo'lda yozmaymiz!
     # ============================================================
-    async def options_video(self, req):
-        """iOS Safari CORS preflight uchun."""
-        resp = web.Response(status=204)
-        resp.headers["Access-Control-Allow-Origin"] = req.headers.get("Origin", "*")
-        resp.headers["Access-Control-Allow-Methods"] = "GET, HEAD, OPTIONS"
-        resp.headers["Access-Control-Allow-Headers"] = "Range, Content-Type, Authorization"
-        resp.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges"
-        resp.headers["Access-Control-Max-Age"] = "86400"
-        return resp
-
     async def stream_video(self, req):
-        """
-        Video streaming — iOS Safari, Android Chrome, Desktop uchun.
-        - Range requests (206 Partial Content)
-        - HEAD requests
-        - Content-Type: video/mp4
-        - Accept-Ranges: bytes
-        - CORS headers
-        """
         ad_id = None
         is_head = (req.method == "HEAD")
         try:
@@ -374,7 +327,6 @@ class API:
 
             file_id = ad["video_file_id"]
 
-            # Telegram'dan fayl ma'lumotlarini olish
             try:
                 tg_file = await self.bot_app.bot.get_file(file_id)
                 file_path = tg_file.file_path
@@ -385,27 +337,26 @@ class API:
 
             telegram_url = f"https://api.telegram.org/file/bot{BOT.TOKEN}/{file_path}"
 
-            # ====== RANGE REQUEST parse ======
-            range_header = req.headers.get("Range")
-            range_tuple = None
-            if range_header and file_size:
-                range_tuple = parse_range_header(range_header, file_size)
-
-            # ====== HEAD REQUEST (iOS Safari tez-tez yuboradi) ======
+            # ====== HEAD REQUEST (iOS Safari yuboradi) ======
             if is_head:
                 resp = web.Response(status=200)
                 resp.headers["Content-Type"] = "video/mp4"
                 resp.headers["Accept-Ranges"] = "bytes"
                 resp.headers["Cache-Control"] = "public, max-age=3600"
-                resp.headers["Access-Control-Allow-Origin"] = req.headers.get("Origin", "*")
+                resp.headers["Content-Disposition"] = "inline"
+                resp.headers["X-Content-Type-Options"] = "nosniff"
                 if file_size:
                     resp.headers["Content-Length"] = str(file_size)
                 return resp
 
-            # ====== UPSTREAM REQUEST ======
-            req_headers = {
-                "User-Agent": "CardinalBot/7.2",
-            }
+            # ====== RANGE parse ======
+            range_header = req.headers.get("Range")
+            range_tuple = None
+            if range_header and file_size:
+                range_tuple = parse_range_header(range_header, file_size)
+
+            # ====== UPSTREAM ======
+            req_headers = {"User-Agent": "CardinalBot/7.3"}
             if range_tuple:
                 req_headers["Range"] = f"bytes={range_tuple[0]}-{range_tuple[1]}"
             elif range_header:
@@ -425,11 +376,8 @@ class API:
                     resp = web.StreamResponse(status=status)
 
                     # ====== CONTENT TYPE ======
-                    # iOS uchun video/mp4 yoki video/quicktime
                     upstream_ct = upstream.headers.get("Content-Type", "").lower()
-                    if "mp4" in upstream_ct or "mpeg" in upstream_ct:
-                        content_type = "video/mp4"
-                    elif "quicktime" in upstream_ct or "mov" in upstream_ct:
+                    if "quicktime" in upstream_ct or "mov" in upstream_ct:
                         content_type = "video/quicktime"
                     elif "webm" in upstream_ct:
                         content_type = "video/webm"
@@ -449,21 +397,20 @@ class API:
                             resp.headers["Content-Range"] = f"bytes {s}-{e}/{file_size}"
                             resp.headers["Content-Length"] = str(e - s + 1)
 
-                    # ====== iOS/VIDEO UCHUN MUHIM HEADERLAR ======
+                    # ====== iOS/VIDEO uchun MUHIM headerlar ======
+                    # CORS headerlar YOZILMAYDI — aiohttp_cors o'zi qo'shadi!
                     resp.headers["Accept-Ranges"] = "bytes"
                     resp.headers["Cache-Control"] = "public, max-age=3600"
-                    resp.headers["Access-Control-Allow-Origin"] = req.headers.get("Origin", "*")
-                    resp.headers["Access-Control-Allow-Credentials"] = "true"
-                    resp.headers["Access-Control-Expose-Headers"] = "Content-Length, Content-Range, Accept-Ranges"
                     resp.headers["Content-Disposition"] = "inline"
                     resp.headers["X-Content-Type-Options"] = "nosniff"
 
-                    # ====== STREAMING ======
+                    # ====== PREPARE (shu joyda aiohttp_cors CORS header qo'shadi) ======
                     try:
                         await resp.prepare(req)
                     except (ConnectionResetError, ConnectionAbortedError):
                         return resp
 
+                    # ====== STREAM ======
                     try:
                         async for chunk in upstream.content.iter_chunked(64 * 1024):
                             if not chunk:
@@ -714,7 +661,6 @@ class API:
 
             acc = ad_data.get("account_data", {}) or {}
 
-            # LEVEL
             try:
                 lvl = int(acc.get("level", 0))
                 if lvl > LIMITS.LVL_MAX:
@@ -723,7 +669,6 @@ class API:
             except Exception:
                 acc["level"] = 0
 
-            # KOLLEKSIYA
             try:
                 coll = int(acc.get("collection", 0))
                 if coll > LIMITS.COLLECTION_MAX:
@@ -732,7 +677,6 @@ class API:
             except Exception:
                 acc["collection"] = 0
 
-            # MIFIK
             try:
                 mc = int(re.sub(r"\D", "", str(acc.get("mythic_clothes", 0))) or 0)
                 if mc > LIMITS.MYTHIC_MAX:
@@ -753,7 +697,6 @@ class API:
             except Exception:
                 acc["guns_count"] = len(acc.get("guns") or [])
 
-            # LINKED
             linked = acc.get("linked") or []
             if isinstance(linked, list):
                 acc["linked"] = [str(x).strip().lower()[:30] for x in linked if str(x).strip()][:20]
@@ -1406,19 +1349,14 @@ class API:
             logger.error(f"admin_reorder_pins: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
-    # ============================================================
-    # ADMIN — EDIT AD (TO'LIQ)
-    # ============================================================
     async def admin_edit_ad(self, req):
         if not self._is_admin_req(req):
             return jresp({"error": "Ruxsat yo'q"}, 403)
-
         try:
             data = await req.json()
             ad_id = int(data["ad_id"])
             acc = data.get("account_data", {}) or {}
 
-            # 1. LEVEL
             try:
                 lvl = int(acc.get("level", 0) or 0)
                 if lvl < 0: lvl = 0
@@ -1428,7 +1366,6 @@ class API:
             except Exception:
                 acc["level"] = 0
 
-            # 2. KOLLEKSIYA
             try:
                 coll = int(acc.get("collection", 0) or 0)
                 if coll < 0: coll = 0
@@ -1438,7 +1375,6 @@ class API:
             except Exception:
                 acc["collection"] = 0
 
-            # 3. MIFIK
             try:
                 mc = int(re.sub(r"\D", "", str(acc.get("mythic_clothes", 0))) or 0)
                 if mc > LIMITS.MYTHIC_MAX:
@@ -1447,10 +1383,8 @@ class API:
             except Exception:
                 acc["mythic_clothes"] = 0
 
-            # 4. RP
             acc["rp"] = str(acc.get("rp", ""))[:LIMITS.RP_MAX_CHARS]
 
-            # 5. RO'YXATLAR
             for k in ("rare_skins", "x_costume", "guns", "supar_car"):
                 arr = acc.get(k) or []
                 if isinstance(arr, list):
@@ -1465,7 +1399,6 @@ class API:
                 else:
                     acc[k] = []
 
-            # 6. GUNS COUNT
             try:
                 gc = int(re.sub(r"\D", "", str(acc.get("guns_count", 0))) or 0)
                 if gc < 0: gc = 0
@@ -1473,7 +1406,6 @@ class API:
             except Exception:
                 acc["guns_count"] = len(acc.get("guns") or [])
 
-            # 7. LINKED
             linked = acc.get("linked") or []
             if isinstance(linked, list):
                 cleaned_linked = []
@@ -1487,7 +1419,6 @@ class API:
             else:
                 acc["linked"] = []
 
-            # 8. TELEFON
             phone = (acc.get("phone") or "").strip()
             if phone:
                 digits = re.sub(r"\D", "", phone)
@@ -1499,7 +1430,6 @@ class API:
             else:
                 acc["phone"] = ""
 
-            # 9. USERNAME
             username = (acc.get("username") or "").strip()
             if username:
                 if not username.startswith("@"):
@@ -1508,22 +1438,18 @@ class API:
             else:
                 acc["username"] = ""
 
-            # 10. NARX
             price = int(re.sub(r"\D", "", str(data.get("price", 0))) or 0)
             if price <= 0:
                 return jresp({"ok": False, "error": "Narx noto'g'ri"}, 400)
 
-            # 11. VALYUTA
             cur_code = data.get("currency", "UZS")
             if cur_code not in CURRENCIES:
                 cur_code = "UZS"
 
-            # 12. TITLE
             title = (data.get("title") or "").strip()
             if title and len(title) > 255:
                 title = title[:255]
 
-            # 13. LOCATION
             location = (data.get("location") or "").strip() or None
             full_location = (data.get("full_location") or "").strip() or None
 
