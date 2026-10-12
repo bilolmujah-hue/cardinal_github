@@ -4,19 +4,30 @@ Session DB dan yuklanadi — admin panel orqali boshqariladi.
 
 MUHIM: Faqat KIRIM (kelgan pul) xabarlarini o'qiydi.
 Chiqim (Platezh, Spisanie) xabarlarini o'tkazib yuboradi.
+
+QO'SHIMCHA:
+- send_video_to_channel() — userbot orqali kanalga video yuborish (200 MB gacha)
+- delete_message() — kanal xabarini o'chirish
 """
 import asyncio
 import logging
 import re
+import tempfile
+import os
 from typing import Optional, Callable, Awaitable, Dict, Any
 
 from telethon import TelegramClient, events
 from telethon.sessions import StringSession
 from telethon.network import ConnectionTcpAbridged
+from telethon.tl.custom import Button
 from telethon.errors import (
     AuthKeyNotFound, AuthKeyDuplicatedError, SessionRevokedError,
     SessionPasswordNeededError, PhoneCodeInvalidError,
     PhoneCodeExpiredError, PasswordHashInvalidError,
+)
+from telethon.errors.rpcerrorlist import (
+    ChannelPrivateError, ChatWriteForbiddenError,
+    MessageIdInvalidError, UserNotParticipantError,
 )
 
 from config import USERBOT
@@ -32,6 +43,7 @@ class CardXabarWatcher:
         self._task: Optional[asyncio.Task] = None
         self._stopped = False
         self._pending: Dict[str, Dict[str, Any]] = {}  # phone -> {client, hash}
+        self._send_lock = asyncio.Lock()  # video yuborishda bir vaqtda bitta
 
     # ============================================================
     # START (DB dan yuklash)
@@ -61,7 +73,7 @@ class CardXabarWatcher:
                 app_version="5.4",
                 connection=ConnectionTcpAbridged,
                 use_ipv6=False,
-                timeout=30,
+                timeout=60,
                 retry_delay=3,
                 auto_reconnect=True,
                 connection_retries=15,
@@ -113,7 +125,7 @@ class CardXabarWatcher:
                 USERBOT.API_HASH,
                 connection=ConnectionTcpAbridged,
                 use_ipv6=False,
-                timeout=30,
+                timeout=60,
             )
             await client.connect()
             result = await client.send_code_request(phone)
@@ -278,7 +290,7 @@ class CardXabarWatcher:
             return {"ok": False, "error": str(e)}
 
     # ============================================================
-    # MESSAGE HANDLER
+    # MESSAGE HANDLER — @CardXabarBot dan kelgan to'lov xabarlari
     # ============================================================
     async def _on_message(self, event):
         try:
@@ -294,7 +306,6 @@ class CardXabarWatcher:
             if not text:
                 return
 
-            # Xabar boshlanishini log qilamiz (qisqartirib)
             logger.info(f"📥 CardXabarBot: {text[:100].replace(chr(10), ' | ')}")
 
             parsed = self._parse(text)
@@ -323,8 +334,6 @@ class CardXabarWatcher:
         Matndan amount va oxirgi 4 raqamni ajratadi.
         FAQAT KIRIM (kelgan pul) xabarlarini qaytaradi.
         Chiqim xabarlarini (Platezh, Spisanie) — None qaytaradi.
-
-        Qaytaradi: (amount: int, last4: str) yoki None
         """
         if not text:
             return None
@@ -333,28 +342,22 @@ class CardXabarWatcher:
 
         # ❌ 1. CHIQIM xabarlarini darhol rad etish
         chiqim_keywords = [
-            "spisanie",       # Spisanie c karty
-            "platezh",        # Platezh
-            "снятие",         # Снятие
-            "списание",       # Списание
-            "платеж",         # Платеж
-            "perevod s kartu",# Perevod s kartu (chiqim)
-            "перевод с карты",
+            "spisanie", "platezh", "снятие", "списание", "платеж",
+            "perevod s kartu", "перевод с карты",
         ]
         for kw in chiqim_keywords:
             if kw in text_low:
                 logger.debug(f"⏭️ Chiqim xabari (keyword: {kw})")
                 return None
 
-        # ❌ 2. Chiqim belgisi: ➖ (minus) yoki 🔴
+        # ❌ 2. Chiqim belgisi
         if "➖" in text or "🔴" in text:
             logger.debug("⏭️ Chiqim xabari (➖ yoki 🔴)")
             return None
 
-        # ✅ 3. KIRIM belgisi: ➕ (plus) yoki 🟢 yoki shu so'zlar
+        # ✅ 3. KIRIM belgisi
         is_income = (
             "➕" in text
-            or "➕" in text
             or "🟢" in text
             or "perevod na kartu" in text_low
             or "перевод на карту" in text_low
@@ -362,16 +365,13 @@ class CardXabarWatcher:
             or "пополнение" in text_low
         )
 
-        # 4. Agar hech qanday belgisi yo'q — regex bilan aniqlash
         if not is_income:
-            # "+X XXX UZS" yoki "➕ X XXX UZS" ko'rinishini izlaymiz
             if not re.search(r"[➕+]\s*[\d\s.,]+\s*(UZS|so'm|сум)", text, re.IGNORECASE):
                 logger.debug("⏭️ Kirim belgisi topilmadi")
                 return None
 
-        # ===== 5. AMOUNT =====
+        # ===== AMOUNT =====
         amount = None
-        # Variant A: "➕ 5 000.00 UZS"
         m = re.search(
             r"[➕+]?\s*([\d]{1,3}(?:[\s,]\d{3})*(?:\.\d{1,2})?)\s*(UZS|so'm|сум)",
             text, re.IGNORECASE
@@ -387,14 +387,12 @@ class CardXabarWatcher:
             logger.debug("⏭️ Amount topilmadi")
             return None
 
-        # ===== 6. OXIRGI 4 RAQAM =====
+        # ===== OXIRGI 4 RAQAM =====
         last4 = None
-        # Variant A: ***8143 yoki ****8143
         m2 = re.search(r"\*{2,}\s*(\d{4})\b", text)
         if m2:
             last4 = m2.group(1)
         else:
-            # Variant B: "karta ... 8143"
             m3 = re.search(
                 r"(?:karta|card|карта)[^\d]{0,15}(\d{4})\b",
                 text, re.IGNORECASE
@@ -408,6 +406,84 @@ class CardXabarWatcher:
 
         return amount, last4
 
+    # ============================================================
+    # KANAL POST (userbot orqali) — YANGI
+    # ============================================================
+    async def send_video_to_channel(self, channel_id: int, video_url: str,
+                                     caption: str, reply_markup=None) -> Optional[object]:
+        """
+        Userbot orqali kanalga video yuborish (URL orqali).
+        Telegram 200 MB gacha URL'dan yuklab oladi.
+
+        Qaytaradi: Message obyekt (msg.id kerak) yoki None.
+        """
+        if not self.client:
+            logger.error("Userbot ulanmagan — kanalga yuborib bo'lmaydi")
+            return None
+
+        async with self._send_lock:
+            try:
+                # Reply markup → Telethon buttons
+                buttons = None
+                if reply_markup and hasattr(reply_markup, "inline_keyboard"):
+                    rows = []
+                    for row in reply_markup.inline_keyboard:
+                        btn_row = []
+                        for b in row:
+                            url = getattr(b, "url", None)
+                            text = getattr(b, "text", "")
+                            if url:
+                                btn_row.append(Button.url(text, url))
+                        if btn_row:
+                            rows.append(btn_row)
+                    if rows:
+                        buttons = rows
+
+                logger.info(f"📤 Kanalga yuborilmoqda: {video_url[:80]}...")
+
+                msg = await self.client.send_file(
+                    channel_id,
+                    video_url,
+                    caption=caption,
+                    parse_mode="html",
+                    buttons=buttons,
+                    supports_streaming=True,
+                    force_document=False,
+                )
+                logger.info(f"✅ Kanalga yuborildi: msg_id={msg.id}")
+                return msg
+
+            except ChannelPrivateError:
+                logger.error(f"❌ Kanal private yoki userbot a'zo emas: {channel_id}")
+                return None
+            except ChatWriteForbiddenError:
+                logger.error(f"❌ Userbot kanalga yozish huquqiga ega emas: {channel_id}")
+                return None
+            except UserNotParticipantError:
+                logger.error(f"❌ Userbot kanalga a'zo emas: {channel_id}")
+                return None
+            except Exception as e:
+                logger.error(f"❌ send_video_to_channel xato: {e}", exc_info=True)
+                return None
+
+    async def delete_message(self, chat_id: int, msg_id: int) -> bool:
+        """Kanal xabarini userbot orqali o'chirish."""
+        if not self.client:
+            return False
+        try:
+            await self.client.delete_messages(chat_id, msg_id)
+            logger.info(f"🗑️ Xabar o'chirildi: chat={chat_id}, msg={msg_id}")
+            return True
+        except MessageIdInvalidError:
+            logger.warning(f"Xabar allaqachon o'chirilgan: msg={msg_id}")
+            return False
+        except Exception as e:
+            logger.error(f"delete_message: {e}")
+            return False
+
+    # ============================================================
+    # STOP
+    # ============================================================
     async def stop(self):
         self._stopped = True
         # Pending authlarni yopish
