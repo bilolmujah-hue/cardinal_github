@@ -73,7 +73,8 @@ svg.ico-lg{width:28px;height:28px;stroke-width:1.8}
 @keyframes splashGlow{0%{opacity:.7}100%{opacity:1}}
 @keyframes pinPop{0%{transform:scale(0) rotate(-180deg)}60%{transform:scale(1.25) rotate(10deg)}100%{transform:scale(1) rotate(0)}}
 @keyframes thumbShine{0%{transform:translateX(-100%) skewX(-15deg)}60%,100%{transform:translateX(250%) skewX(-15deg)}}
-@keyframes heartBeat{0%{transform:scale(1)}30%{transform:scale(1.35)}60%{transform:scale(.92)}100%{transform:scale(1)}}
+@keyframes heartBeat{0%{transform:scale(1)}30%{transform:scale(1.4)}60%{transform:scale(.9)}100%{transform:scale(1)}}
+@keyframes heartBurst{0%{transform:scale(1);opacity:1}50%{transform:scale(1.5);opacity:.6}100%{transform:scale(2.2);opacity:0}}
 
 .tb-theme{animation:floatSoft 3.4s ease-in-out infinite}
 .tb-balance-icon{animation:floatIcon 3.8s ease-in-out infinite}
@@ -174,11 +175,37 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .ad-media .placeholder{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:8px;color:var(--text-4);background:linear-gradient(135deg,var(--surface-2),var(--surface-3))}
 .ad-media .placeholder svg{width:44px;height:44px;stroke-width:1.5;opacity:.6}
 .ad-media .placeholder span{font-size:10px;font-weight:700;letter-spacing:.6px;text-transform:uppercase;opacity:.7}
-.ad-heart{position:absolute;top:8px;right:8px;width:38px;height:38px;border-radius:50%;background:transparent;border:none;display:flex;align-items:center;justify-content:center;z-index:5;padding:0}
-.ad-heart svg{width:26px;height:26px;stroke:#fff;stroke-width:2.4;fill:rgba(0,0,0,.15);filter:drop-shadow(0 2px 6px rgba(0,0,0,.65));transition:all .28s cubic-bezier(.34,1.56,.64,1)}
-.ad-heart.saved svg{fill:var(--heart) !important;stroke:#fff;stroke-width:1.5;filter:drop-shadow(0 3px 10px rgba(255,59,107,.85)) !important}
-.ad-heart.saved{animation:heartBeat .5s ease-out}
+
+/* ============================================================
+   YURAKCHA — to'g'rilangan (inline SVG)
+   ============================================================ */
+.ad-heart{
+  position:absolute;top:8px;right:8px;width:40px;height:40px;border-radius:50%;
+  background:transparent;border:none;display:flex;align-items:center;justify-content:center;
+  z-index:5;padding:0;transition:transform .18s;
+}
+.ad-heart svg{
+  width:28px;height:28px;display:block;
+  fill:rgba(0,0,0,.18);
+  stroke:#FFFFFF;
+  stroke-width:2;
+  filter:drop-shadow(0 2px 6px rgba(0,0,0,.6));
+  transition:fill .25s ease, stroke .25s ease, transform .3s cubic-bezier(.34,1.56,.64,1);
+}
 .ad-heart:active svg{transform:scale(.82)}
+.ad-heart.saved svg{
+  fill:#FF3B6B !important;
+  stroke:#FF3B6B !important;
+  filter:drop-shadow(0 3px 12px rgba(255,59,107,.85)) !important;
+}
+.ad-heart.saved{animation:heartBeat .6s cubic-bezier(.34,1.56,.64,1)}
+.ad-heart::after{
+  content:"";position:absolute;inset:0;border-radius:50%;
+  background:radial-gradient(circle,rgba(255,59,107,.6),transparent 60%);
+  opacity:0;pointer-events:none;
+}
+.ad-heart.burst::after{animation:heartBurst .6s ease-out}
+
 .ad-body{padding:12px;display:flex;flex-direction:column;gap:5px}
 .ad-title{font-size:13px;font-weight:700;color:var(--text);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .ad-meta{font-size:11px;color:var(--text-3);display:flex;align-items:center;gap:4px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -299,6 +326,9 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .cur.active{background:linear-gradient(135deg,rgba(59,130,246,.2),rgba(6,182,212,.1));border-color:#3B82F6}
 .cur.active .cur-name{color:var(--blue)}
 
+/* ============================================================
+   TARIF — CHANNEL button qo'shildi
+   ============================================================ */
 .tariff{position:relative;padding:20px;background:var(--surface);border:2px solid var(--border-2);border-radius:var(--radius-lg);cursor:pointer;margin-bottom:12px;overflow:hidden;transition:all .25s}
 .tariff:active{transform:scale(.98)}
 .tariff.selected{border-color:#3B82F6;box-shadow:0 20px 60px rgba(59,130,246,.25),0 0 0 4px rgba(59,130,246,.08)}
@@ -317,6 +347,33 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .feat.yes .feat-ic{background:rgba(16,185,129,.15);color:#10B981}
 .feat.no .feat-ic{background:rgba(239,68,68,.1);color:#EF4444}
 .feat.no{color:var(--text-4)}
+
+/* KANAL TUGMASI */
+.tariff-channel-btn{
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  width:100%;margin-top:12px;padding:12px 16px;
+  border-radius:13px;
+  background:linear-gradient(135deg,rgba(6,182,212,.12),rgba(59,130,246,.08));
+  border:1.5px solid rgba(6,182,212,.35);
+  color:var(--cyan);
+  font-size:13px;font-weight:800;letter-spacing:.02em;
+  transition:transform .18s, background .2s, box-shadow .2s;
+  position:relative;overflow:hidden;
+}
+.tariff-channel-btn svg{width:16px;height:16px;stroke-width:2.4}
+.tariff-channel-btn:active{transform:scale(.96)}
+body.dark .tariff-channel-btn{
+  background:linear-gradient(135deg,rgba(34,211,238,.14),rgba(59,130,246,.10));
+  border-color:rgba(34,211,238,.4);
+  color:#22D3EE;
+}
+.tariff-channel-btn::before{
+  content:"";position:absolute;inset:0;
+  background:linear-gradient(135deg,rgba(6,182,212,.25),rgba(59,130,246,.15));
+  opacity:0;transition:opacity .25s;
+}
+.tariff-channel-btn:hover::before{opacity:1}
+.tariff-channel-btn > *{position:relative;z-index:1}
 
 .steps{display:flex;gap:6px;margin:20px 0 24px}
 .step{height:4px;flex:1;border-radius:10px;background:var(--surface-3);transition:all .4s}
@@ -735,6 +792,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
     <symbol id="i-sun" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="4.5"/><line x1="12" y1="1.5" x2="12" y2="3.5"/><line x1="12" y1="20.5" x2="12" y2="22.5"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1.5" y1="12" x2="3.5" y2="12"/><line x1="20.5" y1="12" x2="22.5" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></symbol>
     <symbol id="i-pin" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 3h6l-1 8 4 3v2H6v-2l4-3-1-8z"/><line x1="12" y1="16" x2="12" y2="22"/></symbol>
     <symbol id="i-image-plus" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="8.5" cy="8.5" r="1.5"/><polyline points="21 15 16 10 5 21"/><line x1="12" y1="2" x2="12" y2="8"/><line x1="9" y1="5" x2="15" y2="5"/></symbol>
+    <symbol id="i-megaphone" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l18-5v12L3 14v-3z"/><path d="M11.6 16.8a3 3 0 1 1-5.8-1.6"/></symbol>
   </defs>
 </svg>
 
@@ -1332,7 +1390,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
       <input class="input" id="editTitle" placeholder="PUBG Mobile - 70 LVL" maxlength="255" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
     </div>
 
-    <div class="edit-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div class="field" style="margin-bottom:0">
         <label class="label"><svg><use href="#i-trending"/></svg>LVL</label>
         <input class="input" id="editLvl" inputmode="numeric" maxlength="3" placeholder="70" autocomplete="off">
@@ -1411,7 +1469,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
       <input class="input" id="editFull" placeholder="Masalan: Qo'qon shahar" autocomplete="off">
     </div>
 
-    <div class="edit-grid" style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px">
       <div class="field" style="margin-bottom:0">
         <label class="label"><svg><use href="#i-dollar"/></svg>Valyuta</label>
         <select class="select" id="editCurrency">
@@ -1491,6 +1549,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
 const API_URL = "https://cardinalgithub-production.up.railway.app";
 const BOT_LINK = "https://t.me/cardinal_akkaunt_bot";
 const USERBOT_BOT = "CardXabarBot";
+const CHANNEL_INVITE = "https://t.me/+5XuKi8Nxoz5iODky";
 const RATE = { UZS: 1, USD: 16000, RUB: 200 };
 
 const tg = window.Telegram?.WebApp;
@@ -1513,11 +1572,10 @@ const S = {
 };
 let UB_PHONE = null;
 let VIDEO_FILE = null;
-let VIDEO_FILE_ID = null;
+let VIDEO_ID = null;
 let VIDEO_UPLOADING = false;
 let _adImageData = null;
 let _myAdsCountdownTimer = null;
-let _posterCache = {}; // ad_id -> poster dataURL
 
 const $ = id => document.getElementById(id);
 const esc = s => !s ? "" : String(s).replace(/[&<>"']/g, m => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#039;"}[m]));
@@ -1666,9 +1724,6 @@ function hideSplash(){
   setTimeout(() => { try { sp.remove(); } catch(e){} }, 700);
 }
 
-/* ============================================================
-   TELEGRAM WEBAPP — FULLSCREEN (iOS FIX)
-   ============================================================ */
 function initTelegramWebApp(){
   if(!tg) return;
   try{
@@ -1761,60 +1816,7 @@ async function loadAds(){
 }
 
 /* ============================================================
-   POSTER CACHE (iOS uchun video birinchi kadri)
-   ============================================================ */
-function generatePoster(videoUrl, adId, callback){
-  if(_posterCache[adId]){
-    callback(_posterCache[adId]);
-    return;
-  }
-  const vid = document.createElement("video");
-  vid.src = videoUrl;
-  vid.crossOrigin = "anonymous";
-  vid.muted = true;
-  vid.playsInline = true;
-  vid.preload = "metadata";
-
-  const timeout = setTimeout(() => {
-    // 6 sekundda ham ishlamasa — bo'sh qaytaramiz
-    callback(null);
-  }, 6000);
-
-  vid.onloadeddata = () => {
-    try{
-      vid.currentTime = 0.5;
-    }catch(e){
-      clearTimeout(timeout);
-      callback(null);
-    }
-  };
-
-  vid.onseeked = () => {
-    clearTimeout(timeout);
-    try{
-      const canvas = document.createElement("canvas");
-      canvas.width = vid.videoWidth || 640;
-      canvas.height = vid.videoHeight || 640;
-      const ctx = canvas.getContext("2d");
-      ctx.drawImage(vid, 0, 0, canvas.width, canvas.height);
-      const dataUrl = canvas.toDataURL("image/jpeg", 0.7);
-      _posterCache[adId] = dataUrl;
-      callback(dataUrl);
-    }catch(e){
-      callback(null);
-    }
-  };
-
-  vid.onerror = () => {
-    clearTimeout(timeout);
-    callback(null);
-  };
-
-  vid.load();
-}
-
-/* ============================================================
-   AD CARD
+   AD CARD — rasm yoki video (R2)
    ============================================================ */
 function adCard(a){
   const acc = a.account_data || {};
@@ -1844,39 +1846,29 @@ function adCard(a){
     ? `<div class="ad-pin-badge">${ico("pin")}<span>PIN</span></div>`
     : "";
 
-  // MEDIA: rasm > poster (cache) > video (iOS uchun) > placeholder
+  // MEDIA
   let mediaContent;
   if(a.thumbnail_url){
     mediaContent = `<img src="${a.thumbnail_url}" alt="" loading="lazy">`;
-  } else if(a.video_file_id){
-    const poster = _posterCache[a.id];
-    if(poster){
-      mediaContent = `<img src="${poster}" alt="" loading="lazy">`;
-    } else {
-      // Poster hali tayyor emas — generatsiya qilamiz
-      mediaContent = `<div class="placeholder" style="background:#000;color:#fff">${ico("play","ico-lg")}</div>`;
-      const videoUrl = `${API_URL}/api/ad/${a.id}/video`;
-      setTimeout(() => {
-        generatePoster(videoUrl, a.id, (dataUrl) => {
-          if(dataUrl){
-            const el = document.querySelector(`[data-ad-media="${a.id}"]`);
-            if(el) el.innerHTML = `<img src="${dataUrl}" alt="" loading="lazy">`;
-          }
-        });
-      }, 50);
-    }
+  } else if(a.r2_key){
+    const videoUrl = `https://pub-e74b7db47f0747ff8f5561911aa08dd7.r2.dev/${a.r2_key}`;
+    mediaContent = `<video src="${videoUrl}" preload="metadata" muted playsinline webkit-playsinline></video>`;
   } else {
     mediaContent = `<div class="placeholder">${ico("image","ico-lg")}<span>Rasm yo'q</span></div>`;
   }
 
+  // HEART — inline SVG path (fill ishlashi uchun)
   return `
     <article class="ad" onclick="openAd(${a.id})">
-      <div class="ad-media ${a.thumbnail_url?'has-thumb':''}" data-ad-media="${a.id}">
+      <div class="ad-media ${a.thumbnail_url?'has-thumb':''}">
         ${mediaContent}
         <button class="ad-heart ${isSaved?'saved':''}"
+                data-ad-heart="${a.id}"
                 onclick="event.stopPropagation();toggleSave(${a.id}, this)"
                 aria-label="Saqlash">
-          ${ico("heart")}
+          <svg viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/>
+          </svg>
         </button>
         ${adminTools}
         ${pinBadge}
@@ -2010,7 +2002,6 @@ async function removeAdImageServer(){
     });
     const upd = (arr) => arr.forEach(a => { if(a.id === adId) a.thumbnail_url = null });
     upd(S.ads); upd(S.saved); upd(S.myAds);
-    delete _posterCache[adId];
     closeModal("mSetImage");
     toast("Rasm olib tashlandi", "success");
     renderAds(); renderSaved();
@@ -2187,7 +2178,7 @@ async function toggleAdPin(adId, btn){
 }
 
 /* ============================================================
-   ADMIN — Aktiv reklamalar (video poster bilan)
+   ADMIN — Aktiv reklamalar
    ============================================================ */
 async function renderAdminActiveAds(){
   const c = $("atAds");
@@ -2214,16 +2205,9 @@ async function renderAdminActiveAds(){
         let thumb;
         if(a.thumbnail_url){
           thumb = `<img src="${a.thumbnail_url}" alt="" loading="lazy">`;
-        } else if(a.video_file_id){
-          const poster = _posterCache[a.id];
-          if(poster){
-            thumb = `<img src="${poster}" alt="" loading="lazy">`;
-          } else {
-            thumb = `<div style="width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;color:#fff">${ico("play")}</div>`;
-            setTimeout(() => generatePoster(`${API_URL}/api/ad/${a.id}/video`, a.id, () => {
-              renderAdminActiveAds();
-            }), 100);
-          }
+        } else if(a.r2_key){
+          const url = `https://pub-e74b7db47f0747ff8f5561911aa08dd7.r2.dev/${a.r2_key}`;
+          thumb = `<video src="${url}" preload="metadata" muted playsinline></video>`;
         } else {
           thumb = ico("image");
         }
@@ -2261,16 +2245,9 @@ async function renderAdminActiveAds(){
         let thumb;
         if(hasThumb){
           thumb = `<img src="${a.thumbnail_url}" alt="" loading="lazy">`;
-        } else if(a.video_file_id){
-          const poster = _posterCache[a.id];
-          if(poster){
-            thumb = `<img src="${poster}" alt="" loading="lazy">`;
-          } else {
-            thumb = `<div style="width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;color:#fff">${ico("play")}</div>`;
-            setTimeout(() => generatePoster(`${API_URL}/api/ad/${a.id}/video`, a.id, () => {
-              renderAdminActiveAds();
-            }), 100);
-          }
+        } else if(a.r2_key){
+          const url = `https://pub-e74b7db47f0747ff8f5561911aa08dd7.r2.dev/${a.r2_key}`;
+          thumb = `<video src="${url}" preload="metadata" muted playsinline></video>`;
         } else {
           thumb = `<div class="empty-ic">${ico("image")}<span>Video yo'q</span></div>`;
         }
@@ -2345,8 +2322,9 @@ async function openAd(id){
     const cars = Array.isArray(acc.supar_car) ? acc.supar_car : [];
 
     let html = "";
-    if(a.video_file_id){
-      html += `<video class="detail-video" src="${API_URL}/api/ad/${a.id}/video" controls playsinline webkit-playsinline preload="metadata"></video>`;
+    if(a.r2_key){
+      const url = `https://pub-e74b7db47f0747ff8f5561911aa08dd7.r2.dev/${a.r2_key}`;
+      html += `<video class="detail-video" src="${url}" controls playsinline webkit-playsinline preload="metadata"></video>`;
     }
     html += `<h2 class="detail-title">PUBG Mobile · ${esc(acc.level||"?")} LVL</h2>`;
     html += `<div class="detail-price">${fmtPrice(a.price, cur)}</div>`;
@@ -2429,11 +2407,20 @@ function messageSeller(username){
   else window.open("https://t.me/" + username, "_blank");
 }
 
+/* ============================================================
+   YURAKCHA — toggleSave (to'g'rilangan)
+   ============================================================ */
 async function toggleSave(adId, btn){
-  if(!USER) return;
+  if(!USER){ toast("Avval kiring", "error"); return }
   try{
     const r = await api("/api/toggle-save", "POST", { ad_id: adId, telegram_id: USER.telegram_id });
-    if(btn) btn.classList.toggle("saved", r.saved);
+    if(btn){
+      btn.classList.toggle("saved", r.saved);
+      if(r.saved){
+        btn.classList.add("burst");
+        setTimeout(() => btn.classList.remove("burst"), 600);
+      }
+    }
     const find = (arr) => arr.find(x => x.id === adId);
     const update = (a) => { if(a) a.is_saved = r.saved };
     update(find(S.ads)); update(find(S.saved));
@@ -2445,7 +2432,7 @@ async function toggleSave(adId, btn){
       toast("Saqlanganlardan olib tashlandi");
       S.saved = S.saved.filter(x => x.id !== adId);
     }
-    renderAds(); renderSaved();
+    renderSaved();
   }catch(e){ toast(e.message, "error") }
 }
 
@@ -2614,12 +2601,13 @@ const LINKED_OPTIONS = [
 const REGIONS = ["Toshkent","Samarqand","Buxoro","Namangan","Andijon","Farg'ona","Qashqadaryo","Surxondaryo","Xorazm","Navoiy","Jizzax","Sirdaryo","Toshkent viloyati","Qoraqalpog'iston"];
 
 const TARIFFS = [
-  {id:2, name:"KANAL", price:15000, desc:"Faqat Kanalda chiqadi", badge:null,
-   feats:[["yes","Kanaldada joylash"],["yes","Reklama kanalda qoladi"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["no","Bot chiqmaydi"]]},
-  {id:1, name:"BOT", price:9000, desc:"Faqat Web App'da chiqadi", badge:null,
-   feats:[["yes","Botda joylash"],["yes","Reklama 15 kun Faol"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["no","Kanalga chiqmaydi"]]},
+  {id:2, name:"KANAL", price:15000, desc:"Faqat kanalda chiqadi", badge:null,
+   feats:[["yes","Kanalga joylash"],["yes","Butun umur kanalda turadi"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["no","Botda chiqmaydi"]],
+   showChannel:true},
+  {id:1, name:"WEB APP", price:9000, desc:"Faqat Web App'da chiqadi", badge:null,
+   feats:[["yes","Web App'da joylash"],["yes","Reklama 15 kun Faol"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["no","Kanalga chiqmaydi"]]},
   {id:3, name:"KANAL + BOT", price:22000, desc:"Kanal + Bot + 10% skidka", badge:{t:"RARE", c:"rare"},
-   feats:[["yes","Botda joylash"],["yes","Kanalga joylash"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["yes","Reklama 15 kun Faol"]]},
+   feats:[["yes","Web App'da joylash"],["yes","Kanalga joylash"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["yes","Reklama 15 kun Faol"]]},
   {id:4, name:"PREMIUM VIP", price:49000, desc:"QR kod orqali akkauntni o'zimiz olamiz", badge:{t:"VIP", c:"vip"},
    feats:[["yes","Admin siz bilan bog'lanadi"],["yes","24/7 Qo'llab-quvvatlash hizmati!"],["yes","Kanal va botga joylab beradi"],["yes","To'liq xizmat"]],
    vip:true},
@@ -2642,6 +2630,11 @@ function renderTariffs(){
       <div class="tariff-feats">
         ${t.feats.map(f => `<div class="feat ${f[0]}"><div class="feat-ic">${ico(f[0]==="yes"?"check":"x","ico-sm")}</div><span>${f[1]}</span></div>`).join("")}
       </div>
+      ${t.showChannel ? `
+        <a class="tariff-channel-btn" href="${CHANNEL_INVITE}" target="_blank" onclick="event.stopPropagation()">
+          ${ico("megaphone")}Kanalimiz
+        </a>
+      ` : ""}
       ${t.vip ? `
         <div class="pay-note" style="margin-top:12px;text-align:left;background:rgba(139,92,246,.08);border-color:rgba(139,92,246,.25);color:#A78BFA">
           ${ico("info")}<span>Akkauntingizga QR kod orqali kiramiz va akkaunt abzorini chiroyli montaj qilib, bot va kanal sahifasiga reklama tarzda joylab beramiz!</span>
@@ -2761,7 +2754,7 @@ function addDyn(listId, cls, ph){
 function startCreate(){
   S.step = 1; S.tariff = null; S.videoData = null; S.videoName = "";
   VIDEO_FILE = null;
-  VIDEO_FILE_ID = null;
+  VIDEO_ID = null;
   VIDEO_UPLOADING = false;
   S.linked = []; S.currency = "UZS";
   ["accLevel","accColl","accRP","accMythic","gunsCount","accFull","accPrice","accPhone","accUser"].forEach(id => {
@@ -2807,7 +2800,7 @@ function validateStep(){
 async function nextStep(){
   if(!validateStep()) return;
 
-  if(S.step === 2 && !VIDEO_FILE_ID){
+  if(S.step === 2 && !VIDEO_ID){
     if(VIDEO_UPLOADING){ toast("Video hali yuklanmoqda, kuting", "info"); return }
     if(!VIDEO_FILE){ toast("Video tanlang", "error"); return }
 
@@ -2816,9 +2809,9 @@ async function nextStep(){
     VIDEO_UPLOADING = true;
 
     try{
-      const r = await uploadVideoToServer(VIDEO_FILE);
-      VIDEO_FILE_ID = r.file_id;
-      S.videoData = r.file_id;
+      const r = await uploadVideoToR2(VIDEO_FILE);
+      VIDEO_ID = r.video_id;
+      S.videoData = r.video_id;
       toast("Video muvaffaqiyatli yuklandi", "success");
     }catch(e){
       toast("Video yuklanmadi: " + e.message, "error");
@@ -2873,7 +2866,7 @@ $("videoInput").addEventListener("change", e => {
   }
 
   VIDEO_FILE = f;
-  VIDEO_FILE_ID = null;
+  VIDEO_ID = null;
   S.videoData = null;
 
   const url = URL.createObjectURL(f);
@@ -2909,23 +2902,33 @@ $("videoInput").addEventListener("change", e => {
 
 function removeVideo(){
   VIDEO_FILE = null;
-  VIDEO_FILE_ID = null;
+  VIDEO_ID = null;
   S.videoData = null;
   S.videoName = "";
   $("videoPreview").innerHTML = "";
   $("videoInput").value = "";
 }
 
-function uploadVideoToServer(file){
-  return new Promise((resolve, reject) => {
-    const MAX = 200 * 1024 * 1024;
-    if(file.size > MAX){ reject(new Error("Video 200 MB dan katta. Iltimos, kichraytiring.")); return }
-    if(file.size === 0){ reject(new Error("Fayl bo'sh")); return }
+/* ============================================================
+   VIDEO UPLOAD → R2 (presigned URL)
+   ============================================================ */
+async function uploadVideoToR2(file){
+  // 1. Presigned URL so'rash
+  const presign = await api("/api/upload-video/presign", "POST", {
+    telegram_id: USER.telegram_id,
+    size: file.size,
+    mime_type: file.type || "video/mp4",
+    duration_sec: 0,
+  });
 
+  if(!presign.ok) throw new Error(presign.error || "Presign xatosi");
+
+  const uploadUrl = presign.upload_url;
+  const videoId = presign.video_id;
+
+  // 2. To'g'ridan-to'g'ri R2'ga PUT qilish
+  await new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    const fd = new FormData();
-    const filename = file.name || "video.mp4";
-    fd.append("video", file, filename);
 
     xhr.upload.onprogress = (e) => {
       if(e.lengthComputable){
@@ -2938,27 +2941,25 @@ function uploadVideoToServer(file){
     };
 
     xhr.onload = () => {
-      if(xhr.status >= 200 && xhr.status < 300){
-        try{
-          const r = JSON.parse(xhr.responseText);
-          if(r.ok) resolve(r);
-          else reject(new Error(r.error || "Yuklashda xato"));
-        }catch(err){ reject(new Error("Serverdan noto'g'ri javob keldi")) }
-      } else if(xhr.status === 413){
-        reject(new Error("Video 200 MB dan katta"));
-      } else {
-        let errMsg = `Server xatosi (${xhr.status})`;
-        try{ const r = JSON.parse(xhr.responseText); if(r.error) errMsg = r.error; }catch(e){}
-        reject(new Error(errMsg));
-      }
+      if(xhr.status >= 200 && xhr.status < 300) resolve();
+      else reject(new Error(`R2 yuklash xatosi (${xhr.status})`));
     };
-    xhr.onerror = () => reject(new Error("Tarmoq xatosi. Internetni tekshiring."));
-    xhr.ontimeout = () => reject(new Error("Yuklash vaqti tugadi. Qayta urinib ko'ring."));
-    xhr.timeout = 20 * 60 * 1000;
-    xhr.open("POST", API_URL + "/api/upload-video");
-    if(TOKEN) xhr.setRequestHeader("Authorization", "Bearer " + TOKEN);
-    xhr.send(fd);
+    xhr.onerror = () => reject(new Error("Tarmoq xatosi"));
+    xhr.ontimeout = () => reject(new Error("Yuklash vaqti tugadi"));
+    xhr.timeout = 30 * 60 * 1000;
+
+    xhr.open("PUT", uploadUrl);
+    xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
+    xhr.send(file);
   });
+
+  // 3. Confirm qilish
+  try{
+    const confirm = await api("/api/upload-video/confirm", "POST", { video_id: videoId });
+    return { video_id: videoId, r2_key: presign.r2_key };
+  }catch(e){
+    return { video_id: videoId, r2_key: presign.r2_key };
+  }
 }
 
 function collectAd(){
@@ -3004,13 +3005,13 @@ function renderPreview(){
 async function submitAd(){
   const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
   if(price <= 0){ toast("Narx noto'g'ri", "error"); return }
-  if(!VIDEO_FILE_ID){ toast("Video yuklanmagan. Qayta urinib ko'ring.", "error"); return }
+  if(!VIDEO_ID){ toast("Video yuklanmagan. Qayta urinib ko'ring.", "error"); return }
   show();
   try{
     const acc = collectAd();
     const adData = {
       title: `PUBG Mobile - ${acc.level} LVL`,
-      video_file_id: VIDEO_FILE_ID,
+      video_id: VIDEO_ID,
       price: price,
       currency: S.currency,
       location: acc.location,
@@ -3034,9 +3035,6 @@ async function loadMyAds(){
   catch(e){ S.myAds = [] }
 }
 
-/* ============================================================
-   MY ADS — countdown bilan
-   ============================================================ */
 function renderMyAds(){
   const c = $("myAdsList");
   if(!S.myAds.length){
@@ -3073,16 +3071,9 @@ function myAdCard(a){
   let thumb;
   if(a.thumbnail_url){
     thumb = `<img src="${a.thumbnail_url}" alt="" loading="lazy">`;
-  } else if(a.video_file_id){
-    const poster = _posterCache[a.id];
-    if(poster){
-      thumb = `<img src="${poster}" alt="" loading="lazy">`;
-    } else {
-      thumb = `<div style="width:100%;height:100%;background:#000;display:flex;align-items:center;justify-content:center;color:#fff">${ico("play")}</div>`;
-      setTimeout(() => generatePoster(`${API_URL}/api/ad/${a.id}/video`, a.id, (url) => {
-        if(url) renderMyAds();
-      }), 100);
-    }
+  } else if(a.r2_key){
+    const url = `https://pub-e74b7db47f0747ff8f5561911aa08dd7.r2.dev/${a.r2_key}`;
+    thumb = `<video src="${url}" preload="metadata" muted playsinline></video>`;
   } else {
     thumb = ico("image");
   }
@@ -3161,8 +3152,9 @@ async function openMyAd(adId){
     const isActive = a.status === "ACTIVE";
 
     let html = "";
-    if(a.video_file_id){
-      html += `<video class="detail-video" src="${API_URL}/api/ad/${adId}/video" controls playsinline webkit-playsinline preload="metadata"></video>`;
+    if(a.r2_key){
+      const url = `https://pub-e74b7db47f0747ff8f5561911aa08dd7.r2.dev/${a.r2_key}`;
+      html += `<video class="detail-video" src="${url}" controls playsinline webkit-playsinline preload="metadata"></video>`;
     }
     html += `<h2 class="detail-title">PUBG Mobile · ${esc(acc.level||"?")} LVL</h2>`;
     html += `<div class="detail-price">${fmtPrice(a.price, cur)}</div>`;
@@ -3778,7 +3770,7 @@ async function renderSettings(){
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("clock")}</div>Kanal interval</div>
         <div class="pay-note" style="text-align:left;margin-bottom:14px;background:rgba(139,92,246,.08);border-color:rgba(139,92,246,.2);color:#A78BFA">
-          ${ico("info")}<span>Kanalga reklamalar orasidagi minimal vaqt. Masalan: 30 daqiqa bo'lsa, 1-reklama chiqqach, 2-reklama 30 daqiqadan keyin chiqadi.</span>
+          ${ico("info")}<span>Kanalga reklamalar orasidagi minimal vaqt.</span>
         </div>
         <div class="field">
           <label class="label">${ico("clock")}Interval (daqiqa)</label>
