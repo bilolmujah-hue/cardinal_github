@@ -1,8 +1,8 @@
 """
-Cardinal Bot v7.1 - Premium Emoji + Kanal Navbati + Live Countdown
+Cardinal Bot v7.4 — Cloudflare R2
 - Barcha xabarlar premium emoji bilan
 - Inline tugmalarda premium emoji ikonkalar
-- Kanal navbati: har bir reklama orasida interval (sozlanadi)
+- Kanal post userbot orqali (200 MB gacha)
 - Live countdown timer (30 sekundda yangilanadi)
 - Chiroyli tasdiqlash/rad etish xabarlari
 """
@@ -22,7 +22,7 @@ from aiogram.types import (
     BufferedInputFile
 )
 
-from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS, USERBOT
+from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS, USERBOT, R2
 from db import Database
 from video_cleaner import VideoCleaner
 from userbot import CardXabarWatcher
@@ -118,7 +118,6 @@ PREMIUM_EMOJI = {
     "💬": "5253742260054409879",
 }
 
-# Qisqa nomlar — tugma ikonkalari uchun
 EMOJI_ID = {
     "webapp": "5447410659077661506",
     "channel": "5278256077954105203",
@@ -173,18 +172,6 @@ def bold_numbers(text: str) -> str:
     )
 
 
-def fmt_price(amount, currency="UZS") -> str:
-    cur = CURRENCIES.get(currency, CURRENCIES["UZS"])
-    n = int(amount or 0)
-    if currency == "UZS":
-        return f"{num(n)} {cur['symbol']}"
-    if currency == "USD":
-        return f"${n}"
-    if currency == "RUB":
-        return f"{num(n)} {cur['symbol']}"
-    return f"{num(n)} {cur['symbol']}"
-
-
 def fmt_date(date_obj, full=False) -> str:
     if not date_obj:
         return "-"
@@ -232,7 +219,6 @@ def _json_default(obj):
 
 
 def ikb(text: str, emoji_key: str = None, **kwargs) -> InlineKeyboardButton:
-    """Premium emoji ikonka bilan InlineKeyboardButton yasash."""
     if emoji_key and emoji_key in EMOJI_ID:
         try:
             return InlineKeyboardButton(
@@ -246,7 +232,6 @@ def ikb(text: str, emoji_key: str = None, **kwargs) -> InlineKeyboardButton:
 
 
 def seconds_to_hms(total_seconds: int) -> str:
-    """Soniyalarni 01:00:00 formatiga o'girish."""
     if total_seconds < 0:
         total_seconds = 0
     h = total_seconds // 3600
@@ -270,10 +255,8 @@ class CardinalBot:
         )
         self.cleaner = VideoCleaner(db, self.bot)
 
-        # Kanal navbati uchun
         self._scheduler_task = None
         self._scheduler_running = False
-        # Countdown tasklar: ad_id -> Task
         self._countdown_tasks = {}
 
         self._register_handlers()
@@ -435,7 +418,7 @@ class CardinalBot:
                " - Akkauntingizni ishonchli sotasiz ✅ \n"
                " - Hammasi avtomat tarzda, juda tez✅ \n"
                " - Ishonchli akkaunt sotib olasiz💯 \n\n"
-               " - 24/7 Qo’llab-quvvatlash hizmati!💬"),
+               " - 24/7 Qo'llab-quvvatlash hizmati!💬"),
             parse_mode="HTML", reply_markup=kb
         )
         await message.answer(
@@ -459,6 +442,7 @@ class CardinalBot:
                f"💳 Aktiv kartalar: <b>{num(s['cards'])}</b>\n"
                f"⭐️ Otziflar: <b>{num(s['feedbacks'])}</b>\n"
                f"🤖 Userbot: <b>{'✔️ Aktiv' if s.get('userbot') else '❌ Yoq'}</b>\n"
+               f"📹 Videolar: <b>{num(s.get('videos', 0))}</b>\n"
                f"🗓 Reklama muddati: <b>{days} kun</b>\n"
                f"⏱ Kanal intervali: <b>{interval} daqiqa</b>\n\n"
                f"💵 Umumiy balans: <b>{num(s['total_balance'])} so'm</b>\n"
@@ -692,7 +676,7 @@ class CardinalBot:
             "🛡 Xavfsiz va ishonchli\n\n"
             "💎 <b>TARIFLAR:</b>\n\n"
             f"1️⃣ Botda - {num(TARIFFS[1].price)} so'm\n"
-            f"2️⃣ KANAL - {num(TARIFFS[2].price)} so'm\n"
+            f"2️⃣ Kanal - {num(TARIFFS[2].price)} so'm\n"
             f"3️⃣ Bot + Kanal (10% skidka) - {num(TARIFFS[3].price)} so'm\n"
             f"4️⃣ PREMIUM VIP - {num(TARIFFS[4].price)} so'm\n\n"
             "💳 <b>TO'LOV:</b>\n\n"
@@ -760,14 +744,10 @@ class CardinalBot:
         return InlineKeyboardMarkup(inline_keyboard=btns)
 
     # ============================================================
-    # KANAL NAVBATI — API tomonidan chaqiriladi
+    # KANAL NAVBATI
     # ============================================================
     async def schedule_channel_post(self, ad_id: int, post_at):
-        """
-        API tomonidan chaqiriladi (asyncio.create_task).
-        Hozircha hech narsa qilmaydi - scheduler o'zi hal qiladi.
-        Faqat log yozadi.
-        """
+        """API tomonidan chaqiriladi. Scheduler o'zi hal qiladi."""
         try:
             logger.info(f"📅 schedule_channel_post: ad #{ad_id} → {post_at}")
         except Exception as e:
@@ -776,20 +756,18 @@ class CardinalBot:
     async def notify_user_approved(self, ad: dict, t):
         """
         Foydalanuvchiga tasdiqlash xabarini yuboradi.
-        - Agar kanalga chiqishi kerak bo'lsa va post_at mavjud bo'lsa → live countdown
+        - Kanalga chiqishi kerak + post_at bor → live countdown
         - Aks holda → oddiy "tasdiqlandi" xabari
         """
         try:
-            # Yangi ad ma'lumotlarini olamiz (post_at yangi bo'lishi mumkin)
             fresh = await self.db.get_ad(ad["id"])
             if fresh:
                 ad = fresh
 
             post_at = ad.get("post_at")
-            has_channel = bool(t.channel and ad.get("video_file_id"))
+            has_channel = bool(t.channel and ad.get("r2_key"))
 
             if has_channel and post_at:
-                # Kanal navbatida — countdown bilan xabar
                 if isinstance(post_at, str):
                     try:
                         post_at = datetime.fromisoformat(post_at.replace("Z", ""))
@@ -806,11 +784,10 @@ class CardinalBot:
     async def _send_approved_message(self, ad: dict, t):
         """Oddiy 'Tasdiqlandi' xabari."""
         try:
-            kb_rows = [
+            kb = InlineKeyboardMarkup(inline_keyboard=[
                 [ikb("Web App'ni ochish", "webapp",
                      web_app=WebAppInfo(url=BOT.WEB_APP_URL))]
-            ]
-            kb = InlineKeyboardMarkup(inline_keyboard=kb_rows)
+            ])
 
             text = (
                 f"🎉 <b>REKLAMANGIZ TASDIQLANDI!</b>\n\n"
@@ -856,14 +833,12 @@ class CardinalBot:
                 parse_mode="HTML", reply_markup=kb
             )
 
-            # Countdown taskni boshlaymiz
             self._start_countdown(ad["id"], ad["seller_tg"], msg.message_id, post_at, ad)
         except Exception as e:
             logger.error(f"_send_waiting_message: {e}", exc_info=True)
 
     def _start_countdown(self, ad_id: int, chat_id: int, msg_id: int, post_at: datetime, ad: dict):
-        """Countdown taskni boshqaradi (har 30 sekundda yangilanadi)."""
-        # Eski taskni bekor qilamiz
+        """Countdown task (har 30 sekundda yangilanadi)."""
         old = self._countdown_tasks.pop(ad_id, None)
         if old:
             old.cancel()
@@ -894,7 +869,6 @@ class CardinalBot:
                             parse_mode="HTML"
                         )
                     except Exception as e:
-                        # Edit fail bo'lsa (masalan, xabar o'chirilgan) - chiqamiz
                         logger.debug(f"Countdown edit xato (ad #{ad_id}): {e}")
                         break
             except asyncio.CancelledError:
@@ -934,12 +908,10 @@ class CardinalBot:
     # KANAL SCHEDULER — har 20 sekundda tekshiradi
     # ============================================================
     async def _kanal_scheduler_loop(self):
-        """Har 20 sekundda kanal navbatini tekshiradi va joylaydi."""
         logger.info("⏰ Kanal scheduler ishga tushdi")
         self._scheduler_running = True
 
-        # Startupda kichik kutish
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)  # startup kechikish
 
         while self._scheduler_running:
             try:
@@ -953,13 +925,16 @@ class CardinalBot:
         try:
             async with self.db.pool.acquire() as c:
                 rows = await c.fetch("""
-                    SELECT a.*, u.telegram_id as seller_tg, u.first_name as seller_name
-                    FROM ads a JOIN users u ON u.id=a.user_id
+                    SELECT a.*, v.r2_key,
+                           u.telegram_id as seller_tg, u.first_name as seller_name
+                    FROM ads a
+                    JOIN users u ON u.id=a.user_id
+                    LEFT JOIN videos v ON v.id=a.video_id
                     WHERE a.status='ACTIVE'
                       AND a.post_at IS NOT NULL
                       AND a.post_at <= NOW()
                       AND a.channel_msg_id IS NULL
-                      AND a.video_file_id IS NOT NULL
+                      AND v.r2_key IS NOT NULL
                     ORDER BY a.post_at ASC
                     LIMIT 5
                 """)
@@ -974,8 +949,6 @@ class CardinalBot:
                     await self._post_to_channel_and_notify(ad)
                 except Exception as e:
                     logger.error(f"Navbatdan joylash xato (ad #{ad['id']}): {e}", exc_info=True)
-                    # Xatolik bo'lsa ham, DB da channel_msg_id NULL qoladi
-                    # 5 marta urinish uchun nima qilsak bo'ladi - keyingi tsiklda qayta urinadi
 
         except Exception as e:
             logger.error(f"_process_kanal_queue: {e}", exc_info=True)
@@ -989,8 +962,11 @@ class CardinalBot:
         if task:
             task.cancel()
 
-        # Kanalga post qilamiz (mavjud _post_to_channel)
-        await self._post_to_channel(ad)
+        # Kanalga post qilamiz
+        ok = await self._post_to_channel(ad)
+        if not ok:
+            logger.error(f"#{ad_id} kanalga joylanmadi")
+            return
 
         # Fresh ad (channel_msg_id bilan)
         fresh = await self.db.get_ad(ad_id)
@@ -998,7 +974,7 @@ class CardinalBot:
             logger.error(f"#{ad_id} kanalga joylanmadi yoki msg_id yo'q")
             return
 
-        # Kanalga havola
+        # Kanal havolasi
         link = self._channel_link(fresh["channel_msg_id"])
 
         # Userga xabar
@@ -1051,17 +1027,14 @@ class CardinalBot:
 
         await self.db.update_ad_status(ad_id, "ACTIVE")
 
-        # Kanal navbati
         post_at = None
-        if t.channel and ad.get("video_file_id"):
+        if t.channel and ad.get("r2_key"):
             post_at = await self.db.get_next_kanal_slot()
             await self.db.set_ad_post_at(ad_id, post_at)
             logger.info(f"#{ad_id} kanal navbatiga qo'yildi: {post_at}")
 
-        # Fresh ad
         fresh = await self.db.get_ad(ad_id)
 
-        # Notify
         try:
             await self.notify_user_approved(fresh, t)
         except Exception as e:
@@ -1084,6 +1057,16 @@ class CardinalBot:
         await self.db.update_ad_status(ad_id, "REJECTED", "Admin rad etdi")
         t = TARIFFS.get(ad["tariff"], TARIFFS[1])
         await self.db.update_balance(ad["seller_tg"], t.price, "topup", "Rad etilgan reklama qaytarildi")
+
+        # R2'dan o'chirish
+        if ad.get("r2_key"):
+            try:
+                from api import get_r2_client
+                r2 = get_r2_client()
+                r2.delete_object(Bucket=R2.BUCKET, Key=ad["r2_key"])
+            except Exception as e:
+                logger.warning(f"R2 delete (bot reject): {e}")
+
         try:
             await self.notify_user_rejected(ad, "Admin rad etdi", t.price)
         except Exception as e:
@@ -1092,7 +1075,7 @@ class CardinalBot:
         await cb.answer("❌ Rad etildi")
 
     # ============================================================
-    # KANALGA JOYLASH — PREMIUM EMOJI + QALIN SONLAR + LINKLAR
+    # KANALGA JOYLASH — USERBOT orqali
     # ============================================================
     def _tree_lines(self, items: list) -> list:
         out = []
@@ -1102,7 +1085,12 @@ class CardinalBot:
             out.append(f"{prefix} {bold_numbers(str(item))}")
         return out
 
-    async def _post_to_channel(self, ad: dict):
+    async def _post_to_channel(self, ad: dict) -> bool:
+        """
+        Kanalga post qilish — USERBOT orqali.
+        R2'dagi videoni URL orqali yuboradi. 200 MB gacha ishlaydi.
+        Qaytaradi: True (muvaffaqiyat) yoki False.
+        """
         try:
             acc = ad.get("account_data", {}) or {}
             cur = CURRENCIES.get(ad.get("currency", "UZS"), CURRENCIES["UZS"])
@@ -1180,31 +1168,60 @@ class CardinalBot:
             lines.append(CHANNEL_FOOTER_HTML)
 
             text = "\n".join(lines)
+            caption = pe(text)
 
             kb = InlineKeyboardMarkup(inline_keyboard=[[
                 ikb("Reklama berish", "channel",
                     url=f"https://t.me/{BOT.USERNAME}?start=create")
             ]])
 
-            caption = pe(text)
+            # R2 URL
+            r2_key = ad.get("r2_key")
+            if not r2_key:
+                logger.error(f"#{ad['id']} r2_key yo'q")
+                return False
 
-            if ad.get("video_file_id"):
-                msg = await self.bot.send_video(
-                    BOT.ADS_CHANNEL_ID, ad["video_file_id"],
-                    caption=caption, parse_mode="HTML", reply_markup=kb
-                )
-            else:
-                msg = await self.bot.send_message(
-                    BOT.ADS_CHANNEL_ID, caption,
-                    parse_mode="HTML", reply_markup=kb
-                )
-            await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.message_id)
-            logger.info(f"#{ad['id']} reklama kanaliga joylandi")
+            if not R2.PUBLIC_URL:
+                logger.error("R2_PUBLIC_URL sozlanmagan")
+                return False
+
+            video_url = f"{R2.PUBLIC_URL}/{r2_key}"
+            logger.info(f"#{ad['id']} userbot orqali kanalga yuborilmoqda: {video_url}")
+
+            # Userbot orqali yuborish
+            msg = await self.userbot.send_video_to_channel(
+                channel_id=BOT.ADS_CHANNEL_ID,
+                video_url=video_url,
+                caption=caption,
+                reply_markup=kb,
+            )
+
+            if not msg:
+                logger.error(f"#{ad['id']} userbot yubora olmadi")
+                return False
+
+            # channel_msg_id saqlash
+            await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.id)
+            logger.info(f"✅ #{ad['id']} kanalga joylandi (userbot), msg_id={msg.id}")
+            return True
+
         except Exception as e:
-            logger.error(f"Kanalga joylash xato: {e}", exc_info=True)
+            logger.error(f"Kanalga joylash xato (ad #{ad.get('id')}): {e}", exc_info=True)
+            return False
 
+    async def delete_channel_post(self, msg_id: int):
+        """Kanal xabarini userbot orqali o'chirish."""
+        try:
+            return await self.userbot.delete_message(BOT.ADS_CHANNEL_ID, msg_id)
+        except Exception as e:
+            logger.error(f"delete_channel_post: {e}")
+            return False
+
+    # ============================================================
+    # ADMIN NOTIFY — YANGI REKLAMA
+    # ============================================================
     async def notify_admin_new_ad(self, ad: dict):
-        """Adminga yangi reklama haqida TO'LIQ ma'lumot."""
+        """Adminga yangi reklama haqida TO'LIQ ma'lumot + video preview."""
         try:
             cur = CURRENCIES.get(ad.get("currency", "UZS"), CURRENCIES["UZS"])
             acc = ad.get("account_data", {}) or {}
@@ -1262,16 +1279,23 @@ class CardinalBot:
             ]])
             caption = pe(text)
 
-            if ad.get("video_file_id"):
+            # Video preview (R2 URL dan)
+            r2_key = ad.get("r2_key")
+            if r2_key and R2.PUBLIC_URL:
+                video_url = f"{R2.PUBLIC_URL}/{r2_key}"
                 try:
                     await self.bot.send_video(
-                        BOT.ADMIN_CHAT_ID, ad["video_file_id"],
-                        caption=caption, parse_mode="HTML", reply_markup=kb
+                        BOT.ADMIN_CHAT_ID,
+                        video_url,
+                        caption=caption,
+                        parse_mode="HTML",
+                        reply_markup=kb
                     )
                     return
                 except Exception as e:
-                    logger.warning(f"Video yuborish xato, matn yuboramiz: {e}")
+                    logger.warning(f"Admin video yuborish xato: {e}")
 
+            # Fallback: matn
             await self.bot.send_message(
                 BOT.ADMIN_CHAT_ID, caption,
                 parse_mode="HTML", reply_markup=kb
@@ -1279,6 +1303,9 @@ class CardinalBot:
         except Exception as e:
             logger.error(f"Admin notify xato: {e}", exc_info=True)
 
+    # ============================================================
+    # VIP REQUEST
+    # ============================================================
     async def notify_admin_vip_request(self, info: dict):
         try:
             acc = info.get("account_data", {}) or {}
@@ -1332,6 +1359,9 @@ class CardinalBot:
         except Exception as e:
             logger.error(f"VIP notify: {e}", exc_info=True)
 
+    # ============================================================
+    # RECEIPT
+    # ============================================================
     async def send_receipt_to_admin(self, receipt_data_url: str, info: dict, completed: bool):
         try:
             header, encoded = receipt_data_url.split(",", 1)
@@ -1370,7 +1400,7 @@ class CardinalBot:
     # START / STOP
     # ============================================================
     async def start(self):
-        logger.info("CardinalBot v7.1 ishga tushdi")
+        logger.info("CardinalBot v7.4 (Cloudflare R2) ishga tushdi")
 
         # Schedulerni boshlash
         self._scheduler_task = asyncio.create_task(self._kanal_scheduler_loop())
@@ -1385,7 +1415,6 @@ class CardinalBot:
     async def stop(self):
         logger.info("CardinalBot to'xtatilmoqda...")
 
-        # Scheduler
         self._scheduler_running = False
         if self._scheduler_task:
             self._scheduler_task.cancel()
@@ -1394,12 +1423,10 @@ class CardinalBot:
             except asyncio.CancelledError:
                 pass
 
-        # Countdown tasklar
         for ad_id, task in list(self._countdown_tasks.items()):
             task.cancel()
         self._countdown_tasks.clear()
 
-        # Boshqa komponentlar
         await self.cleaner.stop()
         await self.userbot.stop()
         await self.bot.session.close()
