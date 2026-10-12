@@ -1,8 +1,9 @@
 """
-Cardinal API v7.4 — Cloudflare R2
+Cardinal API v7.5 — Cloudflare R2 (xatosiz, to'liq)
 - Presigned URL orqali to'g'ridan-to'g'ri R2'ga yuklash
 - Stream: R2'ga redirect (Railway egress tejaydi)
 - Video metadata PostgreSQL'da
+- Barcha endpointlar to'liq
 """
 import asyncio
 import json
@@ -50,8 +51,7 @@ def is_valid_image_data_url(url: str) -> bool:
     return url.startswith("data:image/")
 
 
-def generate_r2_key(ad_id_or_user, ext="mp4"):
-    """R2 object key: videos/<uuid>.<ext>"""
+def generate_r2_key(user_id, ext="mp4"):
     return f"videos/{uuid.uuid4().hex}.{ext}"
 
 
@@ -72,7 +72,6 @@ def guess_ext(mime_type):
 _r2_client = None
 
 def get_r2_client():
-    """Boto3 S3 client — Cloudflare R2 uchun."""
     global _r2_client
     if _r2_client is None:
         _r2_client = boto3.client(
@@ -140,7 +139,7 @@ class API:
             # Ad detail
             ("GET",   "/api/ad/{ad_id}", self.get_ad),
 
-            # Video — Presigned URL + upload confirm
+            # Video presign + confirm
             ("POST",  "/api/upload-video/presign", self.presign_upload),
             ("POST",  "/api/upload-video/confirm", self.confirm_upload),
 
@@ -225,7 +224,7 @@ class API:
             except Exception as e:
                 logger.warning(f"Route add: {method} {path}: {e}")
 
-        # VIDEO REDIRECT — GET + HEAD
+        # VIDEO REDIRECT
         try:
             video_route = self.app.router.add_get(
                 "/api/ad/{ad_id}/video",
@@ -243,7 +242,7 @@ class API:
     async def index(self, req):
         return jresp({
             "app": "Cardinal API",
-            "version": "7.4",
+            "version": "7.5",
             "status": "running",
             "storage": "Cloudflare R2",
             "max_video_mb": R2.MAX_VIDEO_SIZE // (1024*1024),
@@ -310,14 +309,13 @@ class API:
                 ad["is_saved"] = False
         return jresp(ad)
 
+    async def get_feedbacks(self, req):
+        return jresp(await self.db.get_feedbacks())
+
     # ============================================================
-    # VIDEO — STREAM (R2 redirect)
+    # VIDEO STREAM (R2 redirect)
     # ============================================================
     async def stream_video(self, req):
-        """
-        Video ko'rish: R2 public URL'ga 302 redirect.
-        Railway egress'ni tejaydi — video to'g'ridan-to'g'ri R2'dan oqadi.
-        """
         try:
             ad_id = int(req.match_info["ad_id"])
             ad = await self.db.get_ad(ad_id)
@@ -326,12 +324,10 @@ class API:
 
             r2_key = ad["r2_key"]
 
-            # Public URL
             if R2.PUBLIC_URL:
                 url = f"{R2.PUBLIC_URL}/{r2_key}"
                 raise web.HTTPFound(url)
 
-            # Fallback: presigned URL (1 soat)
             try:
                 client = get_r2_client()
                 url = client.generate_presigned_url(
@@ -354,10 +350,6 @@ class API:
     # VIDEO — PRESIGNED UPLOAD
     # ============================================================
     async def presign_upload(self, req):
-        """
-        Frontend presigned URL so'raydi → R2'ga to'g'ridan-to'g'ri PUT qiladi.
-        Server video baytlarni ko'rmaydi → Railway egress = 0.
-        """
         try:
             data = await req.json()
             tg = int(data.get("telegram_id", 0))
@@ -373,7 +365,6 @@ class API:
             mime_type = (data.get("mime_type") or "video/mp4").strip()
             duration_sec = int(data.get("duration_sec", 0))
 
-            # Validatsiya
             if file_size <= 0:
                 return jresp({"ok": False, "error": "Fayl bo'sh"}, 400)
             if file_size > R2.MAX_VIDEO_SIZE:
@@ -385,7 +376,6 @@ class API:
             ext = guess_ext(mime_type)
             r2_key = generate_r2_key(tg, ext)
 
-            # Presigned PUT URL
             try:
                 client = get_r2_client()
                 upload_url = client.generate_presigned_url(
@@ -401,13 +391,12 @@ class API:
                 logger.error(f"presign upload xato: {e}")
                 return jresp({"ok": False, "error": "R2 xatosi"}, 500)
 
-            # DB'ga metadata yozamiz (ad_id hali yo'q, keyin bog'lanadi)
             video_id = await self.db.create_video_meta(
                 r2_key=r2_key, size=file_size,
                 mime_type=mime_type, duration_sec=duration_sec,
             )
 
-            logger.info(f"Presigned URL yaratildi: video_id={video_id}, key={r2_key}")
+            logger.info(f"Presigned URL: video_id={video_id}, key={r2_key}")
 
             return jresp({
                 "ok": True,
@@ -422,10 +411,6 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def confirm_upload(self, req):
-        """
-        Frontend R2'ga yuklab bo'lgach, serverga xabar beradi.
-        Server R2'da fayl borligini tekshiradi.
-        """
         try:
             data = await req.json()
             video_id = int(data.get("video_id", 0))
@@ -436,7 +421,6 @@ class API:
             if not meta:
                 return jresp({"ok": False, "error": "Video topilmadi"}, 404)
 
-            # R2'da fayl borligini tekshirish
             try:
                 client = get_r2_client()
                 head = client.head_object(Bucket=R2.BUCKET, Key=meta["r2_key"])
@@ -619,7 +603,6 @@ class API:
             if not video_id:
                 return jresp({"ok": False, "error": "Video yuklanmagan"}, 400)
 
-            # Video metadata'ni tekshirish
             video_meta = await self.db.get_video_meta(int(video_id))
             if not video_meta:
                 return jresp({"ok": False, "error": "Video topilmadi"}, 404)
@@ -711,9 +694,7 @@ class API:
                 "expires_at": expires_at,
             })
 
-            # Video'ni ad'ga bog'lash
             await self.db.link_video_to_ad(int(video_id), ad_id)
-
             await self.db.update_balance(tg, t.price, "spend", f"Reklama #{ad_id}")
 
             ad = await self.db.get_ad(ad_id)
@@ -744,16 +725,15 @@ class API:
             if ad["status"] != "ACTIVE":
                 return jresp({"ok": False, "error": "Faqat faol reklamalar uchun"}, 400)
 
-            r2_key = await self.db.mark_ad_sold(ad_id, tg)
-            if not r2_key and r2_key is not False:
-                pass
+            ok = await self.db.mark_ad_sold(ad_id, tg)
+            if not ok:
+                return jresp({"ok": False, "error": "Belgilanmadi"}, 400)
 
-            # Kanal xabari bo'lsa o'chirish
             if ad.get("channel_msg_id"):
                 try:
                     await self.bot_app.delete_channel_post(ad["channel_msg_id"])
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"delete_channel_post xato: {e}")
 
             try:
                 await self.bot_app.bot.send_message(
@@ -1123,14 +1103,20 @@ class API:
             t = TARIFFS.get(ad["tariff"], TARIFFS[1])
             await self.db.update_balance(ad["seller_tg"], t.price, "topup", "Rad etilgan reklama qaytarildi")
 
-            # R2'dan ham o'chirish
+            # R2'dan video o'chirish
             if ad.get("r2_key"):
                 try:
                     client = get_r2_client()
                     client.delete_object(Bucket=R2.BUCKET, Key=ad["r2_key"])
+                    logger.info(f"R2 o'chirildi (reject): {ad['r2_key']}")
                 except Exception as e:
                     logger.warning(f"R2 delete (reject): {e}")
-                await self.db.delete_video_meta(ad["video_id"]) if ad.get("video_id") else None
+
+            if ad.get("video_id"):
+                try:
+                    await self.db.delete_video_meta(ad["video_id"])
+                except Exception as e:
+                    logger.warning(f"delete_video_meta: {e}")
 
             try:
                 await self.bot_app.notify_user_rejected(ad, reason, t.price)
@@ -1139,6 +1125,7 @@ class API:
 
             return jresp({"ok": True})
         except Exception as e:
+            logger.error(f"admin_reject_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_delete_ad(self, req):
@@ -1148,24 +1135,24 @@ class API:
             ad_id = int(data["ad_id"])
             ad = await self.db.get_ad(ad_id)
 
-            # Kanal xabarini o'chirish
             if ad and ad.get("channel_msg_id"):
                 try:
                     await self.bot_app.delete_channel_post(ad["channel_msg_id"])
-                except Exception:
-                    pass
+                except Exception as e:
+                    logger.warning(f"delete_channel_post: {e}")
 
-            # R2'dan video o'chirish
             if ad and ad.get("r2_key"):
                 try:
                     client = get_r2_client()
                     client.delete_object(Bucket=R2.BUCKET, Key=ad["r2_key"])
+                    logger.info(f"R2 o'chirildi: {ad['r2_key']}")
                 except Exception as e:
                     logger.warning(f"R2 delete: {e}")
 
             await self.db.delete_ad(ad_id)
             return jresp({"ok": True})
         except Exception as e:
+            logger.error(f"admin_delete_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_block(self, req):
