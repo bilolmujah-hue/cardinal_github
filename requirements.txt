@@ -6,3 +6,5 @@ telethon==1.36.0
 PyJWT==2.9.0
 bcrypt==4.2.0
 python-dotenv==1.0.1
+boto3==1.35.36
+botocore==1.35.36
