@@ -1,5 +1,5 @@
 # ============================================================
-# Cardinal v7.4 - Cloudflare R2 + PostgreSQL
+# Cardinal v5.7 - Sozlamala
 # ============================================================
 import os
 
@@ -13,27 +13,6 @@ class DB:
     NAME = os.getenv("PGDATABASE", "railway")
     USER = os.getenv("PGUSER", "postgres")
     PASSWORD = os.getenv("PGPASSWORD", "root")
-
-
-# ============================================================
-# CLOUDFLARE R2
-# ============================================================
-class R2:
-    ACCOUNT_ID = os.getenv("R2_ACCOUNT_ID", "")
-    ACCESS_KEY = os.getenv("R2_ACCESS_KEY_ID", "")
-    SECRET_KEY = os.getenv("R2_SECRET_ACCESS_KEY", "")
-    BUCKET = os.getenv("R2_BUCKET_NAME", "cardinal-videos")
-    ENDPOINT = os.getenv("R2_ENDPOINT", "")
-    PUBLIC_URL = os.getenv("R2_PUBLIC_URL", "").rstrip("/")
-
-    # Video limitlari
-    MAX_VIDEO_SIZE = 200 * 1024 * 1024   # 200 MB
-    MAX_VIDEO_DURATION = 600             # 10 daqiqa (sekund)
-    MIN_VIDEO_SIZE = 1024                # 1 KB
-
-    # Presigned URL amal qilish muddati
-    PRESIGN_UPLOAD_EXPIRE = 3600         # 1 soat (yuklash uchun)
-    PRESIGN_DOWNLOAD_EXPIRE = 7200       # 2 soat (ko'rish uchun)
 
 
 # ============================================================
@@ -52,17 +31,20 @@ class BOT:
     # Web App
     WEB_APP_URL = "https://bilolmujah-hue.github.io/cardinal_github/"
 
-    # Reklama kanali
+    # Reklama joylanadigan yopiq kanal (1-kanal)
     ADS_CHANNEL_ID = -1001723379807
     ADS_CHANNEL_INVITE = "https://t.me/+5XuKi8Nxoz5iODky"
     ADS_CHANNEL_NAME = "Cardinal Savdo"
 
-    # Public kanal
+    # Public kanal (faqat obuna uchun, post qilinmaydi)
     PUBLIC_CHANNEL_USERNAME = "@Cardinal_PUBG"
     PUBLIC_CHANNEL_ID = -1001365422917
     PUBLIC_CHANNEL_NAME = "Cardinal PUBG"
 
-    # Majburiy obuna kanallari
+    # Video saqlash kanali
+    VIDEO_CHANNEL_ID = -1004401093865
+
+    # Majburiy obuna kanallari (2 ta)
     REQUIRED_CHANNELS = [
         {
             "type": "invite",
@@ -78,7 +60,7 @@ class BOT:
         },
     ]
 
-    # Kanal postining pastidagi matnlar
+    # Kanal postining pastidagi doimiy matnlar
     CHANNEL_FOOTER = (
         "📌 Kanalimiz: @cardinal_savdo\n"
         "🤝 Garant uchun: @Cardinal_G\n"
@@ -141,10 +123,9 @@ class T1:
     type = "STANDARD"
     name = "STANDART"
     badge = None
-    channel = False      # kanalga chiqmaydi
-    webapp = True        # faqat WebApp (R2)
+    channel = False
+    webapp = True
     top_hours = 0
-    r2_storage = True    # R2'ga saqlanadi
 
 
 class T2:
@@ -154,23 +135,21 @@ class T2:
     type = "STANDARD"
     name = "KANAL"
     badge = None
-    channel = True       # kanalga chiqadi
-    webapp = False       # WebApp'da ko'rinmaydi
+    channel = True
+    webapp = False
     top_hours = 0
-    r2_storage = False   # R2'ga saqlanmaydi
 
 
 class T3:
     id = 3
-    price = 22000
+    price = 25000
     days = 0
     type = "RARE"
     name = "RARE 10%"
     badge = "RARE"
-    channel = True       # kanalga chiqadi
-    webapp = True        # WebApp'da ham
+    channel = True
+    webapp = True
     top_hours = 0
-    r2_storage = True    # R2'ga saqlanadi
 
 
 class T4:
@@ -236,7 +215,7 @@ class LIMITS:
 
 
 # ============================================================
-# DEFAULT REKLAMA MUDDATI
+# DEFAULT REKLAMA MUDDATI (admin paneldan o'zgartiriladi)
 # ============================================================
 DEFAULT_AD_DAYS = 15
 
