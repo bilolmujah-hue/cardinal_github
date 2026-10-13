@@ -1,6 +1,6 @@
 """
-Cardinal API v7.5 — Cloudflare R2 (xatosiz, to'liq)
-- Presigned URL orqali to'g'ridan-to'g'ri R2'ga yuklash
+Cardinal API v7.6 — Cloudflare R2 (server-side upload, CORS yo'q)
+- Video server orqali R2'ga yuklanadi (CORS muammosi yo'q)
 - Stream: R2'ga redirect (Railway egress tejaydi)
 - Video metadata PostgreSQL'da
 - Barcha endpointlar to'liq
@@ -63,6 +63,8 @@ def guess_ext(mime_type):
     if "webm" in mime_type: return "webm"
     if "matroska" in mime_type: return "mkv"
     if "x-m4v" in mime_type: return "m4v"
+    if "3gpp" in mime_type: return "3gp"
+    if "avi" in mime_type: return "avi"
     return "mp4"
 
 
@@ -139,9 +141,8 @@ class API:
             # Ad detail
             ("GET",   "/api/ad/{ad_id}", self.get_ad),
 
-            # Video presign + confirm
-            ("POST",  "/api/upload-video/presign", self.presign_upload),
-            ("POST",  "/api/upload-video/confirm", self.confirm_upload),
+            # Video upload (server orqali R2'ga)
+            ("POST",  "/api/upload-video", self.upload_video),
 
             # Auth
             ("POST",  "/api/auth/telegram", self.auth_telegram),
@@ -224,7 +225,7 @@ class API:
             except Exception as e:
                 logger.warning(f"Route add: {method} {path}: {e}")
 
-        # VIDEO REDIRECT
+        # VIDEO REDIRECT — GET + HEAD
         try:
             video_route = self.app.router.add_get(
                 "/api/ad/{ad_id}/video",
@@ -242,7 +243,7 @@ class API:
     async def index(self, req):
         return jresp({
             "app": "Cardinal API",
-            "version": "7.5",
+            "version": "7.6",
             "status": "running",
             "storage": "Cloudflare R2",
             "max_video_mb": R2.MAX_VIDEO_SIZE // (1024*1024),
@@ -347,98 +348,107 @@ class API:
             return web.Response(status=500, text="Server xatosi")
 
     # ============================================================
-    # VIDEO — PRESIGNED UPLOAD
+    # VIDEO UPLOAD — Server orqali R2'ga (CORS kerak emas!)
     # ============================================================
-    async def presign_upload(self, req):
+    async def upload_video(self, req):
+        """
+        Multipart faylni qabul qilib, R2'ga yuklaydi.
+        Frontend → Railway → R2 (CORS umuman ishtirok etmaydi).
+        """
         try:
-            data = await req.json()
-            tg = int(data.get("telegram_id", 0))
-            jwt_u = req.get("user")
-            if jwt_u and int(jwt_u.get("tg", 0)) != tg:
-                return jresp({"ok": False, "error": "Ruxsat yo'q"}, 403)
+            reader = await req.multipart()
+            if not reader:
+                return jresp({"ok": False, "error": "Fayl yuborilmadi"}, 400)
 
-            user = await self.db.get_user(tg)
+            file_data = None
+            telegram_id = None
+            filename = "ad.mp4"
+            mime_type = "video/mp4"
+
+            while True:
+                part = await reader.next()
+                if part is None:
+                    break
+
+                if part.name == "telegram_id":
+                    try:
+                        val = await part.text()
+                        telegram_id = int(val.strip())
+                    except Exception:
+                        pass
+
+                elif part.name == "video":
+                    filename = getattr(part, "filename", None) or "ad.mp4"
+                    try:
+                        ct = part.headers.get("Content-Type", "video/mp4")
+                        mime_type = ct or "video/mp4"
+                    except Exception:
+                        mime_type = "video/mp4"
+
+                    chunks = []
+                    total = 0
+                    MAX = R2.MAX_VIDEO_SIZE
+                    while True:
+                        chunk = await part.read_chunk(1024 * 512)
+                        if not chunk:
+                            break
+                        total += len(chunk)
+                        if total > MAX:
+                            mb = MAX // (1024 * 1024)
+                            return jresp({"ok": False, "error": f"Video {mb} MB dan katta"}, 413)
+                        chunks.append(chunk)
+                    file_data = b"".join(chunks)
+
+            if not telegram_id:
+                return jresp({"ok": False, "error": "telegram_id yo'q"}, 400)
+
+            if not file_data:
+                return jresp({"ok": False, "error": "Video bo'sh"}, 400)
+
+            user = await self.db.get_user(telegram_id)
             if not user:
-                return jresp({"ok": False, "error": "User yo'q"}, 404)
+                return jresp({"ok": False, "error": "User topilmadi"}, 404)
 
-            file_size = int(data.get("size", 0))
-            mime_type = (data.get("mime_type") or "video/mp4").strip()
-            duration_sec = int(data.get("duration_sec", 0))
-
-            if file_size <= 0:
-                return jresp({"ok": False, "error": "Fayl bo'sh"}, 400)
-            if file_size > R2.MAX_VIDEO_SIZE:
-                mb = R2.MAX_VIDEO_SIZE // (1024*1024)
-                return jresp({"ok": False, "error": f"Video {mb} MB dan katta"}, 400)
-            if duration_sec and duration_sec > R2.MAX_VIDEO_DURATION:
-                return jresp({"ok": False, "error": "Video 10 daqiqadan uzun"}, 400)
-
-            ext = guess_ext(mime_type)
-            r2_key = generate_r2_key(tg, ext)
+            # R2'ga yuklash
+            ext = guess_ext(mime_type) or "mp4"
+            r2_key = generate_r2_key(telegram_id, ext)
 
             try:
                 client = get_r2_client()
-                upload_url = client.generate_presigned_url(
-                    "put_object",
-                    Params={
-                        "Bucket": R2.BUCKET,
-                        "Key": r2_key,
-                        "ContentType": mime_type,
-                    },
-                    ExpiresIn=R2.PRESIGN_UPLOAD_EXPIRE,
+                client.put_object(
+                    Bucket=R2.BUCKET,
+                    Key=r2_key,
+                    Body=file_data,
+                    ContentType=mime_type,
                 )
             except ClientError as e:
-                logger.error(f"presign upload xato: {e}")
-                return jresp({"ok": False, "error": "R2 xatosi"}, 500)
+                logger.error(f"R2 put_object xato: {e}")
+                return jresp({"ok": False, "error": "R2 yuklash xatosi"}, 500)
+            except Exception as e:
+                logger.error(f"R2 put_object umumiy xato: {e}", exc_info=True)
+                return jresp({"ok": False, "error": "R2 yuklash xatosi"}, 500)
 
+            # DB'ga metadata
             video_id = await self.db.create_video_meta(
-                r2_key=r2_key, size=file_size,
-                mime_type=mime_type, duration_sec=duration_sec,
+                r2_key=r2_key,
+                size=len(file_data),
+                mime_type=mime_type,
+                duration_sec=0,
             )
 
-            logger.info(f"Presigned URL: video_id={video_id}, key={r2_key}")
+            logger.info(f"✅ Upload OK: video_id={video_id}, key={r2_key}, size={len(file_data)}")
 
             return jresp({
                 "ok": True,
                 "video_id": video_id,
                 "r2_key": r2_key,
-                "upload_url": upload_url,
                 "public_url": f"{R2.PUBLIC_URL}/{r2_key}" if R2.PUBLIC_URL else None,
-                "expires_in": R2.PRESIGN_UPLOAD_EXPIRE,
+                "size": len(file_data),
             })
+
         except Exception as e:
-            logger.error(f"presign_upload: {e}", exc_info=True)
-            return jresp({"ok": False, "error": str(e)}, 400)
-
-    async def confirm_upload(self, req):
-        try:
-            data = await req.json()
-            video_id = int(data.get("video_id", 0))
-            if not video_id:
-                return jresp({"ok": False, "error": "video_id kerak"}, 400)
-
-            meta = await self.db.get_video_meta(video_id)
-            if not meta:
-                return jresp({"ok": False, "error": "Video topilmadi"}, 404)
-
-            try:
-                client = get_r2_client()
-                head = client.head_object(Bucket=R2.BUCKET, Key=meta["r2_key"])
-                actual_size = head.get("ContentLength", 0)
-            except ClientError as e:
-                logger.error(f"confirm head_object xato: {e}")
-                return jresp({"ok": False, "error": "R2'da fayl topilmadi"}, 404)
-
-            return jresp({
-                "ok": True,
-                "video_id": video_id,
-                "r2_key": meta["r2_key"],
-                "size": actual_size,
-                "public_url": f"{R2.PUBLIC_URL}/{meta['r2_key']}" if R2.PUBLIC_URL else None,
-            })
-        except Exception as e:
-            logger.error(f"confirm_upload: {e}", exc_info=True)
-            return jresp({"ok": False, "error": str(e)}, 400)
+            logger.error(f"upload_video: {e}", exc_info=True)
+            return jresp({"ok": False, "error": str(e)}, 500)
 
     # ============================================================
     # AUTH
@@ -1542,4 +1552,4 @@ class API:
         await runner.setup()
         site = web.TCPSite(runner, API_CFG.HOST, API_CFG.PORT)
         await site.start()
-        logger.info(f"✅ API: http://{API_CFG.HOST}:{API_CFG.PORT}")
+        logger.info(f"✅ API v7.6: http://{API_CFG.HOST}:{API_CFG.PORT}")
