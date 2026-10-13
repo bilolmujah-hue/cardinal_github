@@ -828,19 +828,19 @@ body.dark .load{background:rgba(26,35,50,.88)}
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-chart"/></svg></div>Asosiy ma'lumotlar</div>
           <div class="field">
             <label class="label"><svg><use href="#i-trending"/></svg>LVL · Akkaunt darajasi<span class="hint">max 100</span></label>
-            <input class="input" id="accLevel" inputmode="numeric" placeholder="Masalan: 70" maxlength="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input class="input" id="accLevel" inputmode="numeric" placeholder="Masalan: 70" maxlength="3" autocomplete="off">
           </div>
           <div class="field">
             <label class="label"><svg><use href="#i-target"/></svg>Kolleksiya darajasi<span class="hint">max 101</span></label>
-            <input class="input" id="accColl" inputmode="numeric" placeholder="Masalan: 56" maxlength="3" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input class="input" id="accColl" inputmode="numeric" placeholder="Masalan: 56" maxlength="3" autocomplete="off">
           </div>
           <div class="field">
             <label class="label"><svg><use href="#i-award"/></svg>RP · Nechinchi sezondan<span class="hint">max 50 harf</span></label>
-            <input class="input" id="accRP" maxlength="50" placeholder="Masalan: S2 sezondan hamma rp olingan" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input class="input" id="accRP" maxlength="50" placeholder="Masalan: S2 sezondan hamma rp olingan" autocomplete="off">
           </div>
           <div class="field" style="margin-bottom:0">
             <label class="label"><svg><use href="#i-shirt"/></svg>Mifik kiyimlar soni<span class="hint">max 1500</span></label>
-            <input class="input" id="accMythic" inputmode="numeric" placeholder="Masalan: 300" maxlength="4" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input class="input" id="accMythic" inputmode="numeric" placeholder="Masalan: 300" maxlength="4" autocomplete="off">
           </div>
         </div>
 
@@ -868,7 +868,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
           <button class="btn btn-ghost btn-block mt-8" onclick="addDyn('gunsList','gun-input','Masalan: Lednik 7 full')"><svg><use href="#i-plus"/></svg>Yana qo'shish</button>
           <div class="field mt-16" style="margin-bottom:0">
             <label class="label"><svg><use href="#i-zap"/></svg>Jami qurollar soni</label>
-            <input class="input" id="gunsCount" inputmode="numeric" placeholder="Masalan: 70" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input class="input" id="gunsCount" inputmode="numeric" placeholder="Masalan: 70" autocomplete="off">
           </div>
         </div>
 
@@ -885,7 +885,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
           </div>
           <div class="field">
             <label class="label"><svg><use href="#i-map"/></svg>To'liq manzil (Majburiy emas)</label>
-            <input class="input" id="accFull" placeholder="Masalan: Qo'qon shahar" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+            <input class="input" id="accFull" placeholder="Masalan: Qo'qon shahar" autocomplete="off">
           </div>
           <div class="field">
             <label class="label"><svg><use href="#i-credit"/></svg>Akkuntizni qaysi valyuta turida sotmoqchisiz</label>
@@ -895,7 +895,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
             <label class="label" id="priceLabel"><svg><use href="#i-wallet"/></svg>Akkauntiz narxini yozing</label>
             <div class="input-group">
               <div class="input-prefix" id="priceFlag">🇺🇿</div>
-              <input class="input" id="accPrice" inputmode="numeric" placeholder="400 000" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <input class="input" id="accPrice" inputmode="numeric" placeholder="400 000" autocomplete="off">
               <div class="input-prefix" id="priceSuffix">so'm</div>
             </div>
             <div id="pricePreview" style="margin-top:8px;font-size:12px;color:var(--text-3);text-align:center;font-weight:600"></div>
@@ -907,7 +907,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
           <div class="field">
             <label class="label"><svg><use href="#i-msg"/></svg>Telegram username</label>
             <div class="input-group">
-              <input class="input" id="accUser" placeholder="@username" maxlength="64" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <input class="input" id="accUser" placeholder="@username" maxlength="64" autocomplete="off">
               <button type="button" class="input-prefix" onclick="useMyUsername()" style="cursor:pointer;background:var(--surface)">👤 O'zimniki</button>
             </div>
           </div>
@@ -915,7 +915,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
             <label class="label"><svg><use href="#i-phone"/></svg>Telefon raqam</label>
             <div class="input-group">
               <div class="input-prefix">🇺🇿 +998</div>
-              <input class="input" id="accPhone" inputmode="numeric" maxlength="9" placeholder="901234567" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <input class="input" id="accPhone" inputmode="numeric" maxlength="9" placeholder="901234567" autocomplete="off">
             </div>
           </div>
         </div>
@@ -1082,7 +1082,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
       <div id="atBroadcast" class="hidden">
         <div class="card-box">
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-send"/></svg></div>Barchaga xabar</div>
-          <textarea class="textarea" id="bcastText" placeholder="Xabar matnini yozing..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea>
+          <textarea class="textarea" id="bcastText" placeholder="Xabar matnini yozing..." autocomplete="off"></textarea>
           <button class="btn btn-primary btn-block mt-16" onclick="sendBroadcast()"><svg><use href="#i-send"/></svg>Yuborish</button>
         </div>
       </div>
@@ -1104,7 +1104,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
           <div class="card-box-title"><div class="card-box-ic"><svg><use href="#i-wallet"/></svg></div>Summani kiriting</div>
           <div class="field" style="margin-bottom:0">
             <div class="amount-wrap">
-              <input class="amount-input" id="topupAmt" inputmode="numeric" placeholder="0" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false">
+              <input class="amount-input" id="topupAmt" inputmode="numeric" placeholder="0" autocomplete="off">
               <span class="amount-cur">so'm</span>
             </div>
             <div class="quick-amounts">
@@ -1186,7 +1186,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
         <div class="result-card error">
           <div class="result-ic"><svg><use href="#i-x"/></svg></div>
           <h3>To'lov rad etildi</h3>
-          <p id="cfRejReason">Belgilangan vaqt ichida to'lov tasdiqlanmadi. Iltimos, admin bilan bog'laning.</p>
+          <p id="cfRejReason">Belgilangan vaqt ichida to'lov tasdiqlanmadi.</p>
           <button class="btn btn-primary btn-block" onclick="go('pageAdminContacts')">
             <svg><use href="#i-msg"/></svg>Admin bilan bog'lanish
           </button>
@@ -1233,8 +1233,8 @@ body.dark .load{background:rgba(26,35,50,.88)}
   <div class="modal-in">
     <div class="modal-handle"></div>
     <div class="modal-head"><h2><svg><use href="#i-edit"/></svg>Profilni tahrirlash</h2><button class="modal-close" onclick="closeModal('mProfile')"><svg><use href="#i-x"/></svg></button></div>
-    <div class="field"><label class="label"><svg><use href="#i-user"/></svg>Ism</label><input class="input" id="pFirst" placeholder="Ismingiz" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
-    <div class="field"><label class="label"><svg><use href="#i-user"/></svg>Familiya</label><input class="input" id="pLast" placeholder="Familiyangiz" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></div>
+    <div class="field"><label class="label"><svg><use href="#i-user"/></svg>Ism</label><input class="input" id="pFirst" placeholder="Ismingiz" autocomplete="off"></div>
+    <div class="field"><label class="label"><svg><use href="#i-user"/></svg>Familiya</label><input class="input" id="pLast" placeholder="Familiyangiz" autocomplete="off"></div>
     <button class="btn btn-primary btn-block" onclick="saveProfile()"><svg><use href="#i-check"/></svg>Saqlash</button>
   </div>
 </div>
@@ -1253,7 +1253,7 @@ body.dark .load{background:rgba(26,35,50,.88)}
         <button class="rate-btn" data-r="5"><svg><use href="#i-star"/></svg></button>
       </div>
     </div>
-    <div class="field"><label class="label"><svg><use href="#i-msg"/></svg>Fikringiz</label><textarea class="textarea" id="fbText" placeholder="Bot haqida fikringizni yozing..." autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"></textarea></div>
+    <div class="field"><label class="label"><svg><use href="#i-msg"/></svg>Fikringiz</label><textarea class="textarea" id="fbText" placeholder="Bot haqida fikringizni yozing..." autocomplete="off"></textarea></div>
     <button class="btn btn-primary btn-block" onclick="submitFeedback()"><svg><use href="#i-send"/></svg>Yuborish</button>
   </div>
 </div>
@@ -1500,7 +1500,6 @@ let USER = null;
 let IS_ADMIN = false;
 let AD_DAYS = 15;
 let KANAL_INTERVAL_MIN = 30;
-let R2_PUBLIC_URL = ""; // API /api/settings dan keladi
 let MAX_VIDEO_MB = 200;
 let MAX_VIDEO_DURATION = 600;
 
@@ -1518,8 +1517,6 @@ const S = {
 };
 let UB_PHONE = null;
 let VIDEO_FILE = null;
-let VIDEO_FILE_ID = null;
-let VIDEO_R2_KEY = null;
 let VIDEO_UPLOADING = false;
 let _adImageData = null;
 let _myAdsCountdownTimer = null;
@@ -1587,11 +1584,6 @@ async function api(path, method="GET", body=null, auth=true){
 // ============================================================
 // VIDEO YORDAMCHILAR
 // ============================================================
-function buildVideoUrl(r2Key){
-  if(!r2Key || !R2_PUBLIC_URL) return "";
-  return R2_PUBLIC_URL + "/" + r2Key;
-}
-
 function getVideoDuration(file){
   return new Promise((resolve, reject) => {
     const v = document.createElement("video");
@@ -1734,7 +1726,6 @@ function initTelegramWebApp(){
   }catch(e){ console.warn("TG WebApp init:", e) }
 }
 
-// Ripple
 document.addEventListener("click", (e) => {
   const btn = e.target.closest(".btn-primary, .btn-success, .btn-danger, .btn-purple, .tb-topup-btn, .contact-btn");
   if(!btn) return;
@@ -1791,7 +1782,7 @@ function updateTopbar(){
 }
 
 // ============================================================
-// SETTINGS (R2 URL, LIMITLAR)
+// SETTINGS
 // ============================================================
 async function loadAdDays(){
   try{
@@ -1801,15 +1792,6 @@ async function loadAdDays(){
     if(r.max_video_mb) MAX_VIDEO_MB = r.max_video_mb;
     if(r.max_video_duration) MAX_VIDEO_DURATION = r.max_video_duration;
   }catch(e){}
-}
-
-// R2_PUBLIC_URL ni bilvosita olish — video URL qurish orqali
-// Yoki server qaytaradi: /api/settings ga qo'shamiz kelajakda
-async function loadR2PublicUrl(){
-  // Video stream endpoint R2'ga redirect qiladi
-  // Biz to'g'ridan-to'g'ri /api/ad/{id}/video dan foydalanamiz
-  // Fallback: settings orqali olish (agar backend qo'llasa)
-  R2_PUBLIC_URL = ""; // Server orqali redirect qilamiz
 }
 
 // ============================================================
@@ -1853,7 +1835,6 @@ function generatePoster(videoUrl, adId, callback){
   vid.load();
 }
 
-// Video URL — server orqali redirect (R2'ga)
 function videoUrl(adId){
   return `${API_URL}/api/ad/${adId}/video`;
 }
@@ -2048,7 +2029,7 @@ function addEditDyn(listId, cls, ph, val=""){
   if(c.children.length >= 25){ toast("Maksimal 25 ta", "error"); return }
   const d = document.createElement("div");
   d.className = "dyn-row";
-  d.innerHTML = `<input class="input ${cls}" placeholder="${ph}" value="${esc(val)}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button class="dyn-del" onclick="this.parentElement.remove()">${ico("trash","ico-sm")}</button>`;
+  d.innerHTML = `<input class="input ${cls}" placeholder="${ph}" value="${esc(val)}" autocomplete="off"><button class="dyn-del" onclick="this.parentElement.remove()">${ico("trash","ico-sm")}</button>`;
   c.appendChild(d);
 }
 
@@ -2716,7 +2697,7 @@ function addDyn(listId, cls, ph){
   if(c.children.length >= 25){ toast("Maksimal 25 ta", "error"); return }
   const d = document.createElement("div");
   d.className = "dyn-row";
-  d.innerHTML = `<input class="input ${cls}" placeholder="${ph}" autocomplete="off" autocorrect="off" autocapitalize="off" spellcheck="false"><button class="dyn-del" onclick="this.parentElement.remove()">${ico("trash","ico-sm")}</button>`;
+  d.innerHTML = `<input class="input ${cls}" placeholder="${ph}" autocomplete="off"><button class="dyn-del" onclick="this.parentElement.remove()">${ico("trash","ico-sm")}</button>`;
   c.appendChild(d);
 }
 
@@ -2725,7 +2706,7 @@ function addDyn(listId, cls, ph){
 // ============================================================
 function startCreate(){
   S.step = 1; S.tariff = null;
-  VIDEO_FILE = null; VIDEO_FILE_ID = null; VIDEO_R2_KEY = null;
+  VIDEO_FILE = null;
   VIDEO_UPLOADING = false;
   S.videoId = null; S.r2Key = null; S.videoPublicUrl = null;
   S.linked = []; S.currency = "UZS";
@@ -2772,7 +2753,6 @@ function validateStep(){
 async function nextStep(){
   if(!validateStep()) return;
 
-  // 2-qadamdan keyin video yuklash (agar hali yuklanmagan bo'lsa)
   if(S.step === 2 && !S.videoId){
     if(VIDEO_UPLOADING){ toast("Video hali yuklanmoqda, kuting", "info"); return }
     if(!VIDEO_FILE){ toast("Video tanlang", "error"); return }
@@ -2785,9 +2765,7 @@ async function nextStep(){
       const r = await uploadVideoToR2(VIDEO_FILE);
       S.videoId = r.video_id;
       S.r2Key = r.r2_key;
-      S.videoPublicUrl = r.public_url || videoUrl(0); // fallback
-      VIDEO_FILE_ID = r.video_id;
-      VIDEO_R2_KEY = r.r2_key;
+      S.videoPublicUrl = r.public_url;
       toast("Video muvaffaqiyatli yuklandi ✓", "success");
     }catch(e){
       console.error("Upload error:", e);
@@ -2816,7 +2794,7 @@ function prevStep(){
 }
 
 // ============================================================
-// VIDEO INPUT + UPLOAD (R2)
+// VIDEO INPUT
 // ============================================================
 $("videoInput").addEventListener("change", async e => {
   const f = e.target.files[0];
@@ -2845,7 +2823,6 @@ $("videoInput").addEventListener("change", async e => {
     return;
   }
 
-  // Davomiylikni tekshirish
   try{
     const duration = await getVideoDuration(f);
     if(duration > MAX_VIDEO_DURATION){
@@ -2862,8 +2839,6 @@ $("videoInput").addEventListener("change", async e => {
   }
 
   VIDEO_FILE = f;
-  VIDEO_FILE_ID = null;
-  VIDEO_R2_KEY = null;
   S.videoId = null;
   S.r2Key = null;
 
@@ -2900,8 +2875,6 @@ $("videoInput").addEventListener("change", async e => {
 
 function removeVideo(){
   VIDEO_FILE = null;
-  VIDEO_FILE_ID = null;
-  VIDEO_R2_KEY = null;
   S.videoId = null;
   S.r2Key = null;
   $("videoPreview").innerHTML = "";
@@ -2909,68 +2882,54 @@ function removeVideo(){
 }
 
 // ============================================================
-// YANGI: R2 UPLOAD (presigned URL)
+// VIDEO UPLOAD — SERVER ORQALI R2'GA (CORS yo'q!)
 // ============================================================
-async function uploadVideoToR2(file){
-  // 1. Davomiylikni o'lchash
-  let duration = 0;
-  try{ duration = await getVideoDuration(file); }
-  catch(e){ duration = 0; }
-
-  // 2. Presigned URL olish
-  const presign = await api("/api/upload-video/presign", "POST", {
-    telegram_id: USER.telegram_id,
-    size: file.size,
-    mime_type: file.type || "video/mp4",
-    duration_sec: Math.round(duration),
-  });
-  if(!presign.ok) throw new Error(presign.error || "Presign xatosi");
-
-  // 3. R2'ga to'g'ridan-to'g'ri PUT
-  await putToR2(presign.upload_url, file, (progress) => {
-    const bar = $("uploadBar");
-    const pct = $("uploadPercent");
-    const p = Math.round(progress * 100);
-    if(bar) bar.style.width = p + "%";
-    if(pct) pct.innerText = p + "%";
-  });
-
-  // 4. Confirm
-  const confirm = await api("/api/upload-video/confirm", "POST", {
-    video_id: presign.video_id,
-  });
-  if(!confirm.ok) throw new Error(confirm.error || "Confirm xatosi");
-
-  return {
-    video_id: confirm.video_id,
-    r2_key: confirm.r2_key,
-    public_url: confirm.public_url,
-  };
-}
-
-function putToR2(url, file, onProgress){
+function uploadVideoToR2(file){
   return new Promise((resolve, reject) => {
     const xhr = new XMLHttpRequest();
-    xhr.open("PUT", url);
-    xhr.setRequestHeader("Content-Type", file.type || "video/mp4");
+    const fd = new FormData();
+    fd.append("telegram_id", String(USER.telegram_id));
+    fd.append("video", file, file.name || "video.mp4");
 
     xhr.upload.onprogress = (e) => {
-      if(e.lengthComputable && onProgress){
-        onProgress(e.loaded / e.total);
+      if(e.lengthComputable){
+        const p = Math.round((e.loaded / e.total) * 100);
+        const bar = $("uploadBar");
+        const pct = $("uploadPercent");
+        if(bar) bar.style.width = p + "%";
+        if(pct) pct.innerText = p + "%";
       }
     };
 
     xhr.onload = () => {
       if(xhr.status >= 200 && xhr.status < 300){
-        resolve();
+        try{
+          const r = JSON.parse(xhr.responseText);
+          if(r.ok) resolve({
+            video_id: r.video_id,
+            r2_key: r.r2_key,
+            public_url: r.public_url,
+          });
+          else reject(new Error(r.error || "Yuklashda xato"));
+        }catch(err){
+          reject(new Error("Serverdan noto'g'ri javob"));
+        }
       } else {
-        reject(new Error(`R2 xato: ${xhr.status}`));
+        let msg = `Server xatosi (${xhr.status})`;
+        try{
+          const r = JSON.parse(xhr.responseText);
+          if(r.error) msg = r.error;
+        }catch(e){}
+        reject(new Error(msg));
       }
     };
-    xhr.onerror = () => reject(new Error("R2 tarmoq xatosi"));
-    xhr.ontimeout = () => reject(new Error("R2 timeout"));
-    xhr.timeout = 30 * 60 * 1000; // 30 daqiqa
-    xhr.send(file);
+    xhr.onerror = () => reject(new Error("Tarmoq xatosi"));
+    xhr.ontimeout = () => reject(new Error("Yuklash vaqti tugadi"));
+    xhr.timeout = 30 * 60 * 1000;
+
+    xhr.open("POST", API_URL + "/api/upload-video");
+    if(TOKEN) xhr.setRequestHeader("Authorization", "Bearer " + TOKEN);
+    xhr.send(fd);
   });
 }
 
@@ -3504,11 +3463,11 @@ async function renderAdminContactsAdmin(){
     c.innerHTML = `
       <div class="card-box">
         <div class="card-box-title"><div class="card-box-ic">${ico("plus-circle")}</div>Yangi admin qo'shish</div>
-        <div class="field"><label class="label">${ico("user")}Telegram Chat ID</label><input class="input" id="acChatId" inputmode="numeric" placeholder="Masalan: 7038296036" style="font-family:monospace" autocomplete="off"></div>
+        <div class="field"><label class="label">${ico("user")}Telegram Chat ID</label><input class="input" id="acChatId" inputmode="numeric" placeholder="7038296036" style="font-family:monospace" autocomplete="off"></div>
         <div class="field"><label class="label">${ico("msg")}Username</label><input class="input" id="acUsername" placeholder="@username" autocomplete="off"></div>
         <div class="field"><label class="label">${ico("user")}Ism</label><input class="input" id="acFirst" placeholder="Ism" autocomplete="off"></div>
         <div class="field"><label class="label">${ico("user")}Familiya</label><input class="input" id="acLast" placeholder="Familiya" autocomplete="off"></div>
-        <div class="field"><label class="label">${ico("info")}Qisqacha ma'lumot</label><textarea class="textarea" id="acInfo" placeholder="Masalan: Savol va yordam uchun" autocomplete="off"></textarea></div>
+        <div class="field"><label class="label">${ico("info")}Qisqacha ma'lumot</label><textarea class="textarea" id="acInfo" placeholder="Savol va yordam uchun" autocomplete="off"></textarea></div>
         <button class="btn btn-primary btn-block" onclick="adminAddContact()">${ico("plus")}Qo'shish</button>
       </div>
       <div class="card-box">
@@ -3892,7 +3851,7 @@ async function renderUserbotSection(){
           <button class="btn btn-primary btn-block" onclick="userbotSendCode()">${ico("send")}Kod yuborish</button>
         </div>
         <div id="ub-step2" class="hidden">
-          <div class="field"><label class="label">${ico("msg")}Telegram dan kelgan kod</label><input class="input" id="ubCode" inputmode="numeric" maxlength="6" placeholder="12345" style="text-align:center;font-size:20px;letter-spacing:4px" autocomplete="off"></div>
+          <div class="field"><label class="label">${ico("msg")}Kod</label><input class="input" id="ubCode" inputmode="numeric" maxlength="6" placeholder="12345" style="text-align:center;font-size:20px;letter-spacing:4px" autocomplete="off"></div>
           <button class="btn btn-primary btn-block" onclick="userbotVerifyCode()">${ico("check")}Tasdiqlash</button>
           <button class="btn btn-secondary btn-block mt-8" onclick="userbotBack()">${ico("arrow-l")}Orqaga</button>
         </div>
