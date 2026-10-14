@@ -1,5 +1,5 @@
 # ============================================================
-# Cardinal v5.7 - Sozlamala
+# Cardinal v8.0 - Telegram Video Channel
 # ============================================================
 import os
 
@@ -31,7 +31,7 @@ class BOT:
     # Web App
     WEB_APP_URL = "https://bilolmujah-hue.github.io/cardinal_github/"
 
-    # Reklama joylanadigan yopiq kanal (1-kanal)
+    # Reklama kanali (e'lonlar post qilinadigan kanal)
     ADS_CHANNEL_ID = -1001723379807
     ADS_CHANNEL_INVITE = "https://t.me/+5XuKi8Nxoz5iODky"
     ADS_CHANNEL_NAME = "Cardinal Savdo"
@@ -41,10 +41,11 @@ class BOT:
     PUBLIC_CHANNEL_ID = -1001365422917
     PUBLIC_CHANNEL_NAME = "Cardinal PUBG"
 
-    # Video saqlash kanali
+    # 🎥 Video saqlash kanali (@reklama_db)
     VIDEO_CHANNEL_ID = -1004401093865
+    VIDEO_CHANNEL_USERNAME = "@reklama_db"
 
-    # Majburiy obuna kanallari (2 ta)
+    # Majburiy obuna kanallari
     REQUIRED_CHANNELS = [
         {
             "type": "invite",
@@ -60,7 +61,7 @@ class BOT:
         },
     ]
 
-    # Kanal postining pastidagi doimiy matnlar
+    # Kanal postining pastidagi matnlar
     CHANNEL_FOOTER = (
         "📌 Kanalimiz: @cardinal_savdo\n"
         "🤝 Garant uchun: @Cardinal_G\n"
@@ -110,7 +111,26 @@ class JWT:
 class API:
     HOST = "0.0.0.0"
     PORT = int(os.getenv("PORT", 8080))
-    MAX_SIZE = 200 * 1024 * 1024
+    MAX_SIZE = 200 * 1024 * 1024  # 200 MB
+
+
+# ============================================================
+# VIDEO LIMITLARI (Telegram kanal)
+# ============================================================
+class VIDEO:
+    MAX_SIZE = 200 * 1024 * 1024          # 200 MB
+    MAX_DURATION = 600                     # 10 daqiqa (sekund)
+    MIN_SIZE = 1024                        # 1 KB
+    ALLOWED_MIMES = [
+        "video/mp4",
+        "video/quicktime",
+        "video/x-m4v",
+        "video/webm",
+        "video/3gpp",
+    ]
+    ALLOWED_EXTS = (
+        ".mp4", ".mov", ".m4v", ".webm", ".3gp", ".hevc", ".mkv", ".avi"
+    )
 
 
 # ============================================================
@@ -142,7 +162,7 @@ class T2:
 
 class T3:
     id = 3
-    price = 25000
+    price = 22000
     days = 0
     type = "RARE"
     name = "RARE 10%"
@@ -215,7 +235,7 @@ class LIMITS:
 
 
 # ============================================================
-# DEFAULT REKLAMA MUDDATI (admin paneldan o'zgartiriladi)
+# DEFAULT REKLAMA MUDDATI
 # ============================================================
 DEFAULT_AD_DAYS = 15
 
