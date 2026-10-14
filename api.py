@@ -1,7 +1,7 @@
 """
 Cardinal API v8.0 — Telegram Video Channel
 - Video yuklash: Bot/Userbot orqali @reklama_db kanaliga
-- Stream: Telegram'dan Range bilan
+- Stream: Telegram'dan Range bil
 - Metadata: PostgreSQL
 - Barcha endpointlar to'liq
 """
