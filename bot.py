@@ -2,7 +2,7 @@
 Cardinal Bot v8.1 — Telegram Video Channel (to'liq tuzatilgan)
 - Video @reklama_db kanalida saqlanadi (msg_id)
 - Kanalga post: userbot orqali (Telethon)
-- Premium emoji
+- Premium emoj
 - Live countdown
 """
 import asyncio
