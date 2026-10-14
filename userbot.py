@@ -1,33 +1,18 @@
 """
-@CardXabarBot dan keladigan to'lov xabarlarini o'qib, avtomatik balans qo'shadi.
-Session DB dan yuklanadi — admin panel orqali boshqariladi.
-
-MUHIM: Faqat KIRIM (kelgan pul) xabarlarini o'qiydi.
-Chiqim (Platezh, Spisanie) xabarlarini o'tkazib yuboradi.
-
-QO'SHIMCHA:
-- send_video_to_channel() — userbot orqali kanalga video yuborish (200 MB gacha)
-- delete_message() — kanal xabarini o'chirish
+CardXabarBot watcher + kanalga video yuborish (Telethon)
 """
 import asyncio
 import logging
 import re
-import tempfile
-import os
 from typing import Optional, Callable, Awaitable, Dict, Any
 
-from telethon import TelegramClient, events
+from telethon import TelegramClient, events, Button
 from telethon.sessions import StringSession
 from telethon.network import ConnectionTcpAbridged
-from telethon.tl.custom import Button
 from telethon.errors import (
     AuthKeyNotFound, AuthKeyDuplicatedError, SessionRevokedError,
     SessionPasswordNeededError, PhoneCodeInvalidError,
     PhoneCodeExpiredError, PasswordHashInvalidError,
-)
-from telethon.errors.rpcerrorlist import (
-    ChannelPrivateError, ChatWriteForbiddenError,
-    MessageIdInvalidError, UserNotParticipantError,
 )
 
 from config import USERBOT
@@ -42,14 +27,12 @@ class CardXabarWatcher:
         self.client: Optional[TelegramClient] = None
         self._task: Optional[asyncio.Task] = None
         self._stopped = False
-        self._pending: Dict[str, Dict[str, Any]] = {}  # phone -> {client, hash}
-        self._send_lock = asyncio.Lock()  # video yuborishda bir vaqtda bitta
+        self._pending: Dict[str, Dict[str, Any]] = {}
 
     # ============================================================
     # START (DB dan yuklash)
     # ============================================================
     async def start(self):
-        """DB dan session olib, ulanish."""
         if not self.db:
             logger.warning("⚠️ DB ulanmagan — userbot ishga tushmaydi")
             return
@@ -62,7 +45,6 @@ class CardXabarWatcher:
         await self._connect_with_session(session_str.strip())
 
     async def _connect_with_session(self, session_str: str):
-        """Session string bilan ulanish + handlerlarni ro'yxatdan o'tkazish."""
         try:
             self.client = TelegramClient(
                 StringSession(session_str),
@@ -70,10 +52,10 @@ class CardXabarWatcher:
                 USERBOT.API_HASH,
                 device_model="Cardinal",
                 system_version="1.0",
-                app_version="5.4",
+                app_version="8.0",
                 connection=ConnectionTcpAbridged,
                 use_ipv6=False,
-                timeout=60,
+                timeout=30,
                 retry_delay=3,
                 auto_reconnect=True,
                 connection_retries=15,
@@ -105,13 +87,11 @@ class CardXabarWatcher:
     # AUTH — admin panel orqali
     # ============================================================
     async def send_code(self, phone: str) -> dict:
-        """1-qadam: Telefon raqamga kod yuborish."""
         try:
             phone = phone.strip()
             if not phone.startswith("+"):
                 phone = "+" + phone
 
-            # Eski pending bo'lsa tozalash
             if phone in self._pending:
                 try:
                     await self._pending[phone]["client"].disconnect()
@@ -125,7 +105,7 @@ class CardXabarWatcher:
                 USERBOT.API_HASH,
                 connection=ConnectionTcpAbridged,
                 use_ipv6=False,
-                timeout=60,
+                timeout=30,
             )
             await client.connect()
             result = await client.send_code_request(phone)
@@ -142,7 +122,6 @@ class CardXabarWatcher:
             return {"ok": False, "error": str(e)}
 
     async def verify_code(self, phone: str, code: str) -> dict:
-        """2-qadam: Kodni tasdiqlash. Agar 2FA bo'lsa, need_2fa=True qaytaradi."""
         try:
             phone = phone.strip()
             if not phone.startswith("+"):
@@ -165,7 +144,6 @@ class CardXabarWatcher:
             except PhoneCodeExpiredError:
                 return {"ok": False, "error": "Kod muddati tugadi"}
 
-            # Muvaffaqiyat
             session_str = client.session.save()
             await self._save_and_start(session_str, phone)
             return {"ok": True, "need_2fa": False}
@@ -175,7 +153,6 @@ class CardXabarWatcher:
             return {"ok": False, "error": str(e)}
 
     async def verify_2fa(self, phone: str, password: str) -> dict:
-        """3-qadam (agar 2FA bo'lsa): Parolni tasdiqlash."""
         try:
             phone = phone.strip()
             if not phone.startswith("+"):
@@ -200,8 +177,6 @@ class CardXabarWatcher:
             return {"ok": False, "error": str(e)}
 
     async def _save_and_start(self, session_str: str, phone: str):
-        """Session ni DB ga saqlash va ulanishni boshlash."""
-        # Eski pending ni tozalash
         if phone in self._pending:
             try:
                 await self._pending[phone]["client"].disconnect()
@@ -209,7 +184,6 @@ class CardXabarWatcher:
                 pass
             del self._pending[phone]
 
-        # Eski client ni to'xtatish
         if self.client:
             try:
                 await self.client.disconnect()
@@ -217,16 +191,13 @@ class CardXabarWatcher:
                 pass
             self.client = None
 
-        # DB ga saqlash
         if self.db:
             await self.db.save_userbot_session(phone, session_str)
             logger.info(f"💾 Session saqlandi: {phone}")
 
-        # Ulanish
         await self._connect_with_session(session_str)
 
     async def logout(self) -> dict:
-        """Userbot ni o'chirish va DB dan sessiyani tozalash."""
         try:
             if self.client:
                 try:
@@ -255,7 +226,6 @@ class CardXabarWatcher:
     # STATUS
     # ============================================================
     async def get_status(self) -> dict:
-        """Hozirgi holatni qaytaradi."""
         try:
             info = None
             if self.db:
@@ -290,7 +260,57 @@ class CardXabarWatcher:
             return {"ok": False, "error": str(e)}
 
     # ============================================================
-    # MESSAGE HANDLER — @CardXabarBot dan kelgan to'lov xabarlari
+    # KANALGA VIDEO YUBORISH (userbot orqali)
+    # ============================================================
+    async def send_video_to_channel(self, channel_id, file_path, caption="", reply_markup=None):
+        """
+        Userbot orqali kanalga video yuborish (fayl yo'li orqali).
+        2 GB gacha ishlaydi.
+        """
+        if not self.client:
+            logger.error("Userbot ulanmagan — kanalga yuborib bo'lmaydi")
+            return None
+
+        try:
+            buttons = []
+            if reply_markup and hasattr(reply_markup, "inline_keyboard"):
+                for row in reply_markup.inline_keyboard:
+                    btn_row = []
+                    for b in row:
+                        url = getattr(b, "url", None)
+                        if url:
+                            btn_row.append(Button.url(b.text, url))
+                    if btn_row:
+                        buttons.append(btn_row)
+
+            msg = await self.client.send_file(
+                channel_id,
+                file_path,
+                caption=caption,
+                parse_mode="html",
+                buttons=buttons if buttons else None,
+                supports_streaming=True,
+                force_document=False,
+            )
+            logger.info(f"✅ Video kanalga yuborildi: msg_id={msg.id}")
+            return msg
+        except Exception as e:
+            logger.error(f"send_video_to_channel: {e}", exc_info=True)
+            return None
+
+    async def delete_message(self, chat_id, msg_id):
+        """Xabar o'chirish."""
+        if not self.client:
+            return False
+        try:
+            await self.client.delete_messages(chat_id, msg_id)
+            return True
+        except Exception as e:
+            logger.error(f"delete_message: {e}")
+            return False
+
+    # ============================================================
+    # MESSAGE HANDLER (to'lov aniqlash)
     # ============================================================
     async def _on_message(self, event):
         try:
@@ -325,37 +345,28 @@ class CardXabarWatcher:
         except Exception as e:
             logger.error(f"❌ Handler xato: {e}", exc_info=True)
 
-    # ============================================================
-    # PARSE — FAQAT KIRIM
-    # ============================================================
     @staticmethod
     def _parse(text: str) -> Optional[tuple]:
         """
         Matndan amount va oxirgi 4 raqamni ajratadi.
-        FAQAT KIRIM (kelgan pul) xabarlarini qaytaradi.
-        Chiqim xabarlarini (Platezh, Spisanie) — None qaytaradi.
+        FAQAT KIRIM xabarlarini qaytaradi.
         """
         if not text:
             return None
 
         text_low = text.lower()
 
-        # ❌ 1. CHIQIM xabarlarini darhol rad etish
         chiqim_keywords = [
-            "spisanie", "platezh", "снятие", "списание", "платеж",
-            "perevod s kartu", "перевод с карты",
+            "spisanie", "platezh", "снятие", "списание",
+            "платеж", "perevod s kartu", "перевод с карты",
         ]
         for kw in chiqim_keywords:
             if kw in text_low:
-                logger.debug(f"⏭️ Chiqim xabari (keyword: {kw})")
                 return None
 
-        # ❌ 2. Chiqim belgisi
         if "➖" in text or "🔴" in text:
-            logger.debug("⏭️ Chiqim xabari (➖ yoki 🔴)")
             return None
 
-        # ✅ 3. KIRIM belgisi
         is_income = (
             "➕" in text
             or "🟢" in text
@@ -367,10 +378,8 @@ class CardXabarWatcher:
 
         if not is_income:
             if not re.search(r"[➕+]\s*[\d\s.,]+\s*(UZS|so'm|сум)", text, re.IGNORECASE):
-                logger.debug("⏭️ Kirim belgisi topilmadi")
                 return None
 
-        # ===== AMOUNT =====
         amount = None
         m = re.search(
             r"[➕+]?\s*([\d]{1,3}(?:[\s,]\d{3})*(?:\.\d{1,2})?)\s*(UZS|so'm|сум)",
@@ -384,10 +393,8 @@ class CardXabarWatcher:
                 pass
 
         if amount is None or amount <= 0:
-            logger.debug("⏭️ Amount topilmadi")
             return None
 
-        # ===== OXIRGI 4 RAQAM =====
         last4 = None
         m2 = re.search(r"\*{2,}\s*(\d{4})\b", text)
         if m2:
@@ -401,92 +408,12 @@ class CardXabarWatcher:
                 last4 = m3.group(1)
 
         if not last4:
-            logger.debug("⏭️ Oxirgi 4 raqam topilmadi")
             return None
 
         return amount, last4
 
-    # ============================================================
-    # KANAL POST (userbot orqali) — YANGI
-    # ============================================================
-    async def send_video_to_channel(self, channel_id: int, video_url: str,
-                                     caption: str, reply_markup=None) -> Optional[object]:
-        """
-        Userbot orqali kanalga video yuborish (URL orqali).
-        Telegram 200 MB gacha URL'dan yuklab oladi.
-
-        Qaytaradi: Message obyekt (msg.id kerak) yoki None.
-        """
-        if not self.client:
-            logger.error("Userbot ulanmagan — kanalga yuborib bo'lmaydi")
-            return None
-
-        async with self._send_lock:
-            try:
-                # Reply markup → Telethon buttons
-                buttons = None
-                if reply_markup and hasattr(reply_markup, "inline_keyboard"):
-                    rows = []
-                    for row in reply_markup.inline_keyboard:
-                        btn_row = []
-                        for b in row:
-                            url = getattr(b, "url", None)
-                            text = getattr(b, "text", "")
-                            if url:
-                                btn_row.append(Button.url(text, url))
-                        if btn_row:
-                            rows.append(btn_row)
-                    if rows:
-                        buttons = rows
-
-                logger.info(f"📤 Kanalga yuborilmoqda: {video_url[:80]}...")
-
-                msg = await self.client.send_file(
-                    channel_id,
-                    video_url,
-                    caption=caption,
-                    parse_mode="html",
-                    buttons=buttons,
-                    supports_streaming=True,
-                    force_document=False,
-                )
-                logger.info(f"✅ Kanalga yuborildi: msg_id={msg.id}")
-                return msg
-
-            except ChannelPrivateError:
-                logger.error(f"❌ Kanal private yoki userbot a'zo emas: {channel_id}")
-                return None
-            except ChatWriteForbiddenError:
-                logger.error(f"❌ Userbot kanalga yozish huquqiga ega emas: {channel_id}")
-                return None
-            except UserNotParticipantError:
-                logger.error(f"❌ Userbot kanalga a'zo emas: {channel_id}")
-                return None
-            except Exception as e:
-                logger.error(f"❌ send_video_to_channel xato: {e}", exc_info=True)
-                return None
-
-    async def delete_message(self, chat_id: int, msg_id: int) -> bool:
-        """Kanal xabarini userbot orqali o'chirish."""
-        if not self.client:
-            return False
-        try:
-            await self.client.delete_messages(chat_id, msg_id)
-            logger.info(f"🗑️ Xabar o'chirildi: chat={chat_id}, msg={msg_id}")
-            return True
-        except MessageIdInvalidError:
-            logger.warning(f"Xabar allaqachon o'chirilgan: msg={msg_id}")
-            return False
-        except Exception as e:
-            logger.error(f"delete_message: {e}")
-            return False
-
-    # ============================================================
-    # STOP
-    # ============================================================
     async def stop(self):
         self._stopped = True
-        # Pending authlarni yopish
         for phone, p in list(self._pending.items()):
             try:
                 await p["client"].disconnect()
