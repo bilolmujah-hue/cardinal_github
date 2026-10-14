@@ -2,7 +2,7 @@
 Cardinal DB v8.0 — Telegram Channel + PostgreSQL
 - videos jadvali (Telegram file_id)
 - ads.video_id
-- Soft delete kartalar
+- Soft delete kartala
 - Cleanup: get_expired_ads + expire_ad
 """
 import asyncpg
