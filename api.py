@@ -1,9 +1,8 @@
 """
-Cardinal API v8.0 — Telegram Video Channel
-- Video yuklash: Bot/Userbot orqali @reklama_db kanaliga
-- Stream: Telegram'dan Range bil
-- Metadata: PostgreSQL
-- Barcha endpointlar to'liq
+Cardinal API v8.1 — Telegram Video Channel (to'liq tuzatilgan)
+- Video upload: userbot orqali @reklama_db kanaliga → msg_id saqlanadi
+- Stream: Telethon orqali kanaldagi videodan stream
+- file_id aslida msg_id (Telethon file_id emas)
 """
 import asyncio
 import json
@@ -136,7 +135,7 @@ class API:
             # Ad detail
             ("GET",   "/api/ad/{ad_id}", self.get_ad),
 
-            # Video upload (server orqali Telegram kanalga)
+            # Video upload
             ("POST",  "/api/upload-video", self.upload_video),
 
             # Auth
@@ -228,7 +227,7 @@ class API:
                 allow_head=True
             )
             cors.add(video_route)
-            logger.info("✅ Video route: GET + HEAD (Telegram stream)")
+            logger.info("✅ Video route: GET + HEAD (Telethon stream)")
         except Exception as e:
             logger.error(f"Video route xato: {e}")
 
@@ -238,7 +237,7 @@ class API:
     async def index(self, req):
         return jresp({
             "app": "Cardinal API",
-            "version": "8.0",
+            "version": "8.1",
             "status": "running",
             "storage": "Telegram Channel",
             "video_channel": BOT.VIDEO_CHANNEL_USERNAME,
@@ -310,12 +309,12 @@ class API:
         return jresp(await self.db.get_feedbacks())
 
     # ============================================================
-    # VIDEO STREAM — Telegram'dan Range bilan
+    # VIDEO STREAM — Telethon orqali kanaldan
     # ============================================================
     async def stream_video(self, req):
         """
-        Video streaming — Telegram'dan Range request bilan.
-        iOS Safari, Android Chrome, Desktop uchun.
+        Video streaming — Telegram kanaldagi videoni Telethon orqali stream qiladi.
+        DB'dagi file_id aslida msg_id (string).
         """
         ad_id = None
         is_head = (req.method == "HEAD")
@@ -325,109 +324,119 @@ class API:
             if not ad or not ad.get("file_id"):
                 return web.Response(status=404, text="Video topilmadi")
 
-            file_id = ad["file_id"]
+            msg_id_str = str(ad["file_id"]).strip()
+            if not msg_id_str.isdigit():
+                logger.error(f"file_id noto'g'ri (ad #{ad_id}): {msg_id_str}")
+                return web.Response(status=500, text="Video ID xato")
 
-            # Telegram fayl ma'lumotlari
+            msg_id = int(msg_id_str)
+
+            # Userbot tekshiruvi
+            if not self.bot_app.userbot or not self.bot_app.userbot.client:
+                logger.error(f"Userbot ulanmagan (ad #{ad_id})")
+                return web.Response(status=503, text="Userbot ulanmagan")
+
+            # Kanaldagi xabarni olish
             try:
-                tg_file = await self.bot_app.bot.get_file(file_id)
-                file_path = tg_file.file_path
-                file_size = getattr(tg_file, "file_size", None)
+                msg = await self.bot_app.userbot.client.get_messages(
+                    BOT.VIDEO_CHANNEL_ID, ids=msg_id
+                )
+                if not msg or not msg.media:
+                    return web.Response(status=404, text="Video topilmadi")
             except Exception as e:
-                logger.error(f"get_file xato (ad #{ad_id}): {e}")
+                logger.error(f"get_messages xato (ad #{ad_id}): {e}")
                 return web.Response(status=502, text="Video yuklanmadi")
 
-            telegram_url = f"https://api.telegram.org/file/bot{BOT.TOKEN}/{file_path}"
+            # Fayl hajmi va mime
+            file_size = None
+            mime_type = "video/mp4"
+            try:
+                if getattr(msg, "video", None):
+                    file_size = getattr(msg.video, "size", None)
+                    mime_type = getattr(msg.video, "mime_type", None) or "video/mp4"
+                elif getattr(msg, "document", None):
+                    file_size = getattr(msg.document, "size", None)
+                    mime_type = getattr(msg.document, "mime_type", None) or "video/mp4"
+            except Exception:
+                pass
+
+            if not file_size:
+                return web.Response(status=500, text="Fayl hajmi aniqlanmadi")
 
             # HEAD request
             if is_head:
                 resp = web.Response(status=200)
-                resp.headers["Content-Type"] = "video/mp4"
+                resp.headers["Content-Type"] = mime_type
                 resp.headers["Accept-Ranges"] = "bytes"
                 resp.headers["Cache-Control"] = "public, max-age=3600"
                 resp.headers["Content-Disposition"] = "inline"
                 resp.headers["X-Content-Type-Options"] = "nosniff"
-                if file_size:
-                    resp.headers["Content-Length"] = str(file_size)
+                resp.headers["Content-Length"] = str(file_size)
                 return resp
 
-            # Range parse
+            # Range header
             range_header = req.headers.get("Range")
             range_tuple = None
-            if range_header and file_size:
+            if range_header:
                 range_tuple = parse_range_header(range_header, file_size)
 
-            # Upstream
-            req_headers = {"User-Agent": "CardinalBot/8.0"}
+            # Offset va limit
             if range_tuple:
-                req_headers["Range"] = f"bytes={range_tuple[0]}-{range_tuple[1]}"
-            elif range_header:
-                req_headers["Range"] = range_header
+                offset = range_tuple[0]
+                limit = range_tuple[1] - range_tuple[0] + 1
+                status_code = 206
+            else:
+                offset = 0
+                limit = file_size
+                status_code = 200
 
-            async with ClientSession(timeout=None) as sess:
-                async with sess.get(telegram_url, headers=req_headers) as upstream:
-                    if upstream.status not in (200, 206):
-                        logger.error(f"Upstream status {upstream.status} (ad #{ad_id})")
-                        return web.Response(status=502, text="Video CDN xato")
+            # Response
+            resp = web.StreamResponse(status=status_code)
+            resp.headers["Content-Type"] = mime_type
+            resp.headers["Accept-Ranges"] = "bytes"
+            resp.headers["Cache-Control"] = "public, max-age=3600"
+            resp.headers["Content-Disposition"] = "inline"
+            resp.headers["X-Content-Type-Options"] = "nosniff"
 
-                    status = 200
-                    if upstream.status == 206 or range_tuple:
-                        status = 206
+            if range_tuple:
+                s, e = range_tuple
+                resp.headers["Content-Range"] = f"bytes {s}-{e}/{file_size}"
+                resp.headers["Content-Length"] = str(limit)
+            else:
+                resp.headers["Content-Length"] = str(file_size)
 
-                    resp = web.StreamResponse(status=status)
+            try:
+                await resp.prepare(req)
+            except (ConnectionResetError, ConnectionAbortedError):
+                return resp
 
-                    # Content-Type
-                    upstream_ct = upstream.headers.get("Content-Type", "").lower()
-                    if "quicktime" in upstream_ct or "mov" in upstream_ct:
-                        content_type = "video/quicktime"
-                    elif "webm" in upstream_ct:
-                        content_type = "video/webm"
-                    else:
-                        content_type = "video/mp4"
-                    resp.headers["Content-Type"] = content_type
-
-                    # Content-Length / Range
-                    if "Content-Length" in upstream.headers:
-                        resp.headers["Content-Length"] = upstream.headers["Content-Length"]
-
-                    if status == 206:
-                        if "Content-Range" in upstream.headers:
-                            resp.headers["Content-Range"] = upstream.headers["Content-Range"]
-                        elif range_tuple and file_size:
-                            s, e = range_tuple
-                            resp.headers["Content-Range"] = f"bytes {s}-{e}/{file_size}"
-                            resp.headers["Content-Length"] = str(e - s + 1)
-
-                    # Muhim headerlar
-                    resp.headers["Accept-Ranges"] = "bytes"
-                    resp.headers["Cache-Control"] = "public, max-age=3600"
-                    resp.headers["Content-Disposition"] = "inline"
-                    resp.headers["X-Content-Type-Options"] = "nosniff"
-
+            # Telethon iter_download
+            try:
+                async for chunk in self.bot_app.userbot.client.iter_download(
+                    msg.media,
+                    offset=offset,
+                    limit=limit,
+                    chunk_size=512 * 1024,
+                    request_size=512 * 1024,
+                ):
+                    if not chunk:
+                        continue
                     try:
-                        await resp.prepare(req)
-                    except (ConnectionResetError, ConnectionAbortedError):
+                        await resp.write(chunk)
+                    except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
                         return resp
-
-                    try:
-                        async for chunk in upstream.content.iter_chunked(64 * 1024):
-                            if not chunk:
-                                continue
-                            try:
-                                await resp.write(chunk)
-                            except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
-                                return resp
-                            except Exception as e:
-                                if "closing transport" in str(e):
-                                    return resp
-                                raise
-                        try:
-                            await resp.write_eof()
-                        except Exception:
-                            pass
                     except Exception as e:
-                        logger.debug(f"Upstream stream xato (ad #{ad_id}): {e}")
+                        if "closing transport" in str(e):
+                            return resp
+                        raise
+                try:
+                    await resp.write_eof()
+                except Exception:
+                    pass
+            except Exception as e:
+                logger.debug(f"Telethon stream xato (ad #{ad_id}): {e}")
 
-                    return resp
+            return resp
 
         except asyncio.CancelledError:
             raise
@@ -441,12 +450,12 @@ class API:
             return web.Response(status=500, text="Server xatosi")
 
     # ============================================================
-    # VIDEO UPLOAD — Telegram kanalga (@reklama_db)
+    # VIDEO UPLOAD — userbot orqali @reklama_db kanaliga
     # ============================================================
     async def upload_video(self, req):
         """
-        Multipart faylni qabul qilib, userbot orqali @reklama_db kanaliga yuklaydi.
-        file_id qaytaradi (DB'ga saqlash uchun).
+        Multipart faylni qabul qilib, userbot orqali @reklama_db kanaliga yuboradi.
+        msg_id qaytaradi (DB'ga file_id sifatida saqlash uchun).
         """
         tmp_path = None
         try:
@@ -520,12 +529,13 @@ class API:
             tmp.close()
             tmp_path = tmp.name
 
-            # Userbot orqali kanalga yuborish
+            # Userbot tekshiruvi
             if not self.bot_app.userbot or not self.bot_app.userbot.client:
                 try: os.remove(tmp_path)
                 except: pass
                 return jresp({"ok": False, "error": "Userbot ulanmagan"}, 500)
 
+            # Kanalga yuborish
             try:
                 msg = await self.bot_app.userbot.send_video_to_channel(
                     channel_id=BOT.VIDEO_CHANNEL_ID,
@@ -543,27 +553,44 @@ class API:
             except: pass
             tmp_path = None
 
-            if not msg or not getattr(msg, "video", None):
+            if not msg:
                 return jresp({"ok": False, "error": "Telegram video qabul qilmadi"}, 500)
 
-            file_id = msg.video.file_id
-            file_size = getattr(msg.video, "size", len(file_data))
-            duration = getattr(msg.video, "duration", 0)
+            # msg_id ni olish
+            msg_id = msg.id
+            file_size = len(file_data)
 
-            # DB'ga metadata
+            # Duration (Document attribute'idan)
+            duration = 0
+            try:
+                media = getattr(msg, "media", None)
+                if media:
+                    doc = getattr(media, "document", None)
+                    if doc:
+                        for attr in (doc.attributes or []):
+                            if hasattr(attr, "duration") and attr.duration:
+                                duration = int(attr.duration)
+                                break
+                    vid = getattr(media, "video", None)
+                    if vid and getattr(vid, "duration", None):
+                        duration = int(vid.duration)
+            except Exception:
+                duration = 0
+
+            # DB'ga metadata — file_id = str(msg_id)
             video_id = await self.db.create_video_meta(
-                file_id=file_id,
+                file_id=str(msg_id),
                 size=file_size,
                 mime_type=mime_type,
                 duration_sec=duration,
             )
 
-            logger.info(f"✅ Upload OK: video_id={video_id}, file_id={file_id[:30]}..., size={file_size}")
+            logger.info(f"✅ Upload OK: video_id={video_id}, msg_id={msg_id}, size={file_size}")
 
             return jresp({
                 "ok": True,
                 "video_id": video_id,
-                "file_id": file_id,
+                "file_id": str(msg_id),
                 "size": file_size,
                 "duration": duration,
             })
@@ -1238,7 +1265,6 @@ class API:
             t = TARIFFS.get(ad["tariff"], TARIFFS[1])
             await self.db.update_balance(ad["seller_tg"], t.price, "topup", "Rad etilgan reklama qaytarildi")
 
-            # Video metadata o'chirish (Telegram'dan fayl o'chirilmaydi)
             if ad.get("video_id"):
                 try:
                     await self.db.delete_video_meta(ad["video_id"])
@@ -1667,4 +1693,4 @@ class API:
         await runner.setup()
         site = web.TCPSite(runner, API_CFG.HOST, API_CFG.PORT)
         await site.start()
-        logger.info(f"✅ API v8.0: http://{API_CFG.HOST}:{API_CFG.PORT}")
+        logger.info(f"✅ API v8.1: http://{API_CFG.HOST}:{API_CFG.PORT}")
