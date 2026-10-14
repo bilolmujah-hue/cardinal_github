@@ -1,9 +1,9 @@
 """
-Cardinal API v7.3
-- iOS video streaming TO'LIQ qo'llab-quvvatlanadi
-- aiohttp_cors bilan TO'G'RI integratsiya (AssertionError FIX)
-- Video streaming Telegram'dan (Range, HEAD)
-- Barcha funksiyalar ishlaydi
+Cardinal API v8.0 — Telegram Video Channel
+- Video yuklash: Bot/Userbot orqali @reklama_db kanaliga
+- Stream: Telegram'dan Range bilan
+- Metadata: PostgreSQL
+- Barcha endpointlar to'liq
 """
 import asyncio
 import json
@@ -11,13 +11,15 @@ import base64
 import logging
 import re
 import uuid
+import os
+import tempfile
 from datetime import datetime, timedelta
 from decimal import Decimal
 
 from aiohttp import web, ClientSession
 import aiohttp_cors
 
-from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS
+from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS, VIDEO
 from config import API as API_CFG
 from db import Database
 from jwt_auth import (
@@ -43,16 +45,15 @@ def jresp(data, status=200):
     )
 
 
-def is_valid_video_data_url(url: str) -> bool:
-    if not url or not isinstance(url, str): return False
-    if url.startswith("data:video"): return True
-    exts = (".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".3gp", ".hevc")
-    return url.lower().endswith(exts)
-
-
 def is_valid_image_data_url(url: str) -> bool:
     if not url or not isinstance(url, str): return False
     return url.startswith("data:image/")
+
+
+def is_valid_video_filename(filename: str) -> bool:
+    if not filename: return False
+    low = filename.lower()
+    return low.endswith(VIDEO.ALLOWED_EXTS)
 
 
 def parse_range_header(range_header: str, file_size: int):
@@ -100,7 +101,6 @@ class API:
 
     @web.middleware
     async def _err_mw(self, request, handler):
-        """Xatolarni tutuvchi middleware. CORS'ga TEGMAYDI."""
         try:
             return await handler(request)
         except web.HTTPRequestEntityTooLarge:
@@ -112,11 +112,6 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 500)
 
     def _routes(self):
-        """
-        MUHIM: aiohttp_cors.setup() O'ZI OPTIONS preflight'ni avtomatik
-        qo'shadi. Biz FAQAT GET/POST/HEAD route'larni qo'shamiz va har biri
-        uchun cors.add() chaqiramiz. Qo'lda CORS header yozmaymiz.
-        """
         cors = aiohttp_cors.setup(self.app, defaults={
             "*": aiohttp_cors.ResourceOptions(
                 allow_credentials=True,
@@ -141,7 +136,7 @@ class API:
             # Ad detail
             ("GET",   "/api/ad/{ad_id}", self.get_ad),
 
-            # Upload video
+            # Video upload (server orqali Telegram kanalga)
             ("POST",  "/api/upload-video", self.upload_video),
 
             # Auth
@@ -215,7 +210,6 @@ class API:
             ("POST",  "/api/admin/userbot/logout", self.admin_userbot_logout),
         ]
 
-        # Oddiy route'lar
         for method, path, handler in r:
             try:
                 route = self.app.router.add_route(method, path, handler)
@@ -226,7 +220,7 @@ class API:
             except Exception as e:
                 logger.warning(f"Route add: {method} {path}: {e}")
 
-        # VIDEO STREAMING ROUTE — GET + HEAD (iOS uchun MUHIM)
+        # VIDEO STREAM — GET + HEAD
         try:
             video_route = self.app.router.add_get(
                 "/api/ad/{ad_id}/video",
@@ -234,7 +228,7 @@ class API:
                 allow_head=True
             )
             cors.add(video_route)
-            logger.info("Video route qo'shildi (GET + HEAD)")
+            logger.info("✅ Video route: GET + HEAD (Telegram stream)")
         except Exception as e:
             logger.error(f"Video route xato: {e}")
 
@@ -244,9 +238,12 @@ class API:
     async def index(self, req):
         return jresp({
             "app": "Cardinal API",
-            "version": "7.3",
+            "version": "8.0",
             "status": "running",
-            "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB",
+            "storage": "Telegram Channel",
+            "video_channel": BOT.VIDEO_CHANNEL_USERNAME,
+            "max_video_mb": VIDEO.MAX_SIZE // (1024*1024),
+            "max_duration_sec": VIDEO.MAX_DURATION,
         })
 
     async def stats(self, req):
@@ -259,6 +256,8 @@ class API:
             "ad_days": days,
             "kanal_interval_min": interval,
             "timeout_min": LIMITS.PAYMENT_TIMEOUT_MIN,
+            "max_video_mb": VIDEO.MAX_SIZE // (1024*1024),
+            "max_video_duration": VIDEO.MAX_DURATION,
         })
 
     async def tariffs(self, req):
@@ -266,14 +265,9 @@ class API:
         out = []
         for tid, t in TARIFFS.items():
             out.append({
-                "id": tid,
-                "name": t.name,
-                "price": t.price,
-                "days": days,
-                "type": t.type,
-                "badge": t.badge,
-                "channel": t.channel,
-                "webapp": t.webapp,
+                "id": tid, "name": t.name, "price": t.price,
+                "days": days, "type": t.type, "badge": t.badge,
+                "channel": t.channel, "webapp": t.webapp,
                 "top_hours": getattr(t, "top_hours", 0),
                 "manual": getattr(t, "manual", False),
             })
@@ -312,21 +306,28 @@ class API:
                 ad["is_saved"] = False
         return jresp(ad)
 
+    async def get_feedbacks(self, req):
+        return jresp(await self.db.get_feedbacks())
+
     # ============================================================
-    # VIDEO STREAMING — iOS TO'LIQ QO'LLAB-QUVVATLASH
-    # CORS headerlarni aiohttp_cors AVTOMATIK qo'shadi — qo'lda yozmaymiz!
+    # VIDEO STREAM — Telegram'dan Range bilan
     # ============================================================
     async def stream_video(self, req):
+        """
+        Video streaming — Telegram'dan Range request bilan.
+        iOS Safari, Android Chrome, Desktop uchun.
+        """
         ad_id = None
         is_head = (req.method == "HEAD")
         try:
             ad_id = int(req.match_info["ad_id"])
             ad = await self.db.get_ad(ad_id)
-            if not ad or not ad.get("video_file_id"):
+            if not ad or not ad.get("file_id"):
                 return web.Response(status=404, text="Video topilmadi")
 
-            file_id = ad["video_file_id"]
+            file_id = ad["file_id"]
 
+            # Telegram fayl ma'lumotlari
             try:
                 tg_file = await self.bot_app.bot.get_file(file_id)
                 file_path = tg_file.file_path
@@ -337,7 +338,7 @@ class API:
 
             telegram_url = f"https://api.telegram.org/file/bot{BOT.TOKEN}/{file_path}"
 
-            # ====== HEAD REQUEST (iOS Safari yuboradi) ======
+            # HEAD request
             if is_head:
                 resp = web.Response(status=200)
                 resp.headers["Content-Type"] = "video/mp4"
@@ -349,14 +350,14 @@ class API:
                     resp.headers["Content-Length"] = str(file_size)
                 return resp
 
-            # ====== RANGE parse ======
+            # Range parse
             range_header = req.headers.get("Range")
             range_tuple = None
             if range_header and file_size:
                 range_tuple = parse_range_header(range_header, file_size)
 
-            # ====== UPSTREAM ======
-            req_headers = {"User-Agent": "CardinalBot/7.3"}
+            # Upstream
+            req_headers = {"User-Agent": "CardinalBot/8.0"}
             if range_tuple:
                 req_headers["Range"] = f"bytes={range_tuple[0]}-{range_tuple[1]}"
             elif range_header:
@@ -368,14 +369,13 @@ class API:
                         logger.error(f"Upstream status {upstream.status} (ad #{ad_id})")
                         return web.Response(status=502, text="Video CDN xato")
 
-                    # ====== RESPONSE STATUS ======
                     status = 200
                     if upstream.status == 206 or range_tuple:
                         status = 206
 
                     resp = web.StreamResponse(status=status)
 
-                    # ====== CONTENT TYPE ======
+                    # Content-Type
                     upstream_ct = upstream.headers.get("Content-Type", "").lower()
                     if "quicktime" in upstream_ct or "mov" in upstream_ct:
                         content_type = "video/quicktime"
@@ -385,7 +385,7 @@ class API:
                         content_type = "video/mp4"
                     resp.headers["Content-Type"] = content_type
 
-                    # ====== CONTENT LENGTH / RANGE ======
+                    # Content-Length / Range
                     if "Content-Length" in upstream.headers:
                         resp.headers["Content-Length"] = upstream.headers["Content-Length"]
 
@@ -397,20 +397,17 @@ class API:
                             resp.headers["Content-Range"] = f"bytes {s}-{e}/{file_size}"
                             resp.headers["Content-Length"] = str(e - s + 1)
 
-                    # ====== iOS/VIDEO uchun MUHIM headerlar ======
-                    # CORS headerlar YOZILMAYDI — aiohttp_cors o'zi qo'shadi!
+                    # Muhim headerlar
                     resp.headers["Accept-Ranges"] = "bytes"
                     resp.headers["Cache-Control"] = "public, max-age=3600"
                     resp.headers["Content-Disposition"] = "inline"
                     resp.headers["X-Content-Type-Options"] = "nosniff"
 
-                    # ====== PREPARE (shu joyda aiohttp_cors CORS header qo'shadi) ======
                     try:
                         await resp.prepare(req)
                     except (ConnectionResetError, ConnectionAbortedError):
                         return resp
 
-                    # ====== STREAM ======
                     try:
                         async for chunk in upstream.content.iter_chunked(64 * 1024):
                             if not chunk:
@@ -444,53 +441,139 @@ class API:
             return web.Response(status=500, text="Server xatosi")
 
     # ============================================================
-    # UPLOAD VIDEO
+    # VIDEO UPLOAD — Telegram kanalga (@reklama_db)
     # ============================================================
     async def upload_video(self, req):
+        """
+        Multipart faylni qabul qilib, userbot orqali @reklama_db kanaliga yuklaydi.
+        file_id qaytaradi (DB'ga saqlash uchun).
+        """
+        tmp_path = None
         try:
             reader = await req.multipart()
             if not reader:
                 return jresp({"ok": False, "error": "Fayl yuborilmadi"}, 400)
 
-            field = await reader.next()
-            if not field or field.name != "video":
-                return jresp({"ok": False, "error": "Video topilmadi"}, 400)
+            file_data = None
+            telegram_id = None
+            filename = "ad.mp4"
+            mime_type = "video/mp4"
 
-            chunks = []
-            total = 0
-            MAX = API_CFG.MAX_SIZE
             while True:
-                chunk = await field.read_chunk(1024 * 512)
-                if not chunk:
+                part = await reader.next()
+                if part is None:
                     break
-                total += len(chunk)
-                if total > MAX:
-                    return jresp({"ok": False, "error": "Video 200 MB dan katta"}, 413)
-                chunks.append(chunk)
 
-            raw = b"".join(chunks)
-            if not raw:
-                return jresp({"ok": False, "error": "Bo'sh fayl"}, 400)
+                if part.name == "telegram_id":
+                    try:
+                        val = await part.text()
+                        telegram_id = int(val.strip())
+                    except Exception:
+                        pass
 
-            from aiogram.types import BufferedInputFile
-            filename = getattr(field, "filename", None) or "ad.mp4"
-            vid = BufferedInputFile(raw, filename=filename)
-            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
+                elif part.name == "video":
+                    filename = getattr(part, "filename", None) or "ad.mp4"
+                    try:
+                        ct = part.headers.get("Content-Type", "video/mp4")
+                        mime_type = ct or "video/mp4"
+                    except Exception:
+                        mime_type = "video/mp4"
 
-            if not msg.video:
+                    chunks = []
+                    total = 0
+                    MAX = VIDEO.MAX_SIZE
+                    while True:
+                        chunk = await part.read_chunk(1024 * 512)
+                        if not chunk:
+                            break
+                        total += len(chunk)
+                        if total > MAX:
+                            mb = MAX // (1024 * 1024)
+                            return jresp({"ok": False, "error": f"Video {mb} MB dan katta"}, 413)
+                        chunks.append(chunk)
+                    file_data = b"".join(chunks)
+
+            # Validatsiya
+            if not telegram_id:
+                return jresp({"ok": False, "error": "telegram_id yo'q"}, 400)
+            if not file_data:
+                return jresp({"ok": False, "error": "Video bo'sh"}, 400)
+            if len(file_data) < VIDEO.MIN_SIZE:
+                return jresp({"ok": False, "error": "Video juda kichik"}, 400)
+            if not is_valid_video_filename(filename):
+                return jresp({"ok": False, "error": "Video formati noto'g'ri"}, 400)
+
+            user = await self.db.get_user(telegram_id)
+            if not user:
+                return jresp({"ok": False, "error": "User topilmadi"}, 404)
+
+            # Vaqtinchalik faylga yozish
+            suffix = ".mp4"
+            low = filename.lower()
+            for ext in VIDEO.ALLOWED_EXTS:
+                if low.endswith(ext):
+                    suffix = ext
+                    break
+
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
+            tmp.write(file_data)
+            tmp.close()
+            tmp_path = tmp.name
+
+            # Userbot orqali kanalga yuborish
+            if not self.bot_app.userbot or not self.bot_app.userbot.client:
+                try: os.remove(tmp_path)
+                except: pass
+                return jresp({"ok": False, "error": "Userbot ulanmagan"}, 500)
+
+            try:
+                msg = await self.bot_app.userbot.send_video_to_channel(
+                    channel_id=BOT.VIDEO_CHANNEL_ID,
+                    file_path=tmp_path,
+                    caption=f"📹 Video upload (user: {telegram_id})",
+                )
+            except Exception as e:
+                logger.error(f"userbot send_video_to_channel xato: {e}", exc_info=True)
+                try: os.remove(tmp_path)
+                except: pass
+                return jresp({"ok": False, "error": "Telegram'ga yuklab bo'lmadi"}, 500)
+
+            # Fayl o'chirish
+            try: os.remove(tmp_path)
+            except: pass
+            tmp_path = None
+
+            if not msg or not getattr(msg, "video", None):
                 return jresp({"ok": False, "error": "Telegram video qabul qilmadi"}, 500)
+
+            file_id = msg.video.file_id
+            file_size = getattr(msg.video, "size", len(file_data))
+            duration = getattr(msg.video, "duration", 0)
+
+            # DB'ga metadata
+            video_id = await self.db.create_video_meta(
+                file_id=file_id,
+                size=file_size,
+                mime_type=mime_type,
+                duration_sec=duration,
+            )
+
+            logger.info(f"✅ Upload OK: video_id={video_id}, file_id={file_id[:30]}..., size={file_size}")
 
             return jresp({
                 "ok": True,
-                "file_id": msg.video.file_id,
-                "size": total,
+                "video_id": video_id,
+                "file_id": file_id,
+                "size": file_size,
+                "duration": duration,
             })
+
         except Exception as e:
             logger.error(f"upload_video: {e}", exc_info=True)
+            if tmp_path:
+                try: os.remove(tmp_path)
+                except: pass
             return jresp({"ok": False, "error": str(e)}, 500)
-
-    async def get_feedbacks(self, req):
-        return jresp(await self.db.get_feedbacks())
 
     # ============================================================
     # AUTH
@@ -651,13 +734,13 @@ class API:
                     "need": t.price, "have": user["balance"]
                 }, 400)
 
-            file_id = ad_data.get("video_file_id")
-            if not file_id:
-                video_data = ad_data.get("video_url")
-                if video_data and is_valid_video_data_url(video_data):
-                    file_id = await self._upload_video_to_channel(video_data)
-            if not file_id:
+            video_id = ad_data.get("video_id")
+            if not video_id:
                 return jresp({"ok": False, "error": "Video yuklanmagan"}, 400)
+
+            video_meta = await self.db.get_video_meta(int(video_id))
+            if not video_meta:
+                return jresp({"ok": False, "error": "Video topilmadi"}, 404)
 
             acc = ad_data.get("account_data", {}) or {}
 
@@ -735,7 +818,7 @@ class API:
 
             ad_id = await self.db.create_ad(user["id"], {
                 "title": f"PUBG Mobile - {acc.get('level', '?')} LVL",
-                "video_file_id": file_id,
+                "video_id": int(video_id),
                 "ad_type": t.type,
                 "price": price,
                 "currency": cur_code,
@@ -746,6 +829,7 @@ class API:
                 "expires_at": expires_at,
             })
 
+            await self.db.link_video_to_ad(int(video_id), ad_id)
             await self.db.update_balance(tg, t.price, "spend", f"Reklama #{ad_id}")
 
             ad = await self.db.get_ad(ad_id)
@@ -782,9 +866,9 @@ class API:
 
             if ad.get("channel_msg_id"):
                 try:
-                    await self.bot_app.bot.delete_message(BOT.ADS_CHANNEL_ID, ad["channel_msg_id"])
-                except Exception:
-                    pass
+                    await self.bot_app.delete_channel_post(ad["channel_msg_id"])
+                except Exception as e:
+                    logger.warning(f"delete_channel_post xato: {e}")
 
             try:
                 await self.bot_app.bot.send_message(
@@ -856,20 +940,6 @@ class API:
         except Exception as e:
             logger.error(f"create_vip_request: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
-
-    async def _upload_video_to_channel(self, data_url: str):
-        try:
-            header, encoded = data_url.split(",", 1)
-            raw = base64.b64decode(encoded)
-            if len(raw) > API_CFG.MAX_SIZE:
-                return None
-            from aiogram.types import BufferedInputFile
-            vid = BufferedInputFile(raw, filename="ad.mp4")
-            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
-            return msg.video.file_id
-        except Exception as e:
-            logger.error(f"video upload: {e}", exc_info=True)
-            return None
 
     # ============================================================
     # TOPUP
@@ -1137,7 +1207,7 @@ class API:
 
             await self.db.update_ad_status(ad_id, "ACTIVE")
 
-            if t.channel and ad.get("video_file_id"):
+            if t.channel and ad.get("file_id"):
                 post_at = await self.db.get_next_kanal_slot()
                 await self.db.set_ad_post_at(ad_id, post_at)
                 asyncio.create_task(self.bot_app.schedule_channel_post(ad_id, post_at))
@@ -1168,6 +1238,13 @@ class API:
             t = TARIFFS.get(ad["tariff"], TARIFFS[1])
             await self.db.update_balance(ad["seller_tg"], t.price, "topup", "Rad etilgan reklama qaytarildi")
 
+            # Video metadata o'chirish (Telegram'dan fayl o'chirilmaydi)
+            if ad.get("video_id"):
+                try:
+                    await self.db.delete_video_meta(ad["video_id"])
+                except Exception as e:
+                    logger.warning(f"delete_video_meta: {e}")
+
             try:
                 await self.bot_app.notify_user_rejected(ad, reason, t.price)
             except Exception as e:
@@ -1175,6 +1252,7 @@ class API:
 
             return jresp({"ok": True})
         except Exception as e:
+            logger.error(f"admin_reject_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_delete_ad(self, req):
@@ -1183,14 +1261,23 @@ class API:
             data = await req.json()
             ad_id = int(data["ad_id"])
             ad = await self.db.get_ad(ad_id)
+
             if ad and ad.get("channel_msg_id"):
                 try:
-                    await self.bot_app.bot.delete_message(BOT.ADS_CHANNEL_ID, ad["channel_msg_id"])
-                except Exception:
-                    pass
+                    await self.bot_app.delete_channel_post(ad["channel_msg_id"])
+                except Exception as e:
+                    logger.warning(f"delete_channel_post: {e}")
+
+            if ad and ad.get("video_id"):
+                try:
+                    await self.db.delete_video_meta(ad["video_id"])
+                except Exception as e:
+                    logger.warning(f"delete_video_meta: {e}")
+
             await self.db.delete_ad(ad_id)
             return jresp({"ok": True})
         except Exception as e:
+            logger.error(f"admin_delete_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_block(self, req):
@@ -1580,4 +1667,4 @@ class API:
         await runner.setup()
         site = web.TCPSite(runner, API_CFG.HOST, API_CFG.PORT)
         await site.start()
-        logger.info(f"✅ API: http://{API_CFG.HOST}:{API_CFG.PORT}")
+        logger.info(f"✅ API v8.0: http://{API_CFG.HOST}:{API_CFG.PORT}")
