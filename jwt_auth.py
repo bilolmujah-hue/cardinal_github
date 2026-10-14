@@ -1,7 +1,8 @@
 """
-Cardinal JWT v5.6
-- access 15 min, refresh 7 kun
-- Public pathlar: /api/admin-contacts ham qo'shildi
+Cardinal JWT v8.0
+- Access 60 daqiqa, refresh 7 kun
+- Public pathlar: /api/admin-contacts ham qo'shilgan
+- Middleware: /api/admin/* uchun admin tekshiruvi
 """
 import jwt
 import bcrypt
@@ -68,9 +69,11 @@ EXACT_PUBLIC_PATHS = (
     "/api/tariffs",
     "/api/regions",
     "/api/currencies",
+    "/api/settings",
     "/api/ads",
     "/api/feedbacks",
-    "/api/admin-contacts",   # 🔥 public — hamma ko'radi
+    "/api/admin-contacts",
+    "/favicon.ico",
 )
 PREFIX_PUBLIC_PATHS = (
     "/api/auth/",
