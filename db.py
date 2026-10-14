@@ -1,9 +1,15 @@
 """
-Cardinal DB v7.4
-- videos jadvali (R2 metadata)
-- ads.video_id
+Cardinal DB v7.1
+- Settings jadvali (ad_days, kanal_interval_min)
+- topup_requests.seen
 - Soft delete kartalar
-- Cleanup: get_expired_videos
+- Karta holder
+- Cleanup: get_expired_ads + expire_ad
+- SOLD status (sotildi)
+- Thumbnail (rasm) - faqat admin yuklaydi
+- PIN tizimi (admin tartibida)
+- Edit ad (TO'LIQ: matn + ro'yxatlar + linked)
+- Kanal navbati (post_at) — 30 daqiqa interval
 """
 import asyncpg
 import json
@@ -58,27 +64,11 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            # VIDEOS — R2 metadata
-            await c.execute("""
-                CREATE TABLE IF NOT EXISTS videos (
-                    id SERIAL PRIMARY KEY,
-                    ad_id INTEGER,
-                    r2_key VARCHAR(255) NOT NULL,
-                    size BIGINT NOT NULL,
-                    mime_type VARCHAR(50),
-                    duration_sec INTEGER,
-                    created_at TIMESTAMP DEFAULT NOW()
-                );
-            """)
-            await c.execute("CREATE INDEX IF NOT EXISTS idx_videos_ad_id ON videos(ad_id);")
-
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS ads (
                     id SERIAL PRIMARY KEY,
                     user_id INTEGER REFERENCES users(id) ON DELETE CASCADE,
-                    title VARCHAR(255) NOT NULL,
-                    video_id INTEGER,
+                    title VARCHAR(255) NOT NULL, video_file_id TEXT,
                     thumbnail_url TEXT,
                     ad_type VARCHAR(50) DEFAULT 'STANDARD',
                     price BIGINT NOT NULL, currency VARCHAR(10) DEFAULT 'UZS',
@@ -199,7 +189,7 @@ class Database:
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS is_blocked BOOLEAN DEFAULT FALSE",
             "ALTER TABLE users ADD COLUMN IF NOT EXISTS spent BIGINT DEFAULT 0",
-            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS video_id INTEGER",
+            "ALTER TABLE ads ADD COLUMN IF NOT EXISTS video_file_id TEXT",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS top_until TIMESTAMP",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS currency VARCHAR(10) DEFAULT 'UZS'",
             "ALTER TABLE ads ADD COLUMN IF NOT EXISTS account_data JSONB DEFAULT '{}'::jsonb",
@@ -272,53 +262,6 @@ class Database:
             return max(1, int(v))
         except Exception:
             return 30
-
-    # ============================================================
-    # VIDEOS (R2 METADATA)
-    # ============================================================
-    async def create_video_meta(self, r2_key, size, mime_type=None, duration_sec=None, ad_id=None):
-        """Yangi video metadata yaratish. video_id qaytaradi."""
-        async with self.pool.acquire() as c:
-            vid = await c.fetchval("""
-                INSERT INTO videos (ad_id, r2_key, size, mime_type, duration_sec)
-                VALUES ($1, $2, $3, $4, $5) RETURNING id
-            """, ad_id, r2_key, size, mime_type, duration_sec)
-            return vid
-
-    async def link_video_to_ad(self, video_id, ad_id):
-        """Video'ni ad'ga bog'lash."""
-        async with self.pool.acquire() as c:
-            await c.execute("UPDATE videos SET ad_id=$1 WHERE id=$2", ad_id, video_id)
-            await c.execute("UPDATE ads SET video_id=$1 WHERE id=$2", video_id, ad_id)
-
-    async def get_video_meta(self, video_id):
-        """Video metadata (r2_key, size, mime)."""
-        async with self.pool.acquire() as c:
-            r = await c.fetchrow("SELECT * FROM videos WHERE id=$1", video_id)
-            return dict(r) if r else None
-
-    async def delete_video_meta(self, video_id):
-        """Video metadata o'chirish. r2_key qaytaradi (R2'dan o'chirish uchun)."""
-        async with self.pool.acquire() as c:
-            r = await c.fetchrow("SELECT r2_key FROM videos WHERE id=$1", video_id)
-            if r:
-                await c.execute("DELETE FROM videos WHERE id=$1", video_id)
-                return r["r2_key"]
-            return None
-
-    async def get_videos_to_expire(self):
-        """Muddati o'tgan R2 videolarni topish."""
-        async with self.pool.acquire() as c:
-            rows = await c.fetch("""
-                SELECT v.id, v.r2_key, v.ad_id
-                FROM videos v
-                JOIN ads a ON a.id = v.ad_id
-                WHERE a.status = 'ACTIVE'
-                  AND a.expires_at IS NOT NULL
-                  AND a.expires_at <= NOW()
-                  AND v.r2_key IS NOT NULL
-            """)
-            return [dict(r) for r in rows]
 
     # ============================================================
     # USERBOT SESSION
@@ -506,10 +449,10 @@ class Database:
         async with self.pool.acquire() as c:
             acc_json = json.dumps(data.get("account_data", {}) or {}, ensure_ascii=False)
             return await c.fetchval("""
-                INSERT INTO ads (user_id, title, video_id, ad_type, price, currency,
+                INSERT INTO ads (user_id, title, video_file_id, ad_type, price, currency,
                     location, full_location, account_data, tariff, status, expires_at, top_until, post_at)
                 VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9::jsonb,$10,'PENDING',$11,$12,$13) RETURNING id
-            """, user_id, data["title"], data.get("video_id"),
+            """, user_id, data["title"], data.get("video_file_id"),
                 data.get("ad_type","STANDARD"), data["price"], data.get("currency","UZS"),
                 data.get("location"), data.get("full_location"), acc_json,
                 data.get("tariff"), data.get("expires_at"), data.get("top_until"), data.get("post_at"))
@@ -523,20 +466,24 @@ class Database:
             d["account_data"] = {}
         for k in ("video_data","video_base64","video"):
             d["account_data"].pop(k, None)
+        vid = d.get("video_file_id")
+        if vid and isinstance(vid, str) and vid.startswith("data:"):
+            d["video_file_id"] = None
         return d
 
     async def get_active_ads(self, category=None):
+        """
+        PIN qilinganlar tepada (pin_order DESC),
+        keyin pin qilinmaganlar (yangi → eski).
+        """
         async with self.pool.acquire() as c:
             q = """
-                SELECT a.id, a.user_id, a.title, a.video_id, a.thumbnail_url,
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
                        a.ad_type, a.price, a.currency, a.location, a.full_location,
                        a.account_data, a.tariff, a.status, a.views, a.top_until,
                        a.expires_at, a.is_pinned, a.pin_order, a.created_at,
-                       v.r2_key,
                        u.first_name, u.last_name, u.telegram_id as seller_tg
-                FROM ads a
-                JOIN users u ON u.id=a.user_id
-                LEFT JOIN videos v ON v.id=a.video_id
+                FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE a.status='ACTIVE' AND (a.expires_at IS NULL OR a.expires_at > NOW())
                 ORDER BY
                     CASE WHEN a.is_pinned = TRUE THEN 0 ELSE 1 END,
@@ -549,28 +496,21 @@ class Database:
     async def get_ad(self, ad_id):
         async with self.pool.acquire() as c:
             r = await c.fetchrow("""
-                SELECT a.*, v.r2_key, v.size as video_size, v.mime_type,
-                       u.telegram_id as seller_tg, u.first_name as seller_name
-                FROM ads a
-                JOIN users u ON u.id=a.user_id
-                LEFT JOIN videos v ON v.id=a.video_id
-                WHERE a.id=$1
+                SELECT a.*, u.telegram_id as seller_tg, u.first_name as seller_name
+                FROM ads a JOIN users u ON u.id=a.user_id WHERE a.id=$1
             """, ad_id)
             return self._parse_ad(r) if r else None
 
     async def get_user_ads(self, telegram_id):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT a.id, a.user_id, a.title, a.video_id, a.thumbnail_url,
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
                        a.ad_type, a.price, a.currency, a.location, a.full_location,
                        a.account_data, a.tariff, a.status, a.views, a.reject_reason,
                        a.top_until, a.expires_at, a.sold_at, a.is_pinned, a.pin_order,
                        a.channel_msg_id, a.post_at,
-                       a.created_at, a.updated_at,
-                       v.r2_key
-                FROM ads a
-                JOIN users u ON u.id=a.user_id
-                LEFT JOIN videos v ON v.id=a.video_id
+                       a.created_at, a.updated_at
+                FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE u.telegram_id=$1 ORDER BY a.created_at DESC LIMIT 50
             """, telegram_id)
             return [self._parse_ad(r) for r in rows]
@@ -578,31 +518,26 @@ class Database:
     async def get_pending_ads(self):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT a.id, a.user_id, a.title, a.video_id, a.thumbnail_url,
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
                        a.ad_type, a.price, a.currency, a.location, a.full_location,
                        a.account_data, a.tariff, a.status, a.views, a.created_at,
                        a.is_pinned, a.pin_order,
-                       v.r2_key,
                        u.telegram_id, u.first_name, u.last_name, u.phone
-                FROM ads a
-                JOIN users u ON u.id=a.user_id
-                LEFT JOIN videos v ON v.id=a.video_id
+                FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE a.status='PENDING' ORDER BY a.created_at DESC LIMIT 100
             """)
             return [self._parse_ad(r) for r in rows]
 
     async def get_all_ads_with_pin(self):
+        """Admin panel uchun — barcha aktiv reklamalar + pin info."""
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT a.id, a.user_id, a.title, a.video_id, a.thumbnail_url,
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
                        a.ad_type, a.price, a.currency, a.location, a.full_location,
                        a.account_data, a.tariff, a.status, a.views, a.created_at,
                        a.is_pinned, a.pin_order,
-                       v.r2_key,
                        u.telegram_id, u.first_name, u.last_name
-                FROM ads a
-                JOIN users u ON u.id=a.user_id
-                LEFT JOIN videos v ON v.id=a.video_id
+                FROM ads a JOIN users u ON u.id=a.user_id
                 WHERE a.status='ACTIVE'
                 ORDER BY
                     CASE WHEN a.is_pinned = TRUE THEN 0 ELSE 1 END,
@@ -622,10 +557,16 @@ class Database:
                                 status, reason, ad_id)
 
     async def set_ad_post_at(self, ad_id, post_at):
+        """Kanalga chiqish vaqtini belgilash."""
         async with self.pool.acquire() as c:
             await c.execute("UPDATE ads SET post_at=$1, updated_at=NOW() WHERE id=$2", post_at, ad_id)
 
     async def get_next_kanal_slot(self):
+        """
+        Keyingi kanal navbati vaqtini qaytaradi.
+        - Agar hech qanday reklama navbatda bo'lmasa → hozirgi vaqt
+        - Aks holda → oxirgi post_at + interval
+        """
         interval = await self.get_kanal_interval_min()
         async with self.pool.acquire() as c:
             r = await c.fetchrow("""
@@ -654,13 +595,7 @@ class Database:
 
     async def delete_ad(self, ad_id):
         async with self.pool.acquire() as c:
-            # Video metadata'ni ham o'chirish (r2_key qaytaradi)
-            v = await c.fetchrow("SELECT id, r2_key FROM videos WHERE ad_id=$1", ad_id)
             await c.execute("DELETE FROM ads WHERE id=$1", ad_id)
-            if v:
-                await c.execute("DELETE FROM videos WHERE id=$1", v["id"])
-                return v["r2_key"]
-            return None
 
     async def increment_views(self, ad_id):
         async with self.pool.acquire() as c:
@@ -670,6 +605,7 @@ class Database:
     # ADS — THUMBNAIL
     # ============================================================
     async def set_ad_thumbnail(self, ad_id, thumbnail_url):
+        """Admin thumbnail o'rnatadi yoki olib tashlaydi (None)."""
         async with self.pool.acquire() as c:
             await c.execute("""
                 UPDATE ads SET thumbnail_url=$1, updated_at=NOW() WHERE id=$2
@@ -710,9 +646,19 @@ class Database:
             return True
 
     # ============================================================
-    # ADS — EDIT
+    # ADS — EDIT (TO'LIQ: matn + ro'yxatlar + linked)
     # ============================================================
     async def update_ad_text(self, ad_id, data):
+        """
+        To'liq matnli maydonlarni tahrirlash:
+        - title (ixtiyoriy)
+        - price, currency, location, full_location
+        - account_data:
+            level, collection, rp, mythic_clothes,
+            x_costume, supar_car, rare_skins, guns, guns_count,
+            linked, username, phone
+        Video va thumbnail TEGMAYDI.
+        """
         async with self.pool.acquire() as c:
             acc_json = json.dumps(data.get("account_data", {}) or {}, ensure_ascii=False)
 
@@ -725,21 +671,29 @@ class Database:
             if title:
                 await c.execute("""
                     UPDATE ads SET
-                        title=$1, price=$2, currency=$3,
-                        location=$4, full_location=$5,
-                        account_data=$6::jsonb, updated_at=NOW()
+                        title=$1,
+                        price=$2,
+                        currency=$3,
+                        location=$4,
+                        full_location=$5,
+                        account_data=$6::jsonb,
+                        updated_at=NOW()
                     WHERE id=$7
                 """, title, price, currency, location, full_location,
                     acc_json, ad_id)
             else:
                 await c.execute("""
                     UPDATE ads SET
-                        price=$1, currency=$2,
-                        location=$3, full_location=$4,
-                        account_data=$5::jsonb, updated_at=NOW()
+                        price=$1,
+                        currency=$2,
+                        location=$3,
+                        full_location=$4,
+                        account_data=$5::jsonb,
+                        updated_at=NOW()
                     WHERE id=$6
                 """, price, currency, location, full_location,
                     acc_json, ad_id)
+
             return True
 
     # ============================================================
@@ -748,28 +702,21 @@ class Database:
     async def get_expired_ads(self):
         async with self.pool.acquire() as c:
             rows = await c.fetch("""
-                SELECT a.id, a.video_id, a.channel_msg_id, a.tariff, v.r2_key
-                FROM ads a
-                LEFT JOIN videos v ON v.id=a.video_id
-                WHERE a.expires_at IS NOT NULL
-                  AND a.expires_at <= NOW()
-                  AND a.status = 'ACTIVE'
+                SELECT id, video_file_id, channel_msg_id, tariff
+                FROM ads
+                WHERE expires_at IS NOT NULL
+                  AND expires_at <= NOW()
+                  AND video_file_id IS NOT NULL
+                  AND status = 'ACTIVE'
             """)
             return [dict(r) for r in rows]
 
     async def expire_ad(self, ad_id):
         async with self.pool.acquire() as c:
-            # Video metadata'ni o'chirish (r2_key qaytaradi)
-            v = await c.fetchrow("SELECT id, r2_key FROM videos WHERE ad_id=$1", ad_id)
             await c.execute(
-                "UPDATE ads SET status='EXPIRED', video_id=NULL, updated_at=NOW() WHERE id=$1",
+                "UPDATE ads SET status='EXPIRED', video_file_id=NULL, updated_at=NOW() WHERE id=$1",
                 ad_id
             )
-            r2_key = None
-            if v:
-                r2_key = v["r2_key"]
-                await c.execute("DELETE FROM videos WHERE id=$1", v["id"])
-            return r2_key
 
     # ============================================================
     # SAVED
@@ -790,14 +737,11 @@ class Database:
             u = await self.get_user(telegram_id)
             if not u: return []
             rows = await c.fetch("""
-                SELECT a.id, a.user_id, a.title, a.video_id, a.thumbnail_url,
+                SELECT a.id, a.user_id, a.title, a.video_file_id, a.thumbnail_url,
                        a.ad_type, a.price, a.currency, a.location, a.full_location,
                        a.account_data, a.tariff, a.status, a.views, a.top_until,
-                       a.expires_at, a.is_pinned, a.pin_order, a.created_at,
-                       v.r2_key
-                FROM saved_ads s
-                JOIN ads a ON a.id=s.ad_id
-                LEFT JOIN videos v ON v.id=a.video_id
+                       a.expires_at, a.is_pinned, a.pin_order, a.created_at
+                FROM saved_ads s JOIN ads a ON a.id=s.ad_id
                 WHERE s.user_id=$1 AND a.status='ACTIVE'
                   AND (a.expires_at IS NULL OR a.expires_at>NOW())
                 ORDER BY s.created_at DESC LIMIT 50
@@ -1032,7 +976,6 @@ class Database:
                 "cards": await c.fetchval("SELECT COUNT(*) FROM cards WHERE is_active=TRUE"),
                 "feedbacks": await c.fetchval("SELECT COUNT(*) FROM feedbacks WHERE is_visible=TRUE"),
                 "userbot": await c.fetchval("SELECT COUNT(*) FROM userbot_sessions WHERE is_active=TRUE"),
-                "videos": await c.fetchval("SELECT COUNT(*) FROM videos"),
             }
 
     async def get_all_user_ids(self):
@@ -1134,4 +1077,4 @@ class Database:
                 "balance": fresh["balance"] if fresh else (u["balance"] - price),
                 "price": price,
                 "user": u,
-            }
+            }v
