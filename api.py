@@ -1,9 +1,9 @@
 """
-Cardinal API v7.6 — Cloudflare R2 (server-side upload, CORS yo'q)
-- Video server orqali R2'ga yuklanadi (CORS muammosi yo'q)
-- Stream: R2'ga redirect (Railway egress tejaydi)
-- Video metadata PostgreSQL'da
-- Barcha endpointlar to'liq
+Cardinal API v7.3
+- iOS video streaming TO'LIQ qo'llab-quvvatlanadi
+- aiohttp_cors bilan TO'G'RI integratsiya (AssertionError FIX)
+- Video streaming Telegram'dan (Range, HEAD)
+- Barcha funksiyalar ishlaydi
 """
 import asyncio
 import json
@@ -16,11 +16,8 @@ from decimal import Decimal
 
 from aiohttp import web, ClientSession
 import aiohttp_cors
-import boto3
-from botocore.config import Config as BotoConfig
-from botocore.exceptions import ClientError
 
-from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS, R2
+from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS
 from config import API as API_CFG
 from db import Database
 from jwt_auth import (
@@ -46,49 +43,46 @@ def jresp(data, status=200):
     )
 
 
+def is_valid_video_data_url(url: str) -> bool:
+    if not url or not isinstance(url, str): return False
+    if url.startswith("data:video"): return True
+    exts = (".mp4", ".mov", ".avi", ".mkv", ".webm", ".m4v", ".3gp", ".hevc")
+    return url.lower().endswith(exts)
+
+
 def is_valid_image_data_url(url: str) -> bool:
     if not url or not isinstance(url, str): return False
     return url.startswith("data:image/")
 
 
-def generate_r2_key(user_id, ext="mp4"):
-    return f"videos/{uuid.uuid4().hex}.{ext}"
-
-
-def guess_ext(mime_type):
-    if not mime_type: return "mp4"
-    mime_type = mime_type.lower()
-    if "mp4" in mime_type: return "mp4"
-    if "quicktime" in mime_type or "mov" in mime_type: return "mov"
-    if "webm" in mime_type: return "webm"
-    if "matroska" in mime_type: return "mkv"
-    if "x-m4v" in mime_type: return "m4v"
-    if "3gpp" in mime_type: return "3gp"
-    if "avi" in mime_type: return "avi"
-    return "mp4"
-
-
-# ============================================================
-# R2 CLIENT (singleton)
-# ============================================================
-_r2_client = None
-
-def get_r2_client():
-    global _r2_client
-    if _r2_client is None:
-        _r2_client = boto3.client(
-            "s3",
-            endpoint_url=R2.ENDPOINT,
-            aws_access_key_id=R2.ACCESS_KEY,
-            aws_secret_access_key=R2.SECRET_KEY,
-            config=BotoConfig(
-                signature_version="s3v4",
-                retries={"max_attempts": 3, "mode": "standard"},
-                s3={"addressing_style": "path"},
-            ),
-            region_name="auto",
-        )
-    return _r2_client
+def parse_range_header(range_header: str, file_size: int):
+    """Range headerini parse qiladi. (start, end) yoki None."""
+    if not range_header or not range_header.startswith("bytes="):
+        return None
+    try:
+        ranges = range_header.replace("bytes=", "").split(",")
+        first = ranges[0].strip()
+        if "-" not in first:
+            return None
+        parts = first.split("-", 1)
+        start_str = parts[0].strip()
+        end_str = parts[1].strip() if len(parts) > 1 else ""
+        if not start_str:
+            length = int(end_str)
+            start = max(0, file_size - length)
+            end = file_size - 1
+        elif not end_str:
+            start = int(start_str)
+            end = file_size - 1
+        else:
+            start = int(start_str)
+            end = int(end_str)
+        if start > end or start >= file_size:
+            return None
+        end = min(end, file_size - 1)
+        return (start, end)
+    except Exception:
+        return None
 
 
 # ============================================================
@@ -106,6 +100,7 @@ class API:
 
     @web.middleware
     async def _err_mw(self, request, handler):
+        """Xatolarni tutuvchi middleware. CORS'ga TEGMAYDI."""
         try:
             return await handler(request)
         except web.HTTPRequestEntityTooLarge:
@@ -117,6 +112,11 @@ class API:
             return jresp({"ok": False, "error": str(e)}, 500)
 
     def _routes(self):
+        """
+        MUHIM: aiohttp_cors.setup() O'ZI OPTIONS preflight'ni avtomatik
+        qo'shadi. Biz FAQAT GET/POST/HEAD route'larni qo'shamiz va har biri
+        uchun cors.add() chaqiramiz. Qo'lda CORS header yozmaymiz.
+        """
         cors = aiohttp_cors.setup(self.app, defaults={
             "*": aiohttp_cors.ResourceOptions(
                 allow_credentials=True,
@@ -141,7 +141,7 @@ class API:
             # Ad detail
             ("GET",   "/api/ad/{ad_id}", self.get_ad),
 
-            # Video upload (server orqali R2'ga)
+            # Upload video
             ("POST",  "/api/upload-video", self.upload_video),
 
             # Auth
@@ -215,6 +215,7 @@ class API:
             ("POST",  "/api/admin/userbot/logout", self.admin_userbot_logout),
         ]
 
+        # Oddiy route'lar
         for method, path, handler in r:
             try:
                 route = self.app.router.add_route(method, path, handler)
@@ -225,7 +226,7 @@ class API:
             except Exception as e:
                 logger.warning(f"Route add: {method} {path}: {e}")
 
-        # VIDEO REDIRECT — GET + HEAD
+        # VIDEO STREAMING ROUTE — GET + HEAD (iOS uchun MUHIM)
         try:
             video_route = self.app.router.add_get(
                 "/api/ad/{ad_id}/video",
@@ -233,7 +234,7 @@ class API:
                 allow_head=True
             )
             cors.add(video_route)
-            logger.info("Video route qo'shildi (GET + HEAD) — R2 redirect")
+            logger.info("Video route qo'shildi (GET + HEAD)")
         except Exception as e:
             logger.error(f"Video route xato: {e}")
 
@@ -243,10 +244,9 @@ class API:
     async def index(self, req):
         return jresp({
             "app": "Cardinal API",
-            "version": "7.6",
+            "version": "7.3",
             "status": "running",
-            "storage": "Cloudflare R2",
-            "max_video_mb": R2.MAX_VIDEO_SIZE // (1024*1024),
+            "max_upload": f"{API_CFG.MAX_SIZE // (1024*1024)} MB",
         })
 
     async def stats(self, req):
@@ -259,8 +259,6 @@ class API:
             "ad_days": days,
             "kanal_interval_min": interval,
             "timeout_min": LIMITS.PAYMENT_TIMEOUT_MIN,
-            "max_video_mb": R2.MAX_VIDEO_SIZE // (1024*1024),
-            "max_video_duration": R2.MAX_VIDEO_DURATION,
         })
 
     async def tariffs(self, req):
@@ -268,10 +266,14 @@ class API:
         out = []
         for tid, t in TARIFFS.items():
             out.append({
-                "id": tid, "name": t.name, "price": t.price,
-                "days": days, "type": t.type, "badge": t.badge,
-                "channel": t.channel, "webapp": t.webapp,
-                "r2_storage": getattr(t, "r2_storage", False),
+                "id": tid,
+                "name": t.name,
+                "price": t.price,
+                "days": days,
+                "type": t.type,
+                "badge": t.badge,
+                "channel": t.channel,
+                "webapp": t.webapp,
                 "top_hours": getattr(t, "top_hours", 0),
                 "manual": getattr(t, "manual", False),
             })
@@ -310,145 +312,185 @@ class API:
                 ad["is_saved"] = False
         return jresp(ad)
 
-    async def get_feedbacks(self, req):
-        return jresp(await self.db.get_feedbacks())
-
     # ============================================================
-    # VIDEO STREAM (R2 redirect)
+    # VIDEO STREAMING — iOS TO'LIQ QO'LLAB-QUVVATLASH
+    # CORS headerlarni aiohttp_cors AVTOMATIK qo'shadi — qo'lda yozmaymiz!
     # ============================================================
     async def stream_video(self, req):
+        ad_id = None
+        is_head = (req.method == "HEAD")
         try:
             ad_id = int(req.match_info["ad_id"])
             ad = await self.db.get_ad(ad_id)
-            if not ad or not ad.get("r2_key"):
+            if not ad or not ad.get("video_file_id"):
                 return web.Response(status=404, text="Video topilmadi")
 
-            r2_key = ad["r2_key"]
-
-            if R2.PUBLIC_URL:
-                url = f"{R2.PUBLIC_URL}/{r2_key}"
-                raise web.HTTPFound(url)
+            file_id = ad["video_file_id"]
 
             try:
-                client = get_r2_client()
-                url = client.generate_presigned_url(
-                    "get_object",
-                    Params={"Bucket": R2.BUCKET, "Key": r2_key},
-                    ExpiresIn=R2.PRESIGN_DOWNLOAD_EXPIRE,
-                )
-                raise web.HTTPFound(url)
-            except ClientError as e:
-                logger.error(f"presign download xato: {e}")
-                return web.Response(status=502, text="Video mavjud emas")
+                tg_file = await self.bot_app.bot.get_file(file_id)
+                file_path = tg_file.file_path
+                file_size = getattr(tg_file, "file_size", None)
+            except Exception as e:
+                logger.error(f"get_file xato (ad #{ad_id}): {e}")
+                return web.Response(status=502, text="Video yuklanmadi")
 
-        except web.HTTPFound:
+            telegram_url = f"https://api.telegram.org/file/bot{BOT.TOKEN}/{file_path}"
+
+            # ====== HEAD REQUEST (iOS Safari yuboradi) ======
+            if is_head:
+                resp = web.Response(status=200)
+                resp.headers["Content-Type"] = "video/mp4"
+                resp.headers["Accept-Ranges"] = "bytes"
+                resp.headers["Cache-Control"] = "public, max-age=3600"
+                resp.headers["Content-Disposition"] = "inline"
+                resp.headers["X-Content-Type-Options"] = "nosniff"
+                if file_size:
+                    resp.headers["Content-Length"] = str(file_size)
+                return resp
+
+            # ====== RANGE parse ======
+            range_header = req.headers.get("Range")
+            range_tuple = None
+            if range_header and file_size:
+                range_tuple = parse_range_header(range_header, file_size)
+
+            # ====== UPSTREAM ======
+            req_headers = {"User-Agent": "CardinalBot/7.3"}
+            if range_tuple:
+                req_headers["Range"] = f"bytes={range_tuple[0]}-{range_tuple[1]}"
+            elif range_header:
+                req_headers["Range"] = range_header
+
+            async with ClientSession(timeout=None) as sess:
+                async with sess.get(telegram_url, headers=req_headers) as upstream:
+                    if upstream.status not in (200, 206):
+                        logger.error(f"Upstream status {upstream.status} (ad #{ad_id})")
+                        return web.Response(status=502, text="Video CDN xato")
+
+                    # ====== RESPONSE STATUS ======
+                    status = 200
+                    if upstream.status == 206 or range_tuple:
+                        status = 206
+
+                    resp = web.StreamResponse(status=status)
+
+                    # ====== CONTENT TYPE ======
+                    upstream_ct = upstream.headers.get("Content-Type", "").lower()
+                    if "quicktime" in upstream_ct or "mov" in upstream_ct:
+                        content_type = "video/quicktime"
+                    elif "webm" in upstream_ct:
+                        content_type = "video/webm"
+                    else:
+                        content_type = "video/mp4"
+                    resp.headers["Content-Type"] = content_type
+
+                    # ====== CONTENT LENGTH / RANGE ======
+                    if "Content-Length" in upstream.headers:
+                        resp.headers["Content-Length"] = upstream.headers["Content-Length"]
+
+                    if status == 206:
+                        if "Content-Range" in upstream.headers:
+                            resp.headers["Content-Range"] = upstream.headers["Content-Range"]
+                        elif range_tuple and file_size:
+                            s, e = range_tuple
+                            resp.headers["Content-Range"] = f"bytes {s}-{e}/{file_size}"
+                            resp.headers["Content-Length"] = str(e - s + 1)
+
+                    # ====== iOS/VIDEO uchun MUHIM headerlar ======
+                    # CORS headerlar YOZILMAYDI — aiohttp_cors o'zi qo'shadi!
+                    resp.headers["Accept-Ranges"] = "bytes"
+                    resp.headers["Cache-Control"] = "public, max-age=3600"
+                    resp.headers["Content-Disposition"] = "inline"
+                    resp.headers["X-Content-Type-Options"] = "nosniff"
+
+                    # ====== PREPARE (shu joyda aiohttp_cors CORS header qo'shadi) ======
+                    try:
+                        await resp.prepare(req)
+                    except (ConnectionResetError, ConnectionAbortedError):
+                        return resp
+
+                    # ====== STREAM ======
+                    try:
+                        async for chunk in upstream.content.iter_chunked(64 * 1024):
+                            if not chunk:
+                                continue
+                            try:
+                                await resp.write(chunk)
+                            except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
+                                return resp
+                            except Exception as e:
+                                if "closing transport" in str(e):
+                                    return resp
+                                raise
+                        try:
+                            await resp.write_eof()
+                        except Exception:
+                            pass
+                    except Exception as e:
+                        logger.debug(f"Upstream stream xato (ad #{ad_id}): {e}")
+
+                    return resp
+
+        except asyncio.CancelledError:
             raise
         except Exception as e:
-            logger.error(f"stream_video: {e}", exc_info=True)
+            err_str = str(e)
+            if "closing transport" in err_str or isinstance(
+                e, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)
+            ):
+                return web.Response(status=499)
+            logger.error(f"stream_video (ad #{ad_id}): {e}", exc_info=True)
             return web.Response(status=500, text="Server xatosi")
 
     # ============================================================
-    # VIDEO UPLOAD — Server orqali R2'ga (CORS kerak emas!)
+    # UPLOAD VIDEO
     # ============================================================
     async def upload_video(self, req):
-        """
-        Multipart faylni qabul qilib, R2'ga yuklaydi.
-        Frontend → Railway → R2 (CORS umuman ishtirok etmaydi).
-        """
         try:
             reader = await req.multipart()
             if not reader:
                 return jresp({"ok": False, "error": "Fayl yuborilmadi"}, 400)
 
-            file_data = None
-            telegram_id = None
-            filename = "ad.mp4"
-            mime_type = "video/mp4"
+            field = await reader.next()
+            if not field or field.name != "video":
+                return jresp({"ok": False, "error": "Video topilmadi"}, 400)
 
+            chunks = []
+            total = 0
+            MAX = API_CFG.MAX_SIZE
             while True:
-                part = await reader.next()
-                if part is None:
+                chunk = await field.read_chunk(1024 * 512)
+                if not chunk:
                     break
+                total += len(chunk)
+                if total > MAX:
+                    return jresp({"ok": False, "error": "Video 200 MB dan katta"}, 413)
+                chunks.append(chunk)
 
-                if part.name == "telegram_id":
-                    try:
-                        val = await part.text()
-                        telegram_id = int(val.strip())
-                    except Exception:
-                        pass
+            raw = b"".join(chunks)
+            if not raw:
+                return jresp({"ok": False, "error": "Bo'sh fayl"}, 400)
 
-                elif part.name == "video":
-                    filename = getattr(part, "filename", None) or "ad.mp4"
-                    try:
-                        ct = part.headers.get("Content-Type", "video/mp4")
-                        mime_type = ct or "video/mp4"
-                    except Exception:
-                        mime_type = "video/mp4"
+            from aiogram.types import BufferedInputFile
+            filename = getattr(field, "filename", None) or "ad.mp4"
+            vid = BufferedInputFile(raw, filename=filename)
+            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
 
-                    chunks = []
-                    total = 0
-                    MAX = R2.MAX_VIDEO_SIZE
-                    while True:
-                        chunk = await part.read_chunk(1024 * 512)
-                        if not chunk:
-                            break
-                        total += len(chunk)
-                        if total > MAX:
-                            mb = MAX // (1024 * 1024)
-                            return jresp({"ok": False, "error": f"Video {mb} MB dan katta"}, 413)
-                        chunks.append(chunk)
-                    file_data = b"".join(chunks)
-
-            if not telegram_id:
-                return jresp({"ok": False, "error": "telegram_id yo'q"}, 400)
-
-            if not file_data:
-                return jresp({"ok": False, "error": "Video bo'sh"}, 400)
-
-            user = await self.db.get_user(telegram_id)
-            if not user:
-                return jresp({"ok": False, "error": "User topilmadi"}, 404)
-
-            # R2'ga yuklash
-            ext = guess_ext(mime_type) or "mp4"
-            r2_key = generate_r2_key(telegram_id, ext)
-
-            try:
-                client = get_r2_client()
-                client.put_object(
-                    Bucket=R2.BUCKET,
-                    Key=r2_key,
-                    Body=file_data,
-                    ContentType=mime_type,
-                )
-            except ClientError as e:
-                logger.error(f"R2 put_object xato: {e}")
-                return jresp({"ok": False, "error": "R2 yuklash xatosi"}, 500)
-            except Exception as e:
-                logger.error(f"R2 put_object umumiy xato: {e}", exc_info=True)
-                return jresp({"ok": False, "error": "R2 yuklash xatosi"}, 500)
-
-            # DB'ga metadata
-            video_id = await self.db.create_video_meta(
-                r2_key=r2_key,
-                size=len(file_data),
-                mime_type=mime_type,
-                duration_sec=0,
-            )
-
-            logger.info(f"✅ Upload OK: video_id={video_id}, key={r2_key}, size={len(file_data)}")
+            if not msg.video:
+                return jresp({"ok": False, "error": "Telegram video qabul qilmadi"}, 500)
 
             return jresp({
                 "ok": True,
-                "video_id": video_id,
-                "r2_key": r2_key,
-                "public_url": f"{R2.PUBLIC_URL}/{r2_key}" if R2.PUBLIC_URL else None,
-                "size": len(file_data),
+                "file_id": msg.video.file_id,
+                "size": total,
             })
-
         except Exception as e:
             logger.error(f"upload_video: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 500)
+
+    async def get_feedbacks(self, req):
+        return jresp(await self.db.get_feedbacks())
 
     # ============================================================
     # AUTH
@@ -609,13 +651,13 @@ class API:
                     "need": t.price, "have": user["balance"]
                 }, 400)
 
-            video_id = ad_data.get("video_id")
-            if not video_id:
+            file_id = ad_data.get("video_file_id")
+            if not file_id:
+                video_data = ad_data.get("video_url")
+                if video_data and is_valid_video_data_url(video_data):
+                    file_id = await self._upload_video_to_channel(video_data)
+            if not file_id:
                 return jresp({"ok": False, "error": "Video yuklanmagan"}, 400)
-
-            video_meta = await self.db.get_video_meta(int(video_id))
-            if not video_meta:
-                return jresp({"ok": False, "error": "Video topilmadi"}, 404)
 
             acc = ad_data.get("account_data", {}) or {}
 
@@ -693,7 +735,7 @@ class API:
 
             ad_id = await self.db.create_ad(user["id"], {
                 "title": f"PUBG Mobile - {acc.get('level', '?')} LVL",
-                "video_id": int(video_id),
+                "video_file_id": file_id,
                 "ad_type": t.type,
                 "price": price,
                 "currency": cur_code,
@@ -704,7 +746,6 @@ class API:
                 "expires_at": expires_at,
             })
 
-            await self.db.link_video_to_ad(int(video_id), ad_id)
             await self.db.update_balance(tg, t.price, "spend", f"Reklama #{ad_id}")
 
             ad = await self.db.get_ad(ad_id)
@@ -741,9 +782,9 @@ class API:
 
             if ad.get("channel_msg_id"):
                 try:
-                    await self.bot_app.delete_channel_post(ad["channel_msg_id"])
-                except Exception as e:
-                    logger.warning(f"delete_channel_post xato: {e}")
+                    await self.bot_app.bot.delete_message(BOT.ADS_CHANNEL_ID, ad["channel_msg_id"])
+                except Exception:
+                    pass
 
             try:
                 await self.bot_app.bot.send_message(
@@ -815,6 +856,20 @@ class API:
         except Exception as e:
             logger.error(f"create_vip_request: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
+
+    async def _upload_video_to_channel(self, data_url: str):
+        try:
+            header, encoded = data_url.split(",", 1)
+            raw = base64.b64decode(encoded)
+            if len(raw) > API_CFG.MAX_SIZE:
+                return None
+            from aiogram.types import BufferedInputFile
+            vid = BufferedInputFile(raw, filename="ad.mp4")
+            msg = await self.bot_app.bot.send_video(BOT.VIDEO_CHANNEL_ID, vid)
+            return msg.video.file_id
+        except Exception as e:
+            logger.error(f"video upload: {e}", exc_info=True)
+            return None
 
     # ============================================================
     # TOPUP
@@ -1082,7 +1137,7 @@ class API:
 
             await self.db.update_ad_status(ad_id, "ACTIVE")
 
-            if t.channel and ad.get("r2_key"):
+            if t.channel and ad.get("video_file_id"):
                 post_at = await self.db.get_next_kanal_slot()
                 await self.db.set_ad_post_at(ad_id, post_at)
                 asyncio.create_task(self.bot_app.schedule_channel_post(ad_id, post_at))
@@ -1113,21 +1168,6 @@ class API:
             t = TARIFFS.get(ad["tariff"], TARIFFS[1])
             await self.db.update_balance(ad["seller_tg"], t.price, "topup", "Rad etilgan reklama qaytarildi")
 
-            # R2'dan video o'chirish
-            if ad.get("r2_key"):
-                try:
-                    client = get_r2_client()
-                    client.delete_object(Bucket=R2.BUCKET, Key=ad["r2_key"])
-                    logger.info(f"R2 o'chirildi (reject): {ad['r2_key']}")
-                except Exception as e:
-                    logger.warning(f"R2 delete (reject): {e}")
-
-            if ad.get("video_id"):
-                try:
-                    await self.db.delete_video_meta(ad["video_id"])
-                except Exception as e:
-                    logger.warning(f"delete_video_meta: {e}")
-
             try:
                 await self.bot_app.notify_user_rejected(ad, reason, t.price)
             except Exception as e:
@@ -1135,7 +1175,6 @@ class API:
 
             return jresp({"ok": True})
         except Exception as e:
-            logger.error(f"admin_reject_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_delete_ad(self, req):
@@ -1144,25 +1183,14 @@ class API:
             data = await req.json()
             ad_id = int(data["ad_id"])
             ad = await self.db.get_ad(ad_id)
-
             if ad and ad.get("channel_msg_id"):
                 try:
-                    await self.bot_app.delete_channel_post(ad["channel_msg_id"])
-                except Exception as e:
-                    logger.warning(f"delete_channel_post: {e}")
-
-            if ad and ad.get("r2_key"):
-                try:
-                    client = get_r2_client()
-                    client.delete_object(Bucket=R2.BUCKET, Key=ad["r2_key"])
-                    logger.info(f"R2 o'chirildi: {ad['r2_key']}")
-                except Exception as e:
-                    logger.warning(f"R2 delete: {e}")
-
+                    await self.bot_app.bot.delete_message(BOT.ADS_CHANNEL_ID, ad["channel_msg_id"])
+                except Exception:
+                    pass
             await self.db.delete_ad(ad_id)
             return jresp({"ok": True})
         except Exception as e:
-            logger.error(f"admin_delete_ad: {e}", exc_info=True)
             return jresp({"ok": False, "error": str(e)}, 400)
 
     async def admin_block(self, req):
@@ -1552,4 +1580,4 @@ class API:
         await runner.setup()
         site = web.TCPSite(runner, API_CFG.HOST, API_CFG.PORT)
         await site.start()
-        logger.info(f"✅ API v7.6: http://{API_CFG.HOST}:{API_CFG.PORT}")
+        logger.info(f"✅ API: http://{API_CFG.HOST}:{API_CFG.PORT}")
