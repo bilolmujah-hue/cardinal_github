@@ -1,7 +1,7 @@
 """
-Cardinal Bot v8.0 — Telegram Video Channel
-- Video @reklama_db kanalida saqlanadi
-- Kanalga post: userbot orqali
+Cardinal Bot v8.1 — Telegram Video Channel (to'liq tuzatilgan)
+- Video @reklama_db kanalida saqlanadi (msg_id)
+- Kanalga post: userbot orqali (Telethon)
 - Premium emoji
 - Live countdown
 """
@@ -249,6 +249,24 @@ def seconds_to_hms(total_seconds: int) -> str:
     m = (total_seconds % 3600) // 60
     s = total_seconds % 60
     return f"{h:02d}:{m:02d}:{s:02d}"
+
+
+def _build_url_buttons(reply_markup):
+    """InlineKeyboardMarkup'dan Telethon uchun URL tugmalar yig'ish."""
+    if not reply_markup:
+        return None
+    try:
+        rows = []
+        for row in reply_markup.inline_keyboard:
+            btn_row = []
+            for b in row:
+                if getattr(b, "url", None):
+                    btn_row.append(b)
+            if btn_row:
+                rows.append(btn_row)
+        return rows if rows else None
+    except Exception:
+        return None
 
 
 # ============================================================
@@ -846,7 +864,6 @@ class CardinalBot:
                 await self.userbot.delete_message(BOT.ADS_CHANNEL_ID, msg_id)
                 return True
             else:
-                # Fallback: oddiy bot bilan
                 await self.bot.delete_message(BOT.ADS_CHANNEL_ID, msg_id)
                 return True
         except Exception as e:
@@ -1051,7 +1068,7 @@ class CardinalBot:
             logger.error(f"notify_user_rejected: {e}")
 
     # ============================================================
-    # KANALGA POST
+    # KANALGA POST (userbot orqali — msg_id bilan)
     # ============================================================
     def _tree_lines(self, items: list) -> list:
         out = []
@@ -1062,6 +1079,7 @@ class CardinalBot:
         return out
 
     async def _post_to_channel(self, ad: dict):
+        """Kanalga post qilish — userbot orqali msg_id dan foydalanib."""
         try:
             acc = ad.get("account_data", {}) or {}
             cur = CURRENCIES.get(ad.get("currency", "UZS"), CURRENCIES["UZS"])
@@ -1146,37 +1164,66 @@ class CardinalBot:
                     url=f"https://t.me/{BOT.USERNAME}?start=create")
             ]])
 
-            file_id = ad.get("file_id")
+            file_id = ad.get("file_id")  # bu msg_id (string)
             if not file_id:
                 logger.error(f"#{ad['id']} file_id yo'q")
                 return
 
-            # Bot orqali kanalga yuborish
+            msg_id_str = str(file_id).strip()
+            if not msg_id_str.isdigit():
+                logger.error(f"#{ad['id']} file_id noto'g'ri: {msg_id_str}")
+                return
+
+            src_msg_id = int(msg_id_str)
+
+            # Userbot orqali kanaldagi videoni olish va qayta yuborish
+            if not self.userbot or not self.userbot.client:
+                logger.error(f"#{ad['id']} userbot ulanmagan")
+                return
+
             try:
-                msg = await self.bot.send_video(
-                    BOT.ADS_CHANNEL_ID, file_id,
-                    caption=caption, parse_mode="HTML",
-                    reply_markup=kb, supports_streaming=True
+                src_msg = await self.userbot.client.get_messages(
+                    BOT.VIDEO_CHANNEL_ID, ids=src_msg_id
+                )
+                if not src_msg or not src_msg.media:
+                    logger.error(f"#{ad['id']} manba video topilmadi (msg_id={src_msg_id})")
+                    return
+            except Exception as e:
+                logger.error(f"#{ad['id']} get_messages xato: {e}")
+                return
+
+            # Telethon uchun URL tugmalar
+            from telethon import Button
+
+            url_buttons = []
+            try:
+                for row in kb.inline_keyboard:
+                    btn_row = []
+                    for b in row:
+                        if getattr(b, "url", None):
+                            btn_row.append(Button.url(b.text, b.url))
+                    if btn_row:
+                        url_buttons.append(btn_row)
+            except Exception:
+                url_buttons = []
+
+            # Kanaldagi videoni manba sifatida qayta yuborish
+            try:
+                msg = await self.userbot.client.send_file(
+                    BOT.ADS_CHANNEL_ID,
+                    src_msg.media,
+                    caption=caption,
+                    parse_mode="html",
+                    buttons=url_buttons if url_buttons else None,
+                    supports_streaming=True,
+                    force_document=False,
                 )
             except Exception as e:
-                logger.error(f"Bot send_video xato: {e}")
-                # Fallback: userbot orqali
-                if self.userbot and self.userbot.client:
-                    try:
-                        msg = await self.userbot.send_video_to_channel(
-                            channel_id=BOT.ADS_CHANNEL_ID,
-                            file_path=file_id,
-                            caption=text,
-                            reply_markup=kb
-                        )
-                    except Exception as e2:
-                        logger.error(f"Userbot fallback xato: {e2}")
-                        return
-                else:
-                    return
+                logger.error(f"#{ad['id']} send_file xato: {e}", exc_info=True)
+                return
 
-            await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.message_id)
-            logger.info(f"✅ #{ad['id']} reklama kanaliga joylandi")
+            await self.db.update_ad_status(ad["id"], "ACTIVE", channel_msg_id=msg.id)
+            logger.info(f"✅ #{ad['id']} reklama kanaliga joylandi (msg_id={msg.id})")
 
         except Exception as e:
             logger.error(f"Kanalga joylash xato: {e}", exc_info=True)
@@ -1185,6 +1232,7 @@ class CardinalBot:
     # ADMIN NOTIFY
     # ============================================================
     async def notify_admin_new_ad(self, ad: dict):
+        """Adminga yangi reklama haqida to'liq ma'lumot."""
         try:
             cur = CURRENCIES.get(ad.get("currency", "UZS"), CURRENCIES["UZS"])
             acc = ad.get("account_data", {}) or {}
@@ -1242,19 +1290,35 @@ class CardinalBot:
             ]])
             caption = pe(text)
 
+            # Video bo'lsa — msg_id dan foydalanib qayta yuborish
             file_id = ad.get("file_id")
             if file_id:
-                try:
-                    await self.bot.send_video(
-                        BOT.ADMIN_CHAT_ID, file_id,
-                        caption=caption, parse_mode="HTML", reply_markup=kb
-                    )
-                    return
-                except Exception as e:
-                    logger.warning(f"Admin video yuborish xato: {e}")
+                msg_id_str = str(file_id).strip()
+                if msg_id_str.isdigit() and self.userbot and self.userbot.client:
+                    try:
+                        src_msg = await self.userbot.client.get_messages(
+                            BOT.VIDEO_CHANNEL_ID, ids=int(msg_id_str)
+                        )
+                        if src_msg and src_msg.media:
+                            # Admin uchun oddiy bot orqali yuboramiz
+                            # (Telethon'dan olingan videoni bot orqali forward qilib bo'lmaydi,
+                            #  shuning uchun send_video bilan file_id ishlatamiz)
+                            # Video msg_id bo'lsa — Telethon'dan o'sha videoni olish kerak
+                            # Admin uchun matn xabar yuboramiz
+                            await self.bot.send_message(
+                                BOT.ADMIN_CHAT_ID,
+                                pe(caption),
+                                parse_mode="HTML",
+                                reply_markup=kb
+                            )
+                            logger.info(f"Admin notify: #{ad['id']} (matn)")
+                            return
+                    except Exception as e:
+                        logger.warning(f"Admin notify video xato: {e}")
 
+            # Video yo'q — matn yuborish
             await self.bot.send_message(
-                BOT.ADMIN_CHAT_ID, caption,
+                BOT.ADMIN_CHAT_ID, pe(caption),
                 parse_mode="HTML", reply_markup=kb
             )
         except Exception as e:
@@ -1330,7 +1394,7 @@ class CardinalBot:
     # START / STOP
     # ============================================================
     async def start(self):
-        logger.info("CardinalBot v8.0 ishga tushdi")
+        logger.info("CardinalBot v8.1 ishga tushdi")
 
         self._scheduler_task = asyncio.create_task(self._kanal_scheduler_loop())
 
