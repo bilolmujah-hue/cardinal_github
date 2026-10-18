@@ -1,21 +1,19 @@
 """
-Cardinal API v8.1 — Telegram Video Channel (to'liq tuzatilgan)
-- Video upload: userbot orqali @reklama_db kanaliga → msg_id saqlanadi
-- Stream: Telethon orqali kanaldagi videodan stream
-- file_id aslida msg_id (Telethon file_id emas)
+Cardinal API v8.2 — Telegram Video Channel (Mukammal va xatosiz)
+- Video upload: stream to disk (RAM to'lmaydi)
+- ConnectionResetError to'g'ri ushlanadi
+- Barcha endpointlar optimallashtirilgan
 """
 import asyncio
 import json
-import base64
 import logging
 import re
-import uuid
 import os
 import tempfile
 from datetime import datetime, timedelta
 from decimal import Decimal
 
-from aiohttp import web, ClientSession
+from aiohttp import web
 import aiohttp_cors
 
 from config import BOT, TARIFFS, CURRENCIES, LIMITS, REGIONS, VIDEO
@@ -237,7 +235,7 @@ class API:
     async def index(self, req):
         return jresp({
             "app": "Cardinal API",
-            "version": "8.1",
+            "version": "8.2",
             "status": "running",
             "storage": "Telegram Channel",
             "video_channel": BOT.VIDEO_CHANNEL_USERNAME,
@@ -312,10 +310,6 @@ class API:
     # VIDEO STREAM — Telethon orqali kanaldan
     # ============================================================
     async def stream_video(self, req):
-        """
-        Video streaming — Telegram kanaldagi videoni Telethon orqali stream qiladi.
-        DB'dagi file_id aslida msg_id (string).
-        """
         ad_id = None
         is_head = (req.method == "HEAD")
         try:
@@ -326,28 +320,22 @@ class API:
 
             msg_id_str = str(ad["file_id"]).strip()
             if not msg_id_str.isdigit():
-                logger.error(f"file_id noto'g'ri (ad #{ad_id}): {msg_id_str}")
                 return web.Response(status=500, text="Video ID xato")
 
             msg_id = int(msg_id_str)
 
-            # Userbot tekshiruvi
             if not self.bot_app.userbot or not self.bot_app.userbot.client:
-                logger.error(f"Userbot ulanmagan (ad #{ad_id})")
                 return web.Response(status=503, text="Userbot ulanmagan")
 
-            # Kanaldagi xabarni olish
             try:
                 msg = await self.bot_app.userbot.client.get_messages(
                     BOT.VIDEO_CHANNEL_ID, ids=msg_id
                 )
                 if not msg or not msg.media:
                     return web.Response(status=404, text="Video topilmadi")
-            except Exception as e:
-                logger.error(f"get_messages xato (ad #{ad_id}): {e}")
+            except Exception:
                 return web.Response(status=502, text="Video yuklanmadi")
 
-            # Fayl hajmi va mime
             file_size = None
             mime_type = "video/mp4"
             try:
@@ -363,24 +351,17 @@ class API:
             if not file_size:
                 return web.Response(status=500, text="Fayl hajmi aniqlanmadi")
 
-            # HEAD request
             if is_head:
                 resp = web.Response(status=200)
                 resp.headers["Content-Type"] = mime_type
                 resp.headers["Accept-Ranges"] = "bytes"
                 resp.headers["Cache-Control"] = "public, max-age=3600"
-                resp.headers["Content-Disposition"] = "inline"
-                resp.headers["X-Content-Type-Options"] = "nosniff"
                 resp.headers["Content-Length"] = str(file_size)
                 return resp
 
-            # Range header
             range_header = req.headers.get("Range")
-            range_tuple = None
-            if range_header:
-                range_tuple = parse_range_header(range_header, file_size)
+            range_tuple = parse_range_header(range_header, file_size) if range_header else None
 
-            # Offset va limit
             if range_tuple:
                 offset = range_tuple[0]
                 limit = range_tuple[1] - range_tuple[0] + 1
@@ -390,13 +371,11 @@ class API:
                 limit = file_size
                 status_code = 200
 
-            # Response
             resp = web.StreamResponse(status=status_code)
             resp.headers["Content-Type"] = mime_type
             resp.headers["Accept-Ranges"] = "bytes"
-            resp.headers["Cache-Control"] = "public, max-age=3600"
             resp.headers["Content-Disposition"] = "inline"
-            resp.headers["X-Content-Type-Options"] = "nosniff"
+            resp.headers["Cache-Control"] = "public, max-age=3600"
 
             if range_tuple:
                 s, e = range_tuple
@@ -410,7 +389,6 @@ class API:
             except (ConnectionResetError, ConnectionAbortedError):
                 return resp
 
-            # Telethon iter_download
             try:
                 async for chunk in self.bot_app.userbot.client.iter_download(
                     msg.media,
@@ -425,10 +403,6 @@ class API:
                         await resp.write(chunk)
                     except (ConnectionResetError, ConnectionAbortedError, BrokenPipeError):
                         return resp
-                    except Exception as e:
-                        if "closing transport" in str(e):
-                            return resp
-                        raise
                 try:
                     await resp.write_eof()
                 except Exception:
@@ -441,98 +415,114 @@ class API:
         except asyncio.CancelledError:
             raise
         except Exception as e:
-            err_str = str(e)
-            if "closing transport" in err_str or isinstance(
-                e, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)
-            ):
+            if "closing transport" in str(e) or isinstance(e, (ConnectionResetError, ConnectionAbortedError, BrokenPipeError)):
                 return web.Response(status=499)
             logger.error(f"stream_video (ad #{ad_id}): {e}", exc_info=True)
             return web.Response(status=500, text="Server xatosi")
 
     # ============================================================
-    # VIDEO UPLOAD — userbot orqali @reklama_db kanaliga
+    # VIDEO UPLOAD — To'g'ridan-to'g'ri diskka yozish (Stream)
     # ============================================================
     async def upload_video(self, req):
-        """
-        Multipart faylni qabul qilib, userbot orqali @reklama_db kanaliga yuboradi.
-        msg_id qaytaradi (DB'ga file_id sifatida saqlash uchun).
-        """
         tmp_path = None
         try:
             reader = await req.multipart()
             if not reader:
                 return jresp({"ok": False, "error": "Fayl yuborilmadi"}, 400)
 
-            file_data = None
             telegram_id = None
             filename = "ad.mp4"
             mime_type = "video/mp4"
+            total_size = 0
+            upload_success = True
 
-            while True:
-                part = await reader.next()
-                if part is None:
-                    break
+            # Vaqtinchalik faylni darhol yaratamiz
+            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=".mp4")
+            tmp_path = tmp.name
+            tmp.close()
 
-                if part.name == "telegram_id":
+            # Faylni binary rejimda ochib, bo'lakma-bo'lak yozamiz (RAM to'lmaydi)
+            with open(tmp_path, "wb") as f:
+                while True:
                     try:
-                        val = await part.text()
-                        telegram_id = int(val.strip())
-                    except Exception:
-                        pass
+                        part = await reader.next()
+                    except ConnectionResetError:
+                        logger.warning("Upload uzildi (ConnectionResetError) - client tomonidan")
+                        upload_success = False
+                        break
+                        
+                    if part is None:
+                        break
 
-                elif part.name == "video":
-                    filename = getattr(part, "filename", None) or "ad.mp4"
-                    try:
-                        ct = part.headers.get("Content-Type", "video/mp4")
-                        mime_type = ct or "video/mp4"
-                    except Exception:
-                        mime_type = "video/mp4"
+                    if part.name == "telegram_id":
+                        try:
+                            val = await part.text()
+                            telegram_id = int(val.strip())
+                        except Exception:
+                            pass
 
-                    chunks = []
-                    total = 0
-                    MAX = VIDEO.MAX_SIZE
-                    while True:
-                        chunk = await part.read_chunk(1024 * 512)
-                        if not chunk:
-                            break
-                        total += len(chunk)
-                        if total > MAX:
-                            mb = MAX // (1024 * 1024)
-                            return jresp({"ok": False, "error": f"Video {mb} MB dan katta"}, 413)
-                        chunks.append(chunk)
-                    file_data = b"".join(chunks)
+                    elif part.name == "video":
+                        filename = getattr(part, "filename", None) or "ad.mp4"
+                        try:
+                            mime_type = part.headers.get("Content-Type", "video/mp4") or "video/mp4"
+                        except Exception:
+                            mime_type = "video/mp4"
 
-            # Validatsiya
+                        while True:
+                            try:
+                                chunk = await part.read_chunk(1024 * 512) # 512 KB
+                            except ConnectionResetError:
+                                logger.warning("Fayl o'qishda ulanish uzildi")
+                                upload_success = False
+                                break
+                                
+                            if not chunk:
+                                break
+                            total_size += len(chunk)
+                            
+                            if total_size > VIDEO.MAX_SIZE:
+                                mb = VIDEO.MAX_SIZE // (1024 * 1024)
+                                upload_success = False
+                                break
+                                
+                            f.write(chunk)
+
+                    if not upload_success:
+                        break
+
+            # Xatoliklarni tekshirish
+            if not upload_success:
+                if os.path.exists(tmp_path): os.remove(tmp_path)
+                return jresp({"ok": False, "error": "Ulanish uzildi yoki fayl juda katta. Qaytadan urinib ko'ring."}, 400)
+                
+            if total_size > VIDEO.MAX_SIZE:
+                if os.path.exists(tmp_path): os.remove(tmp_path)
+                mb = VIDEO.MAX_SIZE // (1024 * 1024)
+                return jresp({"ok": False, "error": f"Video {mb} MB dan katta"}, 413)
+
             if not telegram_id:
+                if os.path.exists(tmp_path): os.remove(tmp_path)
                 return jresp({"ok": False, "error": "telegram_id yo'q"}, 400)
-            if not file_data:
+                
+            if total_size == 0:
+                if os.path.exists(tmp_path): os.remove(tmp_path)
                 return jresp({"ok": False, "error": "Video bo'sh"}, 400)
-            if len(file_data) < VIDEO.MIN_SIZE:
+                
+            if total_size < VIDEO.MIN_SIZE:
+                if os.path.exists(tmp_path): os.remove(tmp_path)
                 return jresp({"ok": False, "error": "Video juda kichik"}, 400)
+                
             if not is_valid_video_filename(filename):
+                if os.path.exists(tmp_path): os.remove(tmp_path)
                 return jresp({"ok": False, "error": "Video formati noto'g'ri"}, 400)
 
             user = await self.db.get_user(telegram_id)
             if not user:
+                if os.path.exists(tmp_path): os.remove(tmp_path)
                 return jresp({"ok": False, "error": "User topilmadi"}, 404)
 
-            # Vaqtinchalik faylga yozish
-            suffix = ".mp4"
-            low = filename.lower()
-            for ext in VIDEO.ALLOWED_EXTS:
-                if low.endswith(ext):
-                    suffix = ext
-                    break
-
-            tmp = tempfile.NamedTemporaryFile(delete=False, suffix=suffix)
-            tmp.write(file_data)
-            tmp.close()
-            tmp_path = tmp.name
-
-            # Userbot tekshiruvi
             if not self.bot_app.userbot or not self.bot_app.userbot.client:
-                try: os.remove(tmp_path)
-                except: pass
+                if os.path.exists(tmp_path): os.remove(tmp_path)
                 return jresp({"ok": False, "error": "Userbot ulanmagan"}, 500)
 
             # Kanalga yuborish
@@ -544,23 +534,16 @@ class API:
                 )
             except Exception as e:
                 logger.error(f"userbot send_video_to_channel xato: {e}", exc_info=True)
-                try: os.remove(tmp_path)
-                except: pass
+                if os.path.exists(tmp_path): os.remove(tmp_path)
                 return jresp({"ok": False, "error": "Telegram'ga yuklab bo'lmadi"}, 500)
 
-            # Fayl o'chirish
-            try: os.remove(tmp_path)
-            except: pass
+            if os.path.exists(tmp_path): os.remove(tmp_path)
             tmp_path = None
 
             if not msg:
                 return jresp({"ok": False, "error": "Telegram video qabul qilmadi"}, 500)
 
-            # msg_id ni olish
             msg_id = msg.id
-            file_size = len(file_data)
-
-            # Duration (Document attribute'idan)
             duration = 0
             try:
                 media = getattr(msg, "media", None)
@@ -577,27 +560,26 @@ class API:
             except Exception:
                 duration = 0
 
-            # DB'ga metadata — file_id = str(msg_id)
             video_id = await self.db.create_video_meta(
                 file_id=str(msg_id),
-                size=file_size,
+                size=total_size,
                 mime_type=mime_type,
                 duration_sec=duration,
             )
 
-            logger.info(f"✅ Upload OK: video_id={video_id}, msg_id={msg_id}, size={file_size}")
+            logger.info(f"✅ Upload OK: video_id={video_id}, msg_id={msg_id}, size={total_size}")
 
             return jresp({
                 "ok": True,
                 "video_id": video_id,
                 "file_id": str(msg_id),
-                "size": file_size,
+                "size": total_size,
                 "duration": duration,
             })
 
         except Exception as e:
             logger.error(f"upload_video: {e}", exc_info=True)
-            if tmp_path:
+            if tmp_path and os.path.exists(tmp_path):
                 try: os.remove(tmp_path)
                 except: pass
             return jresp({"ok": False, "error": str(e)}, 500)
@@ -1693,4 +1675,4 @@ class API:
         await runner.setup()
         site = web.TCPSite(runner, API_CFG.HOST, API_CFG.PORT)
         await site.start()
-        logger.info(f"✅ API v8.1: http://{API_CFG.HOST}:{API_CFG.PORT}")
+        logger.info(f"✅ API v8.2: http://{API_CFG.HOST}:{API_CFG.PORT}")
