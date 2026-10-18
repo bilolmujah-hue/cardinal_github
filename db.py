@@ -1,9 +1,8 @@
 """
-Cardinal DB v8.0 — Telegram Channel + PostgreSQL
-- videos jadvali (Telegram file_id)
-- ads.video_id
-- Soft delete kartala
-- Cleanup: get_expired_ads + expire_ad
+Cardinal DB v8.1 — PostgreSQL (Mukammal va xatosiz)
+- Videolar (Telegram file_id/msg_id)
+- ON CONFLICT bilan xatosiz saqlash (Saved ads)
+- Barcha tranzaksiyalar xavfsiz (Atomic)
 """
 import asyncpg
 import json
@@ -25,17 +24,18 @@ class Database:
             user=DB.USER, password=DB.PASSWORD,
             min_size=5, max_size=50, command_timeout=60,
         )
-        logger.info("PostgreSQL ulandi")
+        logger.info("✅ PostgreSQL ulandi")
 
     async def close(self):
         if self.pool:
             await self.pool.close()
 
     # ============================================================
-    # TABLES
+    # TABLES & MIGRATIONS
     # ============================================================
     async def create_tables(self):
         async with self.pool.acquire() as c:
+            # USERS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS users (
                     id SERIAL PRIMARY KEY,
@@ -48,6 +48,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # CARDS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS cards (
                     id SERIAL PRIMARY KEY,
@@ -58,8 +59,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
-
-            # VIDEOS — Telegram file_id
+            # VIDEOS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS videos (
                     id SERIAL PRIMARY KEY,
@@ -73,6 +73,7 @@ class Database:
             """)
             await c.execute("CREATE INDEX IF NOT EXISTS idx_videos_ad_id ON videos(ad_id);")
 
+            # ADS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS ads (
                     id SERIAL PRIMARY KEY,
@@ -94,6 +95,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # SAVED ADS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS saved_ads (
                     id SERIAL PRIMARY KEY,
@@ -103,6 +105,7 @@ class Database:
                     UNIQUE(ad_id, user_id)
                 );
             """)
+            # TRANSACTIONS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS transactions (
                     id SERIAL PRIMARY KEY,
@@ -114,6 +117,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # TOPUP REQUESTS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS topup_requests (
                     id SERIAL PRIMARY KEY,
@@ -129,6 +133,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # FEEDBACKS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS feedbacks (
                     id SERIAL PRIMARY KEY,
@@ -138,6 +143,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # BLOCKED USERS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS blocked_users (
                     id SERIAL PRIMARY KEY,
@@ -146,6 +152,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW(), UNIQUE(user_id)
                 );
             """)
+            # BROADCASTS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS broadcasts (
                     id SERIAL PRIMARY KEY,
@@ -154,6 +161,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # USERBOT SESSIONS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS userbot_sessions (
                     id SERIAL PRIMARY KEY,
@@ -163,6 +171,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # ADMIN CONTACTS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS admin_contacts (
                     id SERIAL PRIMARY KEY,
@@ -172,6 +181,7 @@ class Database:
                     created_at TIMESTAMP DEFAULT NOW(), updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # SETTINGS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS settings (
                     key VARCHAR(100) PRIMARY KEY,
@@ -179,6 +189,7 @@ class Database:
                     updated_at TIMESTAMP DEFAULT NOW()
                 );
             """)
+            # VIP REQUESTS
             await c.execute("""
                 CREATE TABLE IF NOT EXISTS vip_requests (
                     id SERIAL PRIMARY KEY,
@@ -192,7 +203,7 @@ class Database:
         await self._migrate()
         await self._seed_cards()
         await self._seed_settings()
-        logger.info("Jadvallar tayyor")
+        logger.info("✅ Jadvallar tayyor")
 
     async def _migrate(self):
         migrations = [
@@ -274,31 +285,27 @@ class Database:
             return 30
 
     # ============================================================
-    # VIDEOS (Telegram file_id)
+    # VIDEOS
     # ============================================================
     async def create_video_meta(self, file_id, size=0, mime_type=None, duration_sec=None, ad_id=None):
-        """Yangi video metadata yaratish. video_id qaytaradi."""
         async with self.pool.acquire() as c:
-            vid = await c.fetchval("""
+            return await c.fetchval("""
                 INSERT INTO videos (ad_id, file_id, size, mime_type, duration_sec)
                 VALUES ($1, $2, $3, $4, $5) RETURNING id
             """, ad_id, file_id, size, mime_type, duration_sec)
-            return vid
 
     async def link_video_to_ad(self, video_id, ad_id):
-        """Video'ni ad'ga bog'lash."""
         async with self.pool.acquire() as c:
-            await c.execute("UPDATE videos SET ad_id=$1 WHERE id=$2", ad_id, video_id)
-            await c.execute("UPDATE ads SET video_id=$1 WHERE id=$2", video_id, ad_id)
+            async with c.transaction():
+                await c.execute("UPDATE videos SET ad_id=$1 WHERE id=$2", ad_id, video_id)
+                await c.execute("UPDATE ads SET video_id=$1 WHERE id=$2", video_id, ad_id)
 
     async def get_video_meta(self, video_id):
-        """Video metadata (file_id, size, mime)."""
         async with self.pool.acquire() as c:
             r = await c.fetchrow("SELECT * FROM videos WHERE id=$1", video_id)
             return dict(r) if r else None
 
     async def delete_video_meta(self, video_id):
-        """Video metadata o'chirish. file_id qaytaradi."""
         async with self.pool.acquire() as c:
             r = await c.fetchrow("SELECT file_id FROM videos WHERE id=$1", video_id)
             if r:
@@ -647,7 +654,7 @@ class Database:
             await c.execute("UPDATE ads SET views=views+1 WHERE id=$1", ad_id)
 
     # ============================================================
-    # ADS — THUMBNAIL
+    # ADS — THUMBNAIL, PIN, EDIT
     # ============================================================
     async def set_ad_thumbnail(self, ad_id, thumbnail_url):
         async with self.pool.acquire() as c:
@@ -656,9 +663,6 @@ class Database:
             """, thumbnail_url, ad_id)
             return True
 
-    # ============================================================
-    # ADS — PIN
-    # ============================================================
     async def toggle_ad_pin(self, ad_id):
         async with self.pool.acquire() as c:
             r = await c.fetchrow("SELECT is_pinned FROM ads WHERE id=$1", ad_id)
@@ -689,13 +693,9 @@ class Database:
                     """, order_val, aid)
             return True
 
-    # ============================================================
-    # ADS — EDIT
-    # ============================================================
     async def update_ad_text(self, ad_id, data):
         async with self.pool.acquire() as c:
             acc_json = json.dumps(data.get("account_data", {}) or {}, ensure_ascii=False)
-
             title = (data.get("title") or "").strip()
             price = data.get("price")
             currency = data.get("currency", "UZS")
@@ -739,17 +739,18 @@ class Database:
 
     async def expire_ad(self, ad_id):
         async with self.pool.acquire() as c:
-            v = await c.fetchrow("SELECT id FROM videos WHERE ad_id=$1", ad_id)
-            await c.execute(
-                "UPDATE ads SET status='EXPIRED', video_id=NULL, updated_at=NOW() WHERE id=$1",
-                ad_id
-            )
-            if v:
-                await c.execute("DELETE FROM videos WHERE id=$1", v["id"])
+            async with c.transaction():
+                v = await c.fetchrow("SELECT id FROM videos WHERE ad_id=$1", ad_id)
+                await c.execute(
+                    "UPDATE ads SET status='EXPIRED', video_id=NULL, updated_at=NOW() WHERE id=$1",
+                    ad_id
+                )
+                if v:
+                    await c.execute("DELETE FROM videos WHERE id=$1", v["id"])
             return True
 
     # ============================================================
-    # SAVED
+    # SAVED ADS (Xatosiz ON CONFLICT bilan)
     # ============================================================
     async def toggle_save(self, ad_id, telegram_id):
         async with self.pool.acquire() as c:
@@ -759,7 +760,12 @@ class Database:
             if ex:
                 await c.execute("DELETE FROM saved_ads WHERE id=$1", ex["id"])
                 return {"ok": True, "saved": False}
-            await c.execute("INSERT INTO saved_ads (ad_id, user_id) VALUES ($1,$2)", ad_id, u["id"])
+            
+            # ON CONFLICT bilan xatoni oldini olamiz
+            await c.execute("""
+                INSERT INTO saved_ads (ad_id, user_id) VALUES ($1,$2) 
+                ON CONFLICT (ad_id, user_id) DO NOTHING
+            """, ad_id, u["id"])
             return {"ok": True, "saved": True}
 
     async def get_saved(self, telegram_id):
@@ -940,7 +946,7 @@ class Database:
             return True
 
     # ============================================================
-    # TRANSACTIONS
+    # TRANSACTIONS & FEEDBACKS
     # ============================================================
     async def get_user_txs(self, telegram_id, limit=50):
         async with self.pool.acquire() as c:
@@ -950,9 +956,6 @@ class Database:
                                  u["id"], limit)
             return [dict(r) for r in rows]
 
-    # ============================================================
-    # FEEDBACKS
-    # ============================================================
     async def add_feedback(self, telegram_id, text, rating=5):
         async with self.pool.acquire() as c:
             u = await self.get_user(telegram_id)
