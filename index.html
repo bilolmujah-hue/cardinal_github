@@ -414,7 +414,6 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .detail-item{padding:7px 4px;background:transparent;border:none;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;color:var(--text)}
 .detail-item svg{width:15px;height:15px;color:var(--icon-color);flex-shrink:0}
 
-/* 4-muammo tuzatildi: Ma'lumotlar chiroyli va aniq joylashishi */
 .detail-info-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed var(--border-2);font-size:13.5px}
 .detail-info-row:last-child{border-bottom:0}
 .detail-info-row .k{color:var(--text-3);font-weight:600;display:flex;align-items:center;gap:8px}
@@ -1904,7 +1903,7 @@ function adCard(a){
       <div class="ad-media ${a.thumbnail_url?'has-thumb':''}" data-ad-media="${a.id}">
         ${mediaContent}
         <button class="ad-heart ${isSaved?'saved':''}" onclick="event.stopPropagation();toggleSave(${a.id}, this)">
-          ${ico("heart")}
+          ${isSaved ? '❤️' : ico("heart")}
         </button>
         ${adminTools}
         ${pinBadge}
@@ -2397,17 +2396,24 @@ function messageSeller(username){
 }
 
 // ============================================================
-// SAVE (3-muammo tuzatildi)
+// SAVE (Yurakcha emojiga aylanishi)
 // ============================================================
 async function toggleSave(adId, btn){
   if(!USER) return;
   if(btn) btn.disabled = true;
   try{
     const r = await api("/api/toggle-save", "POST", { ad_id: adId, telegram_id: USER.telegram_id });
-    if(btn) btn.classList.toggle("saved", r.saved);
+    
+    // Yurakcha holatini o'zgartirish
+    if(btn) {
+      btn.classList.toggle("saved", r.saved);
+      btn.innerHTML = r.saved ? '❤️' : ico("heart");
+    }
+    
     const find = (arr) => arr.find(x => x.id === adId);
     const update = (a) => { if(a) a.is_saved = r.saved };
     update(find(S.ads)); update(find(S.saved));
+    
     if(r.saved){
       toast("Saqlandi ❤️", "success");
       const ad = find(S.ads) || find(S.saved);
