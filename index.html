@@ -2606,7 +2606,6 @@ const TARIFFS = [
 
 function renderTariffs(){
   $("tariffList").innerHTML = TARIFFS.map(t => {
-    // 5-muammo tuzatildi: Faqat 15 000 lik tarif (id=2) uchun kanal tugmasi
     const channelBtn = t.id === 2 ? `
       <a href="https://t.me/+5XuKi8Nxoz5iODky" target="_blank" class="btn btn-block" style="background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;font-size:13px;font-weight:700;padding:12px;border-radius:14px;box-shadow:0 8px 24px rgba(59,130,246,.35);text-decoration:none;display:flex;justify-content:center;align-items:center;gap:8px;margin-top:14px;" onclick="event.stopPropagation()">
         ${ico("mega")} Kanalimizga o'tish
@@ -2776,7 +2775,6 @@ function validateStep(){
   return true;
 }
 
-// 1-muammo tuzatildi: 2-qadamda video yuklanmaydi
 async function nextStep(){
   if(!validateStep()) return;
 
@@ -2967,7 +2965,7 @@ function renderPreview(){
   `;
 }
 
-// 1-muammo tuzatildi: Balansni tekshirish va chiroyli yuklash animatsiyasi
+// 1-muammo tuzatildi: Ekran qotmaydi, chiroyli animatsiya bilan yuklaydi
 async function submitAd(){
   const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
   if(price <= 0){ toast("Narx noto'g'ri", "error"); return }
@@ -2979,10 +2977,12 @@ async function submitAd(){
     return;
   }
 
-  show(); 
-  const btn = $("btnNext");
-  btn.disabled = true;
-  btn.innerHTML = `<div class="load-dots" style="display:inline-flex;gap:3px;margin-right:8px"><span></span><span></span><span></span></div> Yuklanmoqda...`;
+  const btnNext = $("btnNext");
+  const btnBack = $("btnBack");
+  
+  btnNext.disabled = true;
+  btnBack.disabled = true;
+  btnNext.innerHTML = `<div class="load-dots" style="display:inline-flex;gap:3px;margin-right:8px"><span></span><span></span><span></span></div> Yuklanmoqda...`;
 
   $("previewBox").insertAdjacentHTML("afterbegin", `
     <div id="finalUploadProgress" class="upload-progress" style="margin-bottom:20px;">
@@ -2996,11 +2996,13 @@ async function submitAd(){
         <div class="upload-dots"><span>.</span><span>.</span><span>.</span></div>
       </div>
       <div class="upload-bar-wrap">
-        <div class="upload-bar" id="uploadBar"></div>
+        <div class="upload-bar" id="uploadBar" style="width: 0%;"></div>
       </div>
       <div class="upload-percent" id="uploadPercent">0%</div>
     </div>
   `);
+  
+  window.scrollTo({top: 0, behavior: "smooth"});
 
   try{
     const uploadRes = await uploadVideoToServer(VIDEO_FILE);
@@ -3033,10 +3035,9 @@ async function submitAd(){
     toast(e.message, "error"); 
     const prog = $("finalUploadProgress");
     if(prog) prog.remove();
-  } finally {
-    hide();
-    btn.disabled = false;
-    btn.innerHTML = `${ico("check")}Tasdiqlash`;
+    btnNext.disabled = false;
+    btnBack.disabled = false;
+    btnNext.innerHTML = `${ico("check")}Tasdiqlash`;
   }
 }
 
@@ -3226,7 +3227,6 @@ function openTopup(){
   setTimeout(checkExistingTopup, 200);
 }
 
-// 6-muammo tuzatildi: Rad etilgandan keyin qayta kirganda formani ochish
 async function checkExistingTopup(){
   if(!USER) return;
   try{
@@ -3363,7 +3363,6 @@ function startTopupPoll(){
   S.topupPoll = setInterval(topupPoll, 3000);
 }
 
-// 6-muammo tuzatildi: Rad etilganda sessionStorage ga yozish
 async function topupPoll(){
   if(!USER) return;
   try{
