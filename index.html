@@ -413,11 +413,13 @@ body.dark .cat{background:linear-gradient(135deg,rgba(255,255,255,.06),rgba(255,
 .detail-list{display:flex;flex-direction:column;gap:0}
 .detail-item{padding:7px 4px;background:transparent;border:none;font-size:13px;font-weight:500;display:flex;align-items:center;gap:8px;color:var(--text)}
 .detail-item svg{width:15px;height:15px;color:var(--icon-color);flex-shrink:0}
-.detail-info-row{display:flex;justify-content:space-between;gap:12px;padding:11px 0;border-bottom:1px solid var(--border);font-size:13px}
+
+/* 4-muammo tuzatildi: Ma'lumotlar chiroyli va aniq joylashishi */
+.detail-info-row{display:flex;justify-content:space-between;align-items:center;gap:12px;padding:12px 0;border-bottom:1px dashed var(--border-2);font-size:13.5px}
 .detail-info-row:last-child{border-bottom:0}
-.detail-info-row .k{color:var(--text-3);font-weight:500;display:flex;align-items:center;gap:6px}
-.detail-info-row .k svg{width:13px;height:13px}
-.detail-info-row .v{font-weight:700;text-align:right;color:var(--text)}
+.detail-info-row .k{color:var(--text-3);font-weight:600;display:flex;align-items:center;gap:8px}
+.detail-info-row .k svg{width:14px;height:14px;color:var(--icon-color);flex-shrink:0}
+.detail-info-row .v{font-weight:800;text-align:right;color:var(--text);font-size:14px;white-space:nowrap}
 
 .contact-box{background:linear-gradient(135deg,var(--surface),var(--surface-2));border:1.5px solid var(--border-2);border-radius:20px;padding:18px;margin-top:18px;position:relative;overflow:hidden}
 .contact-title{font-size:13px;font-weight:700;color:var(--text);display:flex;align-items:center;gap:8px;margin-bottom:16px}
@@ -1543,8 +1545,37 @@ function toast(msg, type="info"){
   setTimeout(() => t.remove(), 3200);
 }
 
+// 2-muammo tuzatildi: Video ovozini to'xtatish
+function closeModal(id){ 
+  $(id).classList.remove("active"); 
+  document.body.style.overflow = ""; 
+  if(id === 'mAd'){
+    document.querySelectorAll('#mAdBody video').forEach(v => {
+      v.pause();
+      v.currentTime = 0;
+    });
+  }
+}
+
+// 2-muammo tuzatildi: Sahifa almashganda videolarni to'xtatish
+function go(pageId){
+  document.querySelectorAll('video').forEach(v => {
+    if(!v.paused) { v.pause(); }
+  });
+
+  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === pageId));
+  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.nav === pageId));
+  window.scrollTo({top:0, behavior:"smooth"});
+  if(pageId === "pageDashboard") renderAds();
+  if(pageId === "pageSaved") renderSaved();
+  if(pageId === "pageMyAds") renderMyAds();
+  if(pageId === "pageProfile") renderProfile();
+  if(pageId === "pageAdmin") renderAdmin();
+  if(pageId === "pageFeedbacks") renderFeedbacks();
+  if(pageId === "pageAdminContacts") loadAdminContacts();
+}
+
 function openModal(id){ $(id).classList.add("active"); document.body.style.overflow = "hidden" }
-function closeModal(id){ $(id).classList.remove("active"); document.body.style.overflow = "" }
 
 function customConfirm(title, msg, opts={}){
   return new Promise(resolve => {
@@ -1653,22 +1684,6 @@ function secondsToHMS(total){
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
   return `${String(h).padStart(2,"0")}:${String(m).padStart(2,"0")}:${String(s).padStart(2,"0")}`;
-}
-
-// ============================================================
-// GO PAGE
-// ============================================================
-function go(pageId){
-  document.querySelectorAll(".page").forEach(p => p.classList.toggle("active", p.id === pageId));
-  document.querySelectorAll(".nav-btn").forEach(b => b.classList.toggle("active", b.dataset.nav === pageId));
-  window.scrollTo({top:0, behavior:"smooth"});
-  if(pageId === "pageDashboard") renderAds();
-  if(pageId === "pageSaved") renderSaved();
-  if(pageId === "pageMyAds") renderMyAds();
-  if(pageId === "pageProfile") renderProfile();
-  if(pageId === "pageAdmin") renderAdmin();
-  if(pageId === "pageFeedbacks") renderFeedbacks();
-  if(pageId === "pageAdminContacts") loadAdminContacts();
 }
 
 // ============================================================
@@ -2382,10 +2397,11 @@ function messageSeller(username){
 }
 
 // ============================================================
-// SAVE
+// SAVE (3-muammo tuzatildi)
 // ============================================================
 async function toggleSave(adId, btn){
   if(!USER) return;
+  if(btn) btn.disabled = true;
   try{
     const r = await api("/api/toggle-save", "POST", { ad_id: adId, telegram_id: USER.telegram_id });
     if(btn) btn.classList.toggle("saved", r.saved);
@@ -2402,6 +2418,7 @@ async function toggleSave(adId, btn){
     }
     renderAds(); renderSaved();
   }catch(e){ toast(e.message, "error") }
+  finally { if(btn) btn.disabled = false; }
 }
 
 async function loadSaved(){
@@ -2588,7 +2605,14 @@ const TARIFFS = [
 ];
 
 function renderTariffs(){
-  $("tariffList").innerHTML = TARIFFS.map(t => `
+  $("tariffList").innerHTML = TARIFFS.map(t => {
+    // 5-muammo tuzatildi: Faqat 15 000 lik tarif (id=2) uchun kanal tugmasi
+    const channelBtn = t.id === 2 ? `
+      <a href="https://t.me/+5XuKi8Nxoz5iODky" target="_blank" class="btn btn-block" style="background:linear-gradient(135deg,#3B82F6,#2563EB);color:#fff;font-size:13px;font-weight:700;padding:12px;border-radius:14px;box-shadow:0 8px 24px rgba(59,130,246,.35);text-decoration:none;display:flex;justify-content:center;align-items:center;gap:8px;margin-top:14px;" onclick="event.stopPropagation()">
+        ${ico("mega")} Kanalimizga o'tish
+      </a>` : "";
+
+    return `
     <div class="tariff" data-t="${t.id}">
       ${t.badge ? `<div class="tariff-tag ${t.badge.c}">${ico(t.badge.c==="vip"?"crown":"fire","ico-sm")}<span>${t.badge.t}</span></div>` : ""}
       <div class="tariff-head">
@@ -2602,9 +2626,11 @@ function renderTariffs(){
         </div>
       </div>
       <div class="tariff-feats">${t.feats.map(f => `<div class="feat ${f[0]}"><div class="feat-ic">${ico(f[0]==="yes"?"check":"x","ico-sm")}</div><span>${f[1]}</span></div>`).join("")}</div>
-      ${t.vip ? `<div class="pay-note" style="margin-top:12px;text-align:left;background:rgba(139,92,246,.08);border-color:rgba(139,92,246,.25);color:#A78BFA">${ico("info")}<span>Akkauntingizga QR kod orqali kiramiz va akkaunt abzorini chiroyli montaj qilib, bot va kanal sahifasiga reklama tarzda joylab beramiz!</span></div>` : ""}
+      ${t.vip ? `<div class="pay-note" style="margin-top:12px;text-align:left;background:rgba(139,92,246,.08);border-color:rgba(139,92,246,.25);color:#A78BFA">${ico("info")}<span>Akkauntingizga QR kod orqali kiramiz va akkaunt abzorini chiroyli montaj qilib, bot va kanal sahifasiga reklama tarzida joylab beramiz!</span></div>` : ""}
+      ${channelBtn}
     </div>
-  `).join("");
+  `}).join("");
+  
   $("tariffList").querySelectorAll(".tariff").forEach(el => {
     el.onclick = (e) => {
       if(e.target.closest("a")) return;
@@ -2750,32 +2776,12 @@ function validateStep(){
   return true;
 }
 
+// 1-muammo tuzatildi: 2-qadamda video yuklanmaydi
 async function nextStep(){
   if(!validateStep()) return;
 
-  if(S.step === 2 && !S.videoId){
-    if(VIDEO_UPLOADING){ toast("Video hali yuklanmoqda, kuting", "info"); return }
+  if(S.step === 2){
     if(!VIDEO_FILE){ toast("Video tanlang", "error"); return }
-
-    const prog = $("uploadProgress");
-    if(prog) prog.classList.remove("hidden");
-    VIDEO_UPLOADING = true;
-
-    try{
-      const r = await uploadVideoToServer(VIDEO_FILE);
-      S.videoId = r.video_id;
-      S.fileId = r.file_id;
-      toast("Video muvaffaqiyatli yuklandi ✓", "success");
-    }catch(e){
-      console.error("Upload error:", e);
-      toast("Video yuklanmadi: " + e.message, "error");
-      if(prog) prog.classList.add("hidden");
-      VIDEO_UPLOADING = false;
-      return;
-    }
-
-    VIDEO_UPLOADING = false;
-    if(prog) prog.classList.add("hidden");
   }
 
   if(S.step === 4){ submitAd(); return }
@@ -2854,21 +2860,6 @@ $("videoInput").addEventListener("change", async e => {
     <button class="btn btn-secondary btn-block mt-8" onclick="removeVideo()">
       ${ico("trash")}Videoni o'chirish
     </button>
-    <div id="uploadProgress" class="upload-progress hidden">
-      <div class="upload-spinner">
-        <div class="ring r1"></div>
-        <div class="ring r2"></div>
-        <div class="ring r3"></div>
-      </div>
-      <div class="upload-text">
-        <div class="upload-label">Video yuklanmoqda</div>
-        <div class="upload-dots"><span>.</span><span>.</span><span>.</span></div>
-      </div>
-      <div class="upload-bar-wrap">
-        <div class="upload-bar" id="uploadBar"></div>
-      </div>
-      <div class="upload-percent" id="uploadPercent">0%</div>
-    </div>
   `;
 });
 
@@ -2976,12 +2967,46 @@ function renderPreview(){
   `;
 }
 
+// 1-muammo tuzatildi: Balansni tekshirish va chiroyli yuklash animatsiyasi
 async function submitAd(){
   const price = +($("accPrice").value.replace(/\D/g,"")) || 0;
   if(price <= 0){ toast("Narx noto'g'ri", "error"); return }
-  if(!S.videoId){ toast("Video yuklanmagan. Qayta urinib ko'ring.", "error"); return }
-  show();
+  if(!VIDEO_FILE){ toast("Video yuklanmagan. Qayta urinib ko'ring.", "error"); return }
+
+  const tariff = TARIFFS.find(t => t.id === S.tariff);
+  if(tariff && S.balance < tariff.price){
+    toast(`Balansingizda ${num(tariff.price)} so'm yetarli emas. Iltimos, hisobni to'ldiring.`, "error");
+    return;
+  }
+
+  show(); 
+  const btn = $("btnNext");
+  btn.disabled = true;
+  btn.innerHTML = `<div class="load-dots" style="display:inline-flex;gap:3px;margin-right:8px"><span></span><span></span><span></span></div> Yuklanmoqda...`;
+
+  $("previewBox").insertAdjacentHTML("afterbegin", `
+    <div id="finalUploadProgress" class="upload-progress" style="margin-bottom:20px;">
+      <div class="upload-spinner">
+        <div class="ring r1"></div>
+        <div class="ring r2"></div>
+        <div class="ring r3"></div>
+      </div>
+      <div class="upload-text">
+        <div class="upload-label">Video yuklanmoqda</div>
+        <div class="upload-dots"><span>.</span><span>.</span><span>.</span></div>
+      </div>
+      <div class="upload-bar-wrap">
+        <div class="upload-bar" id="uploadBar"></div>
+      </div>
+      <div class="upload-percent" id="uploadPercent">0%</div>
+    </div>
+  `);
+
   try{
+    const uploadRes = await uploadVideoToServer(VIDEO_FILE);
+    S.videoId = uploadRes.video_id;
+    S.fileId = uploadRes.file_id;
+
     const acc = collectAd();
     const adData = {
       title: `PUBG Mobile - ${acc.level} LVL`,
@@ -2994,13 +3019,25 @@ async function submitAd(){
       account_data: acc,
     };
     const r = await api("/api/create-ad", "POST", { telegram_id: USER.telegram_id, ad_data: adData });
+    
     S.balance -= r.paid;
     updateTopbar();
     toast("Reklama yuborildi! Admin tasdiqlashini kuting", "success");
     await loadMyAds();
+    
+    const prog = $("finalUploadProgress");
+    if(prog) prog.remove();
+    
     setTimeout(() => go("pageMyAds"), 500);
-  }catch(e){ toast(e.message, "error") }
-  hide();
+  }catch(e){ 
+    toast(e.message, "error"); 
+    const prog = $("finalUploadProgress");
+    if(prog) prog.remove();
+  } finally {
+    hide();
+    btn.disabled = false;
+    btn.innerHTML = `${ico("check")}Tasdiqlash`;
+  }
 }
 
 // ============================================================
@@ -3189,11 +3226,18 @@ function openTopup(){
   setTimeout(checkExistingTopup, 200);
 }
 
+// 6-muammo tuzatildi: Rad etilgandan keyin qayta kirganda formani ochish
 async function checkExistingTopup(){
   if(!USER) return;
   try{
     const r = await api(`/api/topup/status?telegram_id=${USER.telegram_id}`);
-    handleTopupStatus(r, true);
+    
+    if((r.status === "rejected" || r.status === "expired") && sessionStorage.getItem('topup_rej_seen') === 'true') {
+        sessionStorage.removeItem('topup_rej_seen');
+        showTopupStep("topupStep1");
+    } else {
+        handleTopupStatus(r, true);
+    }
   }catch(e){}
 }
 
@@ -3319,6 +3363,7 @@ function startTopupPoll(){
   S.topupPoll = setInterval(topupPoll, 3000);
 }
 
+// 6-muammo tuzatildi: Rad etilganda sessionStorage ga yozish
 async function topupPoll(){
   if(!USER) return;
   try{
@@ -3327,6 +3372,7 @@ async function topupPoll(){
     if(st === "completed"){ stopTopupTimers(); showTopupSuccess(r.amount||0, r.balance||0); return }
     if(st === "expired" || st === "rejected" || st === "cancelled"){
       stopTopupTimers();
+      sessionStorage.setItem('topup_rej_seen', 'true');
       if(st === "rejected") showTopupRejected(r.reject_reason);
       else showTopupRejected("Belgilangan vaqt ichida to'lov tasdiqlanmadi.");
       return;
